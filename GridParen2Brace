@@ -1,0 +1,636 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  f578b845c4b8b4b042170c74553e2cfdf879825c
+Bug 1164953 - Update CSS grid <line-names> to use brackets instead of parens. r=dholbert
+
+diff --git a/layout/reftests/css-grid/grid-placement-definite-002.html b/layout/reftests/css-grid/grid-placement-definite-002.html
+--- a/layout/reftests/css-grid/grid-placement-definite-002.html
++++ b/layout/reftests/css-grid/grid-placement-definite-002.html
+@@ -41,23 +41,23 @@ span {
+   grid-row: b;
+ }
+ .test2 .c {
+   grid-column: auto / span 3;
+ }
+ 
+ .test3 {
+   grid-template-areas:'. a .';
+-  grid-template-columns: (a-start) 20px 20px (a-start-start) 20px (a-start-end);
++  grid-template-columns: [a-start] 20px 20px [a-start-start] 20px [a-start-end];
+ }
+ .test3 span { grid-column: a-start / 8; }
+ 
+ .test4, .test5 {
+   grid-template-areas:'. . . a';
+-  grid-template-columns: 20px (a-start) 20px (a-start) 20px (a-end) 20px ;
++  grid-template-columns: 20px [a-start] 20px [a-start] 20px [a-end] 20px ;
+ }
+ .test4 span { grid-column: a-start 2 / 8; }
+ .test5 span { grid-column: a / 8; }
+ 
+ .test6 #span1 { grid-row:1/2; grid-column:1/2; }
+ .test6 #span2 { grid-row:1/2; grid-column:1/2; }
+ 
+ .test7 {grid-template-columns: 700px; grid-template-rows: 60px; }
+diff --git a/layout/reftests/css-grid/grid-placement-definite-implicit-002.html b/layout/reftests/css-grid/grid-placement-definite-implicit-002.html
+--- a/layout/reftests/css-grid/grid-placement-definite-implicit-002.html
++++ b/layout/reftests/css-grid/grid-placement-definite-implicit-002.html
+@@ -19,17 +19,17 @@ html,body {
+ span {
+   background: lime;
+   border: 1px solid;
+   grid-row: 1;
+ }
+ 
+ .grid {
+   display: grid;
+-  grid-template-columns: (A) 20px (A) 20px;
++  grid-template-columns: [A] 20px [A] 20px;
+   grid-template-rows: 20px 20px;
+   grid-auto-columns: 20px;
+ }
+ 
+ /* Legend:
+              X = line name with no match
+              x = ditto with span
+              A = existing line name
+diff --git a/layout/reftests/css-grid/grid-relpos-items-001.html b/layout/reftests/css-grid/grid-relpos-items-001.html
+--- a/layout/reftests/css-grid/grid-relpos-items-001.html
++++ b/layout/reftests/css-grid/grid-relpos-items-001.html
+@@ -9,17 +9,17 @@
+   <link rel="help" href="http://dev.w3.org/csswg/css-grid/">
+   <link rel="match" href="grid-relpos-items-001-ref.html">
+   <meta charset="utf-8">
+   <style type="text/css">
+ body,html { color:black; background:white; font-size:16px; padding:0; margin:0; }
+ 
+ .grid {
+  display: grid;
+- grid-template-columns: 20px 20px (A) 20px;
++ grid-template-columns: 20px 20px [A] 20px;
+  grid-template-rows: 20px;
+  grid-auto-columns: 20px;
+  grid-auto-rows: 20px;
+  border: solid;
+ }
+ 
+ .c1 { background: grey; }
+ .r1 { }
+diff --git a/layout/style/Declaration.cpp b/layout/style/Declaration.cpp
+--- a/layout/style/Declaration.cpp
++++ b/layout/style/Declaration.cpp
+@@ -1035,20 +1035,20 @@ Declaration::GetValue(nsCSSProperty aPro
+         nsCSSUnit unit = rowsItem->mValue.GetUnit();
+ 
+         if (unit == eCSSUnit_Null) {
+           // Empty or omitted <line-names>. Serializes to nothing.
+           addSpaceSeparator = false;  // Avoid a double space.
+ 
+         } else if (unit == eCSSUnit_List || unit == eCSSUnit_ListDep) {
+           // Non-empty <line-names>
+-          aValue.Append('(');
++          aValue.Append('[');
+           rowsItem->mValue.AppendToString(eCSSProperty_grid_template_rows,
+                                           aValue, aSerialization);
+-          aValue.Append(')');
++          aValue.Append(']');
+ 
+         } else {
+           nsStyleUtil::AppendEscapedCSSString(areas->mTemplates[row++], aValue);
+           aValue.Append(char16_t(' '));
+ 
+           // <track-size>
+           rowsItem->mValue.AppendToString(eCSSProperty_grid_template_rows,
+                                           aValue, aSerialization);
+diff --git a/layout/style/nsCSSParser.cpp b/layout/style/nsCSSParser.cpp
+--- a/layout/style/nsCSSParser.cpp
++++ b/layout/style/nsCSSParser.cpp
+@@ -834,17 +834,17 @@ protected:
+   // CSS Grid
+   bool ParseGridAutoFlow();
+ 
+   // Parse a <line-names> expression.
+   // If successful, either leave aValue untouched,
+   // to indicate that we parsed the empty list,
+   // or set it to a eCSSUnit_List of eCSSUnit_Ident.
+   //
+-  // To parse an optional <line-names> (ie. if not finding an open paren
++  // To parse an optional <line-names> (ie. if not finding an open bracket
+   // is considered the same as an empty list),
+   // treat CSSParseResult::NotFound the same as CSSParseResult::Ok.
+   //
+   // If aValue is already a eCSSUnit_List, append to that list.
+   CSSParseResult ParseGridLineNames(nsCSSValue& aValue);
+   bool ParseGridLineNameListRepeat(nsCSSValueList** aTailPtr);
+   bool ParseOptionalLineNameListAfterSubgrid(nsCSSValue& aValue);
+   bool ParseGridTrackBreadth(nsCSSValue& aValue);
+@@ -8000,20 +8000,20 @@ CSSParserImpl::ParseGridAutoFlow()
+ 
+   AppendValue(eCSSProperty_grid_auto_flow, value);
+   return true;
+ }
+ 
+ CSSParseResult
+ CSSParserImpl::ParseGridLineNames(nsCSSValue& aValue)
+ {
+-  if (!ExpectSymbol('(', true)) {
++  if (!ExpectSymbol('[', true)) {
+     return CSSParseResult::NotFound;
+   }
+-  if (!GetToken(true) || mToken.IsSymbol(')')) {
++  if (!GetToken(true) || mToken.IsSymbol(']')) {
+     return CSSParseResult::Ok;
+   }
+   // 'return' so far leaves aValue untouched, to represent an empty list.
+ 
+   nsCSSValueList* item;
+   if (aValue.GetUnit() == eCSSUnit_List) {
+     // Find the end of an existing list.
+     // The grid-template shorthand uses this, at most once for a given list.
+@@ -8030,20 +8030,20 @@ CSSParserImpl::ParseGridLineNames(nsCSSV
+   } else {
+     MOZ_ASSERT(aValue.GetUnit() == eCSSUnit_Null, "Unexpected unit");
+     item = aValue.SetListValue();
+   }
+   for (;;) {
+     if (!(eCSSToken_Ident == mToken.mType &&
+           ParseCustomIdent(item->mValue, mToken.mIdent))) {
+       UngetToken();
+-      SkipUntil(')');
++      SkipUntil(']');
+       return CSSParseResult::Error;
+     }
+-    if (!GetToken(true) || mToken.IsSymbol(')')) {
++    if (!GetToken(true) || mToken.IsSymbol(']')) {
+       return CSSParseResult::Ok;
+     }
+     item->mNext = new nsCSSValueList;
+     item = item->mNext;
+   }
+ }
+ 
+ // Assuming the 'repeat(' function token has already been consumed,
+diff --git a/layout/style/nsCSSValue.cpp b/layout/style/nsCSSValue.cpp
+--- a/layout/style/nsCSSValue.cpp
++++ b/layout/style/nsCSSValue.cpp
+@@ -1939,28 +1939,28 @@ AppendGridTemplateToString(const nsCSSVa
+     if (unit == eCSSUnit_Enumerated &&
+         val->mValue.GetIntValue() == NS_STYLE_GRID_TEMPLATE_SUBGRID) {
+       isSubgrid = true;
+       aResult.AppendLiteral("subgrid");
+ 
+     } else if (unit == eCSSUnit_Null) {
+       // Empty or omitted <line-names>.
+       if (isSubgrid) {
+-        aResult.AppendLiteral("()");
++        aResult.AppendLiteral("[]");
+       } else {
+         // Serializes to nothing.
+         addSpaceSeparator = false;  // Avoid a double space.
+       }
+ 
+     } else if (unit == eCSSUnit_List || unit == eCSSUnit_ListDep) {
+       // Non-empty <line-names>
+-      aResult.Append('(');
++      aResult.Append('[');
+       AppendValueListToString(val->mValue.GetListValue(), aProperty,
+                               aResult, aSerialization);
+-      aResult.Append(')');
++      aResult.Append(']');
+ 
+     } else {
+       // <track-size>
+       val->mValue.AppendToString(aProperty, aResult, aSerialization);
+       if (!isSubgrid &&
+           val->mNext &&
+           val->mNext->mValue.GetUnit() == eCSSUnit_Null &&
+           !val->mNext->mNext) {
+diff --git a/layout/style/nsComputedDOMStyle.cpp b/layout/style/nsComputedDOMStyle.cpp
+--- a/layout/style/nsComputedDOMStyle.cpp
++++ b/layout/style/nsComputedDOMStyle.cpp
+@@ -2267,27 +2267,27 @@ nsComputedDOMStyle::DoGetGridTemplateAre
+ 
+ // aLineNames must not be empty
+ CSSValue*
+ nsComputedDOMStyle::GetGridLineNames(const nsTArray<nsString>& aLineNames)
+ {
+   nsROCSSPrimitiveValue *val = new nsROCSSPrimitiveValue;
+   nsAutoString lineNamesString;
+   uint32_t i_end = aLineNames.Length();
+-  lineNamesString.Assign('(');
++  lineNamesString.Assign('[');
+   if (i_end > 0) {
+     for (uint32_t i = 0;;) {
+       nsStyleUtil::AppendEscapedCSSIdent(aLineNames[i], lineNamesString);
+       if (++i == i_end) {
+         break;
+       }
+       lineNamesString.Append(' ');
+     }
+   }
+-  lineNamesString.Append(')');
++  lineNamesString.Append(']');
+   val->SetString(lineNamesString);
+   return val;
+ }
+ 
+ CSSValue*
+ nsComputedDOMStyle::GetGridTrackSize(const nsStyleCoord& aMinValue,
+                                      const nsStyleCoord& aMaxValue)
+ {
+diff --git a/layout/style/test/property_database.js b/layout/style/test/property_database.js
+--- a/layout/style/test/property_database.js
++++ b/layout/style/test/property_database.js
+@@ -5785,42 +5785,42 @@ if (SpecialPowers.getBoolPref("layout.cs
+     domProp: "gridTemplateColumns",
+     inherited: false,
+     type: CSS_TYPE_LONGHAND,
+     initial_values: [ "none" ],
+     other_values: [
+       "auto",
+       "40px",
+       "2.5fr",
+-      "(normal) 40px () auto ( ) 12%",
+-      "(foo) 40px min-content ( bar ) calc(20px + 10%) max-content",
++      "[normal] 40px [] auto [ ] 12%",
++      "[foo] 40px min-content [ bar ] calc(20px + 10%) max-content",
+       "40px min-content calc(20px + 10%) max-content",
+       "minmax(min-content, auto)",
+       "minmax(auto, max-content)",
+       "m\\69nmax(20px, 4Fr)",
+       "40px MinMax(min-content, calc(20px + 10%)) max-content",
+       "40px 2em",
+-      "() 40px (-foo) 2em (bar baz This\ is\ one\ ident)",
+-      // TODO bug 978478: "(a) repeat(3, (b) 20px (c) 40px (d)) (e)",
++      "[] 40px [-foo] 2em [bar baz This\ is\ one\ ident]",
++      // TODO bug 978478: "[a] repeat(3, [b] 20px [c] 40px [d]) [e]",
+       "repeat(1, 20px)",
+-      "repeat(1, (a) 20px)",
+-      "(a) Repeat(4, (a) 20px () auto (b c)) (d)",
+-      "(a) 2.5fr Repeat(4, (a) 20px () auto (b c)) (d)",
+-      "(a) 2.5fr (z) Repeat(4, (a) 20px () auto (b c)) (d)",
+-      "(a) 2.5fr (z) Repeat(4, (a) 20px () auto) (d)",
+-      "(a) 2.5fr (z) Repeat(4, 20px (b c) auto (b c)) (d)",
+-      "(a) 2.5fr (z) Repeat(4, 20px auto) (d)",
++      "repeat(1, [a] 20px)",
++      "[a] Repeat(4, [a] 20px [] auto [b c]) [d]",
++      "[a] 2.5fr Repeat(4, [a] 20px [] auto [b c]) [d]",
++      "[a] 2.5fr [z] Repeat(4, [a] 20px [] auto [b c]) [d]",
++      "[a] 2.5fr [z] Repeat(4, [a] 20px [] auto) [d]",
++      "[a] 2.5fr [z] Repeat(4, 20px [b c] auto [b c]) [d]",
++      "[a] 2.5fr [z] Repeat(4, 20px auto) [d]",
+ 
+       // See https://bugzilla.mozilla.org/show_bug.cgi?id=981300
+-      "(none auto subgrid min-content max-content foo) 40px",
++      "[none auto subgrid min-content max-content foo] 40px",
+ 
+       "subgrid",
+-      "subgrid () (foo bar)",
+-      "subgrid repeat(1, ())",
+-      "subgrid Repeat(4, (a) (b c) () (d))",
++      "subgrid [] [foo bar]",
++      "subgrid repeat(1, [])",
++      "subgrid Repeat(4, [a] [b c] [] [d])",
+     ],
+     invalid_values: [
+       "",
+       "normal",
+       "40ms",
+       "-40px",
+       "-12%",
+       "-2fr",
+@@ -5828,17 +5828,17 @@ if (SpecialPowers.getBoolPref("layout.cs
+       "(inherit) 40px",
+       "(initial) 40px",
+       "(unset) 40px",
+       "(default) 40px",
+       "(6%) 40px",
+       "(5th) 40px",
+       "(foo() bar) 40px",
+       "(foo)) 40px",
+-      "[foo] 40px",
++      "(foo) 40px",
+       "(foo) (bar) 40px",
+       "40px (foo) (bar)",
+       "minmax()",
+       "minmax(20px)",
+       "mİnmax(20px, 100px)",
+       "minmax(20px, 100px, 200px)",
+       "maxmin(100px, 20px)",
+       "minmax(min-content, minmax(30px, max-content))",
+@@ -5912,42 +5912,42 @@ if (SpecialPowers.getBoolPref("layout.cs
+     initial_values: [
+       "none",
+       "none / none",
+     ],
+     other_values: [
+       "subgrid",
+       // <'grid-template-columns'> / <'grid-template-rows'>
+       "40px / 100px",
+-      "(foo) 40px (bar) / (baz) 100px (fizz)",
++      "[foo] 40px [bar] / [baz] 100px [fizz]",
+       " none/100px",
+       "40px/none",
+       "subgrid/40px 20px",
+-      "subgrid (foo) () (bar baz) / 40px 20px",
++      "subgrid [foo] [] [bar baz] / 40px 20px",
+       "40px 20px/subgrid",
+-      "40px 20px/subgrid  (foo) () repeat(3, (a) (b)) (bar baz)",
++      "40px 20px/subgrid  [foo] [] repeat(3, [a] [b]) [bar baz]",
+       "subgrid/subgrid",
+-      "subgrid (foo) () (bar baz)/subgrid (foo) () (bar baz)",
++      "subgrid [foo] [] [bar baz]/subgrid [foo] [] [bar baz]",
+       // [ <track-list> / ]? [ <line-names>? <string> <track-size>? <line-names>? ]+
+       "'fizz'",
+-      "(bar) 'fizz'",
+-      "(foo) 40px / 'fizz'",
+-      "(foo) 40px / (bar) 'fizz'",
+-      "(foo) 40px / 'fizz' 100px",
+-      "(foo) 40px / (bar) 'fizz' 100px",
+-      "(foo) 40px / (bar) 'fizz' 100px (buzz)",
+-      "(foo) 40px / (bar) 'fizz' 100px (buzz) \n (a) '.' 200px (b)",
++      "[bar] 'fizz'",
++      "[foo] 40px / 'fizz'",
++      "[foo] 40px / [bar] 'fizz'",
++      "[foo] 40px / 'fizz' 100px",
++      "[foo] 40px / [bar] 'fizz' 100px",
++      "[foo] 40px / [bar] 'fizz' 100px [buzz]",
++      "[foo] 40px / [bar] 'fizz' 100px [buzz] \n [a] '.' 200px [b]",
+     ],
+     invalid_values: [
+-      "subgrid ()",
+-      "subgrid () / 'fizz'",
++      "subgrid []",
++      "subgrid [] / 'fizz'",
+       "subgrid / 'fizz'",
+-      "(foo) (bar) 40px / 100px",
+-      "40px / (fizz) (buzz) 100px",
+-      "40px / (fizz) (buzz) 'foo'",
++      "[foo] [bar] 40px / 100px",
++      "40px / [fizz] [buzz] 100px",
++      "40px / [fizz] [buzz] 'foo'",
+       "none / 'foo'"
+     ]
+   };
+ 
+   gCSSProperties["grid"] = {
+     domProp: "grid",
+     inherited: false,
+     type: CSS_TYPE_TRUE_SHORTHAND,
+diff --git a/layout/style/test/test_grid_container_shorthands.html b/layout/style/test/test_grid_container_shorthands.html
+--- a/layout/style/test/test_grid_container_shorthands.html
++++ b/layout/style/test/test_grid_container_shorthands.html
+@@ -29,19 +29,19 @@ var grid_template_test_cases = [
+         specified: "none",
+     },
+     {
+         specified: "40px / 100px",
+         gridTemplateColumns: "40px",
+         gridTemplateRows: "100px",
+     },
+     {
+-        specified: "(foo) 40px (bar) / (baz) 100px (fizz)",
+-        gridTemplateColumns: "(foo) 40px (bar)",
+-        gridTemplateRows: "(baz) 100px (fizz)",
++        specified: "[foo] 40px [bar] / [baz] 100px [fizz]",
++        gridTemplateColumns: "[foo] 40px [bar]",
++        gridTemplateRows: "[baz] 100px [fizz]",
+     },
+     {
+         specified: " none/100px",
+         gridTemplateColumns: "none",
+         gridTemplateRows: "100px",
+     },
+     {
+         specified: "40px/none",
+@@ -49,132 +49,132 @@ var grid_template_test_cases = [
+         gridTemplateRows: "none",
+     },
+     {
+         specified: "40px/repeat(1, 20px)",
+         gridTemplateColumns: "40px",
+         gridTemplateRows: "20px",
+     },
+     {
+-        specified: "40px/(a)repeat(1, 20px)",
++        specified: "40px/[a]repeat(1, 20px)",
+         gridTemplateColumns: "40px",
+-        gridTemplateRows: "(a) 20px",
++        gridTemplateRows: "[a] 20px",
+     },
+     {
+-        specified: "40px/repeat(1, (a) 20px)",
++        specified: "40px/repeat(1, [a] 20px)",
+         gridTemplateColumns: "40px",
+-        gridTemplateRows: "(a) 20px",
++        gridTemplateRows: "[a] 20px",
+     },
+     {
+-        specified: "40px/(a)repeat(2, (b)20px)",
++        specified: "40px/[a]repeat(2, [b]20px)",
+         gridTemplateColumns: "40px",
+-        gridTemplateRows: "(a b) 20px (b) 20px",
++        gridTemplateRows: "[a b] 20px [b] 20px",
+     },
+     {
+-        specified: "40px/(a)repeat(2, 20px)",
++        specified: "40px/[a]repeat(2, 20px)",
+         gridTemplateColumns: "40px",
+-        gridTemplateRows: "(a) 20px 20px",
++        gridTemplateRows: "[a] 20px 20px",
+     },
+     {
+-        specified: "40px/repeat(2, (a) 20px)",
++        specified: "40px/repeat(2, [a] 20px)",
+         gridTemplateColumns: "40px",
+-        gridTemplateRows: "(a) 20px (a) 20px",
++        gridTemplateRows: "[a] 20px [a] 20px",
+     },
+     {
+-        specified: "40px/(a)repeat(2, (b)20px)",
++        specified: "40px/[a]repeat(2, [b]20px)",
+         gridTemplateColumns: "40px",
+-        gridTemplateRows: "(a b) 20px (b) 20px",
++        gridTemplateRows: "[a b] 20px [b] 20px",
+     },
+     {
+-        specified: "40px/repeat(2, 20px(a))",
++        specified: "40px/repeat(2, 20px[a])",
+         gridTemplateColumns: "40px",
+-        gridTemplateRows: "20px (a) 20px (a)",
++        gridTemplateRows: "20px [a] 20px [a]",
+     },
+     {
+-        specified: "40px/repeat(2, 20px(a)) (b)",
++        specified: "40px/repeat(2, 20px[a]) [b]",
+         gridTemplateColumns: "40px",
+-        gridTemplateRows: "20px (a) 20px (a b)",
++        gridTemplateRows: "20px [a] 20px [a b]",
+     },
+     {
+-        specified: "40px/repeat(2, (a) 20px(b)) (c)",
++        specified: "40px/repeat(2, [a] 20px[b]) [c]",
+         gridTemplateColumns: "40px",
+-        gridTemplateRows: "(a) 20px (b a) 20px (b c)",
++        gridTemplateRows: "[a] 20px [b a] 20px [b c]",
+     },
+     {
+-        specified: "40px/(a) repeat(3, (b c) 20px (d) 100px (e f)) (g)",
++        specified: "40px/[a] repeat(3, [b c] 20px [d] 100px [e f]) [g]",
+         gridTemplateColumns: "40px",
+-        gridTemplateRows: "(a b c) 20px (d) 100px (e f b c) 20px (d) 100px (e f b c) 20px (d) 100px (e f g)",
++        gridTemplateRows: "[a b c] 20px [d] 100px [e f b c] 20px [d] 100px [e f b c] 20px [d] 100px [e f g]",
+     },
+     {
+         specified: "'fizz'",
+         gridTemplateAreas: "\"fizz\"",
+         gridTemplateRows: "auto",
+     },
+     {
+-        specified: "(bar) 'fizz'",
++        specified: "[bar] 'fizz'",
+         gridTemplateAreas: "\"fizz\"",
+-        gridTemplateRows: "(bar) auto",
++        gridTemplateRows: "[bar] auto",
+     },
+     {
+-        specified: "(foo) 40px / 'fizz'",
++        specified: "[foo] 40px / 'fizz'",
+         gridTemplateAreas: "\"fizz\"",
+-        gridTemplateColumns: "(foo) 40px",
++        gridTemplateColumns: "[foo] 40px",
+         gridTemplateRows: "auto",
+     },
+     {
+-        specified: "(foo) 40px / (bar) 'fizz'",
++        specified: "[foo] 40px / [bar] 'fizz'",
+         gridTemplateAreas: "\"fizz\"",
+-        gridTemplateColumns: "(foo) 40px",
+-        gridTemplateRows: "(bar) auto",
++        gridTemplateColumns: "[foo] 40px",
++        gridTemplateRows: "[bar] auto",
+     },
+     {
+-        specified: "(foo) 40px / 'fizz' 100px",
++        specified: "[foo] 40px / 'fizz' 100px",
+         gridTemplateAreas: "\"fizz\"",
+-        gridTemplateColumns: "(foo) 40px",
++        gridTemplateColumns: "[foo] 40px",
+         gridTemplateRows: "100px",
+     },
+     {
+-        specified: "(foo) 40px / (bar) 'fizz' 100px (buzz) \n (a) '.' 200px (b)",
++        specified: "[foo] 40px / [bar] 'fizz' 100px [buzz] \n [a] '.' 200px [b]",
+         gridTemplateAreas: "\"fizz\" \".\"",
+-        gridTemplateColumns: "(foo) 40px",
+-        gridTemplateRows: "(bar) 100px (buzz a) 200px (b)",
++        gridTemplateColumns: "[foo] 40px",
++        gridTemplateRows: "[bar] 100px [buzz a] 200px [b]",
+     },
+     {
+         specified: "subgrid",
+         gridTemplateColumns: "subgrid",
+         gridTemplateRows: "subgrid",
+     },
+     {
+         specified: "subgrid / subgrid",
+         gridTemplateColumns: "subgrid",
+         gridTemplateRows: "subgrid",
+     },
+     {
+-        specified: "subgrid / subgrid (foo)",
++        specified: "subgrid / subgrid [foo]",
+         gridTemplateColumns: "subgrid",
+-        gridTemplateRows: "subgrid (foo)",
++        gridTemplateRows: "subgrid [foo]",
+     },
+     {
+-        specified: "subgrid / subgrid (foo) repeat(3, () (a b) (c))",
++        specified: "subgrid / subgrid [foo] repeat(3, [] [a b] [c])",
+         gridTemplateColumns: "subgrid",
+-        gridTemplateRows: "subgrid (foo) () (a b) (c) () (a b) (c) () (a b) (c)",
++        gridTemplateRows: "subgrid [foo] [] [a b] [c] [] [a b] [c] [] [a b] [c]",
+     },
+     {
+         // https://bugzilla.mozilla.org/show_bug.cgi?id=978478#c1
+         // The number of repetitions is clamped to
+         // #define GRID_TEMPLATE_MAX_REPETITIONS 10000
+-        specified: "subgrid / subgrid (foo) repeat(999999999, (a))",
++        specified: "subgrid / subgrid [foo] repeat(999999999, [a])",
+         gridTemplateColumns: "subgrid",
+         // Array(n + 1).join(s) is a hack for the non-standard s.repeat(n)
+-        gridTemplateRows: "subgrid (foo)" + Array(10000 + 1).join(" (a)"),
++        gridTemplateRows: "subgrid [foo]" + Array(10000 + 1).join(" [a]"),
+     },
+     {
+-        specified: "subgrid () (foo)/ subgrid (bar",
+-        gridTemplateColumns: "subgrid () (foo)",
+-        gridTemplateRows: "subgrid (bar)",
++        specified: "subgrid [] [foo]/ subgrid [bar",
++        gridTemplateColumns: "subgrid [] [foo]",
++        gridTemplateRows: "subgrid [bar]",
+     },
+ ];
+ 
+ grid_test_cases = grid_template_test_cases.concat([
+     {
+         specified: "row",
+         gridAutoFlow: "row",
+     },
+diff --git a/layout/style/test/test_grid_shorthand_serialization.html b/layout/style/test/test_grid_shorthand_serialization.html
+--- a/layout/style/test/test_grid_shorthand_serialization.html
++++ b/layout/style/test/test_grid_shorthand_serialization.html
+@@ -33,29 +33,29 @@ var grid_template_test_cases = [
+         shorthand: "40px / none",
+     },
+     {
+         gridTemplateColumns: "40px",
+         gridTemplateRows: "subgrid",
+         shorthand: "40px / subgrid",
+     },
+     {
+-        gridTemplateColumns: "(foo) 40px (bar)",
+-        gridTemplateRows: "(baz) 100px (fizz)",
+-        shorthand: "(foo) 40px (bar) / (baz) 100px (fizz)",
++        gridTemplateColumns: "[foo] 40px [bar]",
++        gridTemplateRows: "[baz] 100px [fizz]",
++        shorthand: "[foo] 40px [bar] / [baz] 100px [fizz]",
+     },
+     {
+         gridTemplateAreas: "\"a\"",
+         gridTemplateRows: "20px",
+         shorthand: "\"a\" 20px",
+     },
+     {
+         gridTemplateAreas: "\"a\"",
+-        gridTemplateRows: "(foo) 20px (bar)",
+-        shorthand: "(foo) \"a\" 20px (bar)",
++        gridTemplateRows: "[foo] 20px [bar]",
++        shorthand: "[foo] \"a\" 20px [bar]",
+     },
+     // Combinations of longhands that make the shorthand non-serializable:
+     {
+         gridTemplateAreas: "\"a\"",
+         gridTemplateRows: "20px 100px",
+         shorthand: "",
+     },
+     {
+@@ -65,17 +65,17 @@ var grid_template_test_cases = [
+     },
+     {
+         gridTemplateAreas: "\"a\"",
+         gridTemplateRows: "subgrid",
+         shorthand: "",
+     },
+     {
+         gridTemplateAreas: "\"a\"",
+-        gridTemplateRows: "subgrid (foo)",
++        gridTemplateRows: "subgrid [foo]",
+         shorthand: "",
+     },
+     {
+         gridTemplateAreas: "\"a\"",
+         gridTemplateRows: "20px",
+         gridTemplateColumns: "subgrid",
+         shorthand: "",
+     },

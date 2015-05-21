@@ -1,0 +1,5 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  391b976818d3a69ff31b9d2931dc2d8894a2283d
+try: -b do -p linux,macosx64,win64 -u reftest,reftest-e10s,crashtest,crashtest-e10s,mochitests -t none
+
