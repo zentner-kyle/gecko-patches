@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  1b4350c73bbcd90380b41654c48945a682f81f3f
+# Parent  d4f2547a9e0531028c00eda30a5dfdc2497bf605
 Bug 1166728 - Remove box-sizing: padding-box, as per CSS WG. r=dholbert
 
 diff --git a/browser/components/privatebrowsing/content/aboutPrivateBrowsing.css b/browser/components/privatebrowsing/content/aboutPrivateBrowsing.css
@@ -126,7 +126,7 @@ diff --git a/dom/base/test/test_bug320799.html b/dom/base/test/test_bug320799.ht
  <a target="_blank" href="https://bugzilla.mozilla.org/show_bug.cgi?id=320799">Mozilla Bug 320799</a>
  <p id="display">
 -  <select id="s" style="width: 100px; box-sizing: padding-box">
-+  <select id="s" style="width: 100px; box-sizing: content-box">
++  <select id="s" style="width: 100px; box-sizing: content-box; border: 0">
      <option>This is a test, it really is a test I tell you</option>
    </select>
    <select id="s2">
@@ -261,7 +261,7 @@ diff --git a/layout/forms/test/test_textarea_resize.html b/layout/forms/test/tes
 diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
 --- a/layout/generic/nsFrame.cpp
 +++ b/layout/generic/nsFrame.cpp
-@@ -4174,21 +4174,18 @@ nsFrame::ComputeSize(nsRenderingContext 
+@@ -4174,22 +4174,18 @@ nsFrame::ComputeSize(nsRenderingContext 
  {
    LogicalSize result = ComputeAutoSize(aRenderingContext, aWM,
                                         aCBSize, aAvailableISize,
@@ -272,11 +272,12 @@ diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
  
 -  switch (stylePos->mBoxSizing) {
 -    case NS_STYLE_BOX_SIZING_BORDER:
-+  if (stylePos->mBoxSizing == NS_STYLE_BOX_SIZING_BORDER) {
-       boxSizingAdjust += aBorder;
+-      boxSizingAdjust += aBorder;
 -      // fall through
 -    case NS_STYLE_BOX_SIZING_PADDING:
-       boxSizingAdjust += aPadding;
+-      boxSizingAdjust += aPadding;
++  if (stylePos->mBoxSizing == NS_STYLE_BOX_SIZING_BORDER) {
++      boxSizingAdjust += aBorder + aPadding;
    }
    nscoord boxSizingToMarginEdgeISize =
      aMargin.ISize(aWM) + aBorder.ISize(aWM) + aPadding.ISize(aWM) -
@@ -284,6 +285,7 @@ diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
  
    const nsStyleCoord* inlineStyleCoord = &stylePos->ISize(aWM);
    const nsStyleCoord* blockStyleCoord = &stylePos->BSize(aWM);
+ 
 diff --git a/layout/generic/nsHTMLReflowState.cpp b/layout/generic/nsHTMLReflowState.cpp
 --- a/layout/generic/nsHTMLReflowState.cpp
 +++ b/layout/generic/nsHTMLReflowState.cpp
@@ -652,6 +654,25 @@ diff --git a/layout/reftests/box-properties/box-sizing-4.html b/layout/reftests/
  <div style="width: -moz-fit-content">A B</div>
  <div style="width: -moz-available">A B</div>
  <div style="width: 50px">A B</div>
+diff --git a/layout/reftests/box-properties/box-sizing-mozbox-minmax-height-ref.html b/layout/reftests/box-properties/box-sizing-mozbox-minmax-height-ref.html
+--- a/layout/reftests/box-properties/box-sizing-mozbox-minmax-height-ref.html
++++ b/layout/reftests/box-properties/box-sizing-mozbox-minmax-height-ref.html
+@@ -38,15 +38,10 @@ hbox {
+ <div><hbox style="height:41px;">border-box 50px</hbox></div>
+ <div><hbox style="height:11px;">border-box 20px</hbox></div>
+ 
+ <div><hbox class="cb" style="height:29px;">content-box 20px</hbox></div>
+ <div><hbox class="cb" style="height:59px;">content-box 50px</hbox></div>
+ <div><hbox class="cb" style="height:29px;">content-box 20px</hbox></div>
+ 
+ 
+-<div><hbox class="pb" style="height:16px;">padding-box 20px</hbox></div>
+-<div><hbox class="pb" style="height:46px;">padding-box 50px</hbox></div>
+-<div><hbox class="pb" style="height:16px;">padding-box 20px</hbox></div>
+-
+-
+ </body>
+ </html>
 diff --git a/layout/reftests/box-properties/box-sizing-mozbox-minmax-height.html b/layout/reftests/box-properties/box-sizing-mozbox-minmax-height.html
 --- a/layout/reftests/box-properties/box-sizing-mozbox-minmax-height.html
 +++ b/layout/reftests/box-properties/box-sizing-mozbox-minmax-height.html
@@ -1326,32 +1347,51 @@ diff --git a/layout/style/test/property_database.js b/layout/style/test/property
 diff --git a/layout/tables/BasicTableLayoutStrategy.cpp b/layout/tables/BasicTableLayoutStrategy.cpp
 --- a/layout/tables/BasicTableLayoutStrategy.cpp
 +++ b/layout/tables/BasicTableLayoutStrategy.cpp
-@@ -116,21 +116,16 @@ GetWidthInfo(nsRenderingContext *aRender
-         if (isQuirks) {
+@@ -108,35 +108,23 @@ GetWidthInfo(nsRenderingContext *aRender
+ 
+         // In quirks mode, table cell width should be content-box,
+         // but height should be border box.
+         // Because of this historic anomaly, we do not use quirk.css.
+         // (We can't specify one value of box-sizing for width and another
+         // for height).
+         // For this reason, we also do not use box-sizing for just one of
+         // them, as this may be confusing.
+-        if (isQuirks) {
++        if (isQuirks || stylePos->mBoxSizing == NS_STYLE_BOX_SIZING_CONTENT) {
              boxSizingToBorderEdge = offsets.hPadding + offsets.hBorder;
          }
          else {
-             switch (stylePos->mBoxSizing) {
-                 case NS_STYLE_BOX_SIZING_CONTENT:
-                     boxSizingToBorderEdge = offsets.hPadding + offsets.hBorder;
-                     break;
+-            switch (stylePos->mBoxSizing) {
+-                case NS_STYLE_BOX_SIZING_CONTENT:
+-                    boxSizingToBorderEdge = offsets.hPadding + offsets.hBorder;
+-                    break;
 -                case NS_STYLE_BOX_SIZING_PADDING:
 -                    minCoord += offsets.hPadding;
 -                    prefCoord += offsets.hPadding;
 -                    boxSizingToBorderEdge = offsets.hBorder;
 -                    break;
-                 default:
-                     // NS_STYLE_BOX_SIZING_BORDER
-                     minCoord += offsets.hPadding + offsets.hBorder;
-                     prefCoord += offsets.hPadding + offsets.hBorder;
-                     break;
-             }
+-                default:
+-                    // NS_STYLE_BOX_SIZING_BORDER
+-                    minCoord += offsets.hPadding + offsets.hBorder;
+-                    prefCoord += offsets.hPadding + offsets.hBorder;
+-                    break;
+-            }
++            // NS_STYLE_BOX_SIZING_BORDER
++            minCoord += offsets.hPadding + offsets.hBorder;
++            prefCoord += offsets.hPadding + offsets.hBorder;
          }
      } else {
+         minCoord = 0;
+         prefCoord = 0;
+     }
+     float prefPercent = 0.0f;
+     bool hasSpecifiedWidth = false;
+ 
 diff --git a/layout/tables/FixedTableLayoutStrategy.cpp b/layout/tables/FixedTableLayoutStrategy.cpp
 --- a/layout/tables/FixedTableLayoutStrategy.cpp
 +++ b/layout/tables/FixedTableLayoutStrategy.cpp
-@@ -248,26 +248,19 @@ FixedTableLayoutStrategy::ComputeColumnI
+@@ -247,29 +247,19 @@ FixedTableLayoutStrategy::ComputeColumnI
+                                  cellFrame, nsLayoutUtils::MIN_ISIZE);
                  } else if (styleWidth->GetUnit() == eStyleUnit_Percent) {
                      // XXX This should use real percentage padding
                      nsIFrame::IntrinsicISizeOffsetData offsets =
@@ -1359,26 +1399,29 @@ diff --git a/layout/tables/FixedTableLayoutStrategy.cpp b/layout/tables/FixedTab
                      float pct = styleWidth->GetPercentValue();
                      colWidth = NSToCoordFloor(pct * float(tableWidth));
  
-                     nscoord boxSizingAdjust = 0;
+-                    nscoord boxSizingAdjust = 0;
 -                    switch (cellFrame->StylePosition()->mBoxSizing) {
 -                      case NS_STYLE_BOX_SIZING_CONTENT:
-+                    if (cellFrame->StylePosition()->mBoxSizing == NS_STYLE_BOX_SIZING_CONTENT) {
-                         boxSizingAdjust += offsets.hPadding;
+-                        boxSizingAdjust += offsets.hPadding;
 -                        // Fall through
 -                      case NS_STYLE_BOX_SIZING_PADDING:
-                         boxSizingAdjust += offsets.hBorder;
+-                        boxSizingAdjust += offsets.hBorder;
 -                        // Fall through
 -                      case NS_STYLE_BOX_SIZING_BORDER:
 -                        // Don't add anything
 -                        break;
++                    if (cellFrame->StylePosition()->mBoxSizing == NS_STYLE_BOX_SIZING_CONTENT) {
++                        colWidth += offsets.hPadding + offsets.hBorder;
                      }
-                     colWidth += boxSizingAdjust;
+-                    colWidth += boxSizingAdjust;
  
                      pct /= float(colSpan);
                      colFrame->AddPrefPercent(pct);
                      pctTotal += pct;
                  } else {
                      // 'auto', '-moz-available', '-moz-fit-content', and
+                     // 'calc()' with percentages
+                     colWidth = unassignedMarker;
 diff --git a/layout/tables/nsTableRowFrame.cpp b/layout/tables/nsTableRowFrame.cpp
 --- a/layout/tables/nsTableRowFrame.cpp
 +++ b/layout/tables/nsTableRowFrame.cpp
@@ -1413,7 +1456,7 @@ diff --git a/layout/tables/nsTableRowFrame.cpp b/layout/tables/nsTableRowFrame.c
 diff --git a/layout/xul/nsResizerFrame.cpp b/layout/xul/nsResizerFrame.cpp
 --- a/layout/xul/nsResizerFrame.cpp
 +++ b/layout/xul/nsResizerFrame.cpp
-@@ -75,23 +75,19 @@ nsResizerFrame::HandleEvent(nsPresContex
+@@ -75,23 +75,18 @@ nsResizerFrame::HandleEvent(nsPresContex
            nsIFrame* frameToResize = contentToResize->GetPrimaryFrame();
            if (!frameToResize)
              break;
@@ -1427,7 +1470,7 @@ diff --git a/layout/xul/nsResizerFrame.cpp b/layout/xul/nsResizerFrame.cpp
 +          if (frameToResize->StylePosition()->mBoxSizing == NS_STYLE_BOX_SIZING_CONTENT) {
                rect.Deflate(frameToResize->GetUsedPadding());
 -            case NS_STYLE_BOX_SIZING_PADDING:
-               rect.Deflate(frameToResize->GetUsedBorder());
+-              rect.Deflate(frameToResize->GetUsedBorder());
 -            default:
 -              break;
            }

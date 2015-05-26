@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  f578b845c4b8b4b042170c74553e2cfdf879825c
+# Parent  d4f2547a9e0531028c00eda30a5dfdc2497bf605
 Bug 1164918 - Allow multiple '.' per cell in grid-template-areas. r=dholbert
 
 diff --git a/layout/reftests/css-grid/grid-placement-definite-003-ref.html b/layout/reftests/css-grid/grid-placement-definite-003-ref.html
@@ -140,13 +140,13 @@ new file mode 100644
 +
 +.test3 {
 +  grid-template-areas:'.a.';
-+  grid-template-columns: (a-start) 20px 20px (a-start-start) 20px (a-start-end);
++  grid-template-columns: [a-start] 20px 20px [a-start-start] 20px [a-start-end];
 +}
 +.test3 span { grid-column: a-start / 8; }
 +
 +.test4 {
 +  grid-template-areas:'. .... .-a';
-+  grid-template-columns: 20px (-a-start) 20px (-a-start) 20px (-a-end) 20px ;
++  grid-template-columns: 20px [-a-start] 20px [-a-start] 20px [-a-end] 20px ;
 +}
 +.test4 span { grid-column: -a-start 2 / 8; }
 +
