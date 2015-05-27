@@ -1,0 +1,172 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  7c3ac609a63e51b0ecbc8ec76c60df23362f84d1
+
+diff --git a/layout/base/nsLayoutUtils.h b/layout/base/nsLayoutUtils.h
+--- a/layout/base/nsLayoutUtils.h
++++ b/layout/base/nsLayoutUtils.h
+@@ -1437,16 +1437,22 @@ public:
+             aCoord.GetCoordValue() == 0) ||
+            (aCoord.GetUnit() == eStyleUnit_Percent &&
+             aCoord.GetPercentValue() == 0.0f) ||
+            (aCoord.IsCalcUnit() &&
+             nsRuleNode::ComputeCoordPercentCalc(aCoord, nscoord_MAX) == 0 &&
+             nsRuleNode::ComputeCoordPercentCalc(aCoord, 0) == 0);
+   }
+ 
++  static bool IsCoordFixed(const nsStyleCoord& aStyle)
++  {
++    return (aStyle.IsCalcUnit() && !aStyle.CalcHasPercent()) ||
++            aStyle.GetUnit() == eStyleUnit_Coord;
++  }
++
+   static void MarkDescendantsDirty(nsIFrame *aSubtreeRoot);
+ 
+   /*
+    * Calculate the used values for 'width' and 'height' for a replaced element.
+    *
+    *   http://www.w3.org/TR/CSS21/visudet.html#min-max-widths
+    */
+   static mozilla::LogicalSize
+diff --git a/layout/generic/nsContainerFrame.cpp b/layout/generic/nsContainerFrame.cpp
+--- a/layout/generic/nsContainerFrame.cpp
++++ b/layout/generic/nsContainerFrame.cpp
+@@ -984,16 +984,26 @@ nsContainerFrame::ReflowChild(nsIFrame* 
+     if (kidNextInFlow) {
+       // Remove all of the childs next-in-flows. Make sure that we ask
+       // the right parent to do the removal (it's possible that the
+       // parent is not this because we are executing pullup code)
+       nsOverflowContinuationTracker::AutoFinish fini(aTracker, aKidFrame);
+       kidNextInFlow->GetParent()->DeleteNextInFlowChild(kidNextInFlow, true);
+     }
+   }
++  if (!(aKidFrame->GetStateBits() & NS_FRAME_REFLOW_ROOT) &&
++      CanChildBeReflowRoot(aKidFrame)) {
++    aKidFrame->AddStateBits(NS_FRAME_REFLOW_ROOT);
++    printf("Adding ReflowRoot\n");
++  } else if ((aKidFrame->GetStateBits() & NS_FRAME_REFLOW_ROOT) &&
++             !MustChildBeReflowRoot(aKidFrame) &&
++             !aKidFrame->IsAlwaysReflowRoot()) {
++    aKidFrame->RemoveStateBits(NS_FRAME_REFLOW_ROOT);
++    printf("Removing ReflowRoot\n");
++  }
+ }
+ 
+ //XXX temporary: hold on to a copy of the old physical version of
+ //    ReflowChild so that we can convert callers incrementally.
+ void
+ nsContainerFrame::ReflowChild(nsIFrame*                aKidFrame,
+                               nsPresContext*           aPresContext,
+                               nsHTMLReflowMetrics&     aDesiredSize,
+@@ -1124,17 +1134,16 @@ nsContainerFrame::FinishReflowChild(nsIF
+   nsPoint newOrigin = aKidFrame->GetPosition();
+   if (!(aFlags & NS_FRAME_NO_MOVE_VIEW) && curOrigin != newOrigin) {
+     if (!aKidFrame->HasView()) {
+       // If the frame has moved, then we need to make sure any child views are
+       // correctly positioned
+       PositionChildViews(aKidFrame);
+     }
+   }
+-
+   aKidFrame->DidReflow(aPresContext, aReflowState, nsDidReflowStatus::FINISHED);
+ }
+ 
+ //XXX temporary: hold on to a copy of the old physical version of
+ //    FinishReflowChild so that we can convert callers incrementally.
+ void
+ nsContainerFrame::FinishReflowChild(nsIFrame*                  aKidFrame,
+                                     nsPresContext*             aPresContext,
+diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
+--- a/layout/generic/nsFrame.cpp
++++ b/layout/generic/nsFrame.cpp
+@@ -864,16 +864,44 @@ nsFrame::DidSetStyleContext(nsStyleConte
+   // does not contain any characters that would activate the Unicode
+   // bidi algorithm, we need to call |SetBidiEnabled| on the pres
+   // context before reflow starts.  See bug 115921.
+   if (StyleVisibility()->mDirection == NS_STYLE_DIRECTION_RTL) {
+     PresContext()->SetBidiEnabled();
+   }
+ }
+ 
++bool
++nsFrame::IsChildFixedSize(nsIFrame *aChildFrame) {
++  const nsStylePosition *childPos = aChildFrame->StylePosition();
++  //if (!childPos->WidthCoordDependsOnContainer() &&
++      //!childPos->HeightCoordDependsOnContainer()) {
++  if (nsLayoutUtils::IsCoordFixed(childPos->mWidth) &&
++      nsLayoutUtils::IsCoordFixed(childPos->mHeight)) {
++    return true;
++  } else {
++    return false;
++  }
++}
++
++bool
++nsFrame::CanChildBeReflowRoot(nsIFrame *aChildFrame) {
++  return IsChildFixedSize(aChildFrame);
++}
++
++bool
++nsFrame::MustChildBeReflowRoot(nsIFrame *aChildFrame) {
++  return false;
++}
++
++bool
++nsFrame::IsAlwaysReflowRoot() {
++  return false;
++}
++
+ // MSVC fails with link error "one or more multiply defined symbols found",
+ // gcc fails with "hidden symbol `nsIFrame::kPrincipalList' isn't defined"
+ // etc if they are not defined.
+ #ifndef _MSC_VER
+ // static nsIFrame constants; initialized in the header file.
+ const nsIFrame::ChildListID nsIFrame::kPrincipalList;
+ const nsIFrame::ChildListID nsIFrame::kAbsoluteList;
+ const nsIFrame::ChildListID nsIFrame::kBulletList;
+diff --git a/layout/generic/nsFrame.h b/layout/generic/nsFrame.h
+--- a/layout/generic/nsFrame.h
++++ b/layout/generic/nsFrame.h
+@@ -558,16 +558,21 @@ protected:
+   void DisplaySelectionOverlay(nsDisplayListBuilder* aBuilder,
+       nsDisplayList* aList, uint16_t aContentType = nsISelectionDisplay::DISPLAY_FRAMES);
+ 
+   int16_t DisplaySelection(nsPresContext* aPresContext, bool isOkToTurnOn = false);
+   
+   // Style post processing hook
+   virtual void DidSetStyleContext(nsStyleContext* aOldStyleContext) override;
+ 
++  virtual bool IsChildFixedSize(nsIFrame *aChildFrame);
++  virtual bool CanChildBeReflowRoot(nsIFrame *aChildFrame);
++  virtual bool MustChildBeReflowRoot(nsIFrame *aChildFrame);
++  virtual bool IsAlwaysReflowRoot();
++
+ public:
+   //given a frame five me the first/last leaf available
+   //XXX Robert O'Callahan wants to move these elsewhere
+   static void GetLastLeaf(nsPresContext* aPresContext, nsIFrame **aFrame);
+   static void GetFirstLeaf(nsPresContext* aPresContext, nsIFrame **aFrame);
+ 
+   // Return the line number of the aFrame, and (optionally) the containing block
+   // frame.
+diff --git a/layout/generic/nsIFrame.h b/layout/generic/nsIFrame.h
+--- a/layout/generic/nsIFrame.h
++++ b/layout/generic/nsIFrame.h
+@@ -3175,16 +3175,17 @@ private:
+   // Helper-functions for SortFrameList():
+   template<bool IsLessThanOrEqual(nsIFrame*, nsIFrame*)>
+   static nsIFrame* SortedMerge(nsIFrame *aLeft, nsIFrame *aRight);
+ 
+   template<bool IsLessThanOrEqual(nsIFrame*, nsIFrame*)>
+   static nsIFrame* MergeSort(nsIFrame *aSource);
+ 
+   bool HasOpacityInternal(float aThreshold) const;
++  virtual bool IsAlwaysReflowRoot() = 0;
+ 
+ #ifdef DEBUG_FRAME_DUMP
+ public:
+   static void IndentBy(FILE* out, int32_t aIndent) {
+     while (--aIndent >= 0) fputs("  ", out);
+   }
+   void ListTag(FILE* out) const {
+     ListTag(out, this);

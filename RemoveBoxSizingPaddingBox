@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  d4f2547a9e0531028c00eda30a5dfdc2497bf605
+# Parent  ff2e0722804149cc85a6f4a26ae9983a10e4800c
 Bug 1166728 - Remove box-sizing: padding-box, as per CSS WG. r=dholbert
 
 diff --git a/browser/components/privatebrowsing/content/aboutPrivateBrowsing.css b/browser/components/privatebrowsing/content/aboutPrivateBrowsing.css
@@ -227,7 +227,7 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
 -    case NS_STYLE_BOX_SIZING_PADDING:
 -      boxSizingAdjust += aPadding;
 +  if (stylePos->mBoxSizing == NS_STYLE_BOX_SIZING_BORDER) {
-+      boxSizingAdjust += aBorder + aPadding;
++    boxSizingAdjust += aBorder + aPadding;
    }
    nscoord boxSizingToMarginEdgeISize =
      aMargin.ISize(aWM) + aBorder.ISize(aWM) + aPadding.ISize(aWM) -
@@ -277,7 +277,7 @@ diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
 -    case NS_STYLE_BOX_SIZING_PADDING:
 -      boxSizingAdjust += aPadding;
 +  if (stylePos->mBoxSizing == NS_STYLE_BOX_SIZING_BORDER) {
-+      boxSizingAdjust += aBorder + aPadding;
++    boxSizingAdjust += aBorder + aPadding;
    }
    nscoord boxSizingToMarginEdgeISize =
      aMargin.ISize(aWM) + aBorder.ISize(aWM) + aPadding.ISize(aWM) -
@@ -300,12 +300,13 @@ diff --git a/layout/generic/nsHTMLReflowState.cpp b/layout/generic/nsHTMLReflowS
                                  ComputedPhysicalMargin().LeftRight();
 -  switch (aBoxSizing) {
 -    case NS_STYLE_BOX_SIZING_BORDER:
-+  if (aBoxSizing == NS_STYLE_BOX_SIZING_BORDER) {
-       inside = ComputedPhysicalBorderPadding().LeftRight();
+-      inside = ComputedPhysicalBorderPadding().LeftRight();
 -      break;
 -    case NS_STYLE_BOX_SIZING_PADDING:
 -      inside = ComputedPhysicalPadding().LeftRight();
 -      break;
++  if (aBoxSizing == NS_STYLE_BOX_SIZING_BORDER) {
++    inside = ComputedPhysicalBorderPadding().LeftRight();
    }
    outside -= inside;
  
@@ -321,12 +322,13 @@ diff --git a/layout/generic/nsHTMLReflowState.cpp b/layout/generic/nsHTMLReflowS
    nscoord inside = 0;
 -  switch (aBoxSizing) {
 -    case NS_STYLE_BOX_SIZING_BORDER:
-+  if (aBoxSizing == NS_STYLE_BOX_SIZING_BORDER) {
-       inside = ComputedPhysicalBorderPadding().TopBottom();
+-      inside = ComputedPhysicalBorderPadding().TopBottom();
 -      break;
 -    case NS_STYLE_BOX_SIZING_PADDING:
 -      inside = ComputedPhysicalPadding().TopBottom();
 -      break;
++  if (aBoxSizing == NS_STYLE_BOX_SIZING_BORDER) {
++    inside = ComputedPhysicalBorderPadding().TopBottom();
    }
    return nsLayoutUtils::ComputeHeightValue(aContainingBlockHeight, 
                                             inside, aCoord);
@@ -852,61 +854,6 @@ diff --git a/layout/reftests/box-sizing/intrinsic-1f.html b/layout/reftests/box-
 +                box-sizing: border-box;">
    </div>
  </body>
-diff --git a/layout/reftests/css-blending/background-blending-background-clip-padding-box-ref.html b/layout/reftests/css-blending/background-blending-background-clip-padding-box-ref.html
-deleted file mode 100644
---- a/layout/reftests/css-blending/background-blending-background-clip-padding-box-ref.html
-+++ /dev/null
-@@ -1,21 +0,0 @@
--<!-- Blend a background image and a background color specifying background-clip: padding-box  -->
--<!DOCTYPE HTML>
--<html>
--<head>
--<style>
--div {
--  padding: 8.5px;
--  margin: 0 0 9px;
--  background: #777777;
--  background-clip: padding-box;
--  width: 200px;
--  height: 200px;
--  margin: 10px;
--}
--</style>
--</head>
--
--<body>
--    <div></div>
--</body>
--</html>
-\ No newline at end of file
-diff --git a/layout/reftests/css-blending/background-blending-background-clip-padding-box.html b/layout/reftests/css-blending/background-blending-background-clip-padding-box.html
-deleted file mode 100644
---- a/layout/reftests/css-blending/background-blending-background-clip-padding-box.html
-+++ /dev/null
-@@ -1,22 +0,0 @@
--<!-- Blend a background image and a background color specifying background-clip: padding-box  -->
--<!DOCTYPE HTML>
--<html>
--<head>
--<style>
--div {
--  padding: 8.5px;
--  margin: 0 0 9px;
--  background: url('as-image/white_square.svg'),  #777777;
--  background-clip: padding-box;
--  width: 200px;
--  height: 200px;
--  margin: 10px;
--  background-blend-mode: multiply;
--}
--</style>
--</head>
--
--<body>
--    <div></div>
--</body>
--</html>
-\ No newline at end of file
 diff --git a/layout/reftests/w3c-css/submitted/ui3/box-sizing-padding-box-001-ref.xht b/layout/reftests/w3c-css/submitted/ui3/box-sizing-padding-box-001-ref.xht
 deleted file mode 100644
 --- a/layout/reftests/w3c-css/submitted/ui3/box-sizing-padding-box-001-ref.xht
@@ -1240,7 +1187,7 @@ diff --git a/layout/reftests/w3c-css/submitted/ui3/reftest.list b/layout/reftest
 diff --git a/layout/style/nsCSSProps.cpp b/layout/style/nsCSSProps.cpp
 --- a/layout/style/nsCSSProps.cpp
 +++ b/layout/style/nsCSSProps.cpp
-@@ -890,17 +890,16 @@ const KTableValue nsCSSProps::kBoxDecora
+@@ -883,17 +883,16 @@ const KTableValue nsCSSProps::kBoxDecora
  const KTableValue nsCSSProps::kBoxShadowTypeKTable[] = {
    eCSSKeyword_inset, NS_STYLE_BOX_SHADOW_INSET,
    eCSSKeyword_UNKNOWN,-1
@@ -1261,7 +1208,7 @@ diff --git a/layout/style/nsCSSProps.cpp b/layout/style/nsCSSProps.cpp
 diff --git a/layout/style/nsComputedDOMStyle.cpp b/layout/style/nsComputedDOMStyle.cpp
 --- a/layout/style/nsComputedDOMStyle.cpp
 +++ b/layout/style/nsComputedDOMStyle.cpp
-@@ -512,22 +512,18 @@ nsComputedDOMStyle::GetStyleContextForEl
+@@ -512,23 +512,18 @@ nsComputedDOMStyle::GetStyleContextForEl
  nsMargin
  nsComputedDOMStyle::GetAdjustedValuesForBoxSizing()
  {
@@ -1272,12 +1219,13 @@ diff --git a/layout/style/nsComputedDOMStyle.cpp b/layout/style/nsComputedDOMSty
    nsMargin adjustment;
 -  switch(stylePos->mBoxSizing) {
 -    case NS_STYLE_BOX_SIZING_BORDER:
-+  if (stylePos->mBoxSizing == NS_STYLE_BOX_SIZING_BORDER) {
-       adjustment += mInnerFrame->GetUsedBorder();
+-      adjustment += mInnerFrame->GetUsedBorder();
 -      // fall through
 -
 -    case NS_STYLE_BOX_SIZING_PADDING:
-       adjustment += mInnerFrame->GetUsedPadding();
+-      adjustment += mInnerFrame->GetUsedPadding();
++  if (stylePos->mBoxSizing == NS_STYLE_BOX_SIZING_BORDER) {
++    adjustment += mInnerFrame->GetUsedBorderAndPadding();
    }
  
    return adjustment;
@@ -1285,6 +1233,7 @@ diff --git a/layout/style/nsComputedDOMStyle.cpp b/layout/style/nsComputedDOMSty
  
  /* static */
  nsIPresShell*
+ nsComputedDOMStyle::GetPresShellForContent(nsIContent* aContent)
 diff --git a/layout/style/nsStyleConsts.h b/layout/style/nsStyleConsts.h
 --- a/layout/style/nsStyleConsts.h
 +++ b/layout/style/nsStyleConsts.h
@@ -1376,7 +1325,7 @@ diff --git a/layout/tables/BasicTableLayoutStrategy.cpp b/layout/tables/BasicTab
 -                    prefCoord += offsets.hPadding + offsets.hBorder;
 -                    break;
 -            }
-+            // NS_STYLE_BOX_SIZING_BORDER
++            // NS_STYLE_BOX_SIZING_BORDER and standards-mode
 +            minCoord += offsets.hPadding + offsets.hBorder;
 +            prefCoord += offsets.hPadding + offsets.hBorder;
          }
@@ -1436,8 +1385,7 @@ diff --git a/layout/tables/nsTableRowFrame.cpp b/layout/tables/nsTableRowFrame.c
        if (PresContext()->CompatibilityMode() != eCompatibility_NavQuirks) {
 -        switch (position->mBoxSizing) {
 -          case NS_STYLE_BOX_SIZING_CONTENT:
-+        if (position->mBoxSizing == NS_STYLE_BOX_SIZING_CONTENT) {
-             outsideBoxSizing = aCellFrame->GetUsedBorderAndPadding().TopBottom();
+-            outsideBoxSizing = aCellFrame->GetUsedBorderAndPadding().TopBottom();
 -            break;
 -          case NS_STYLE_BOX_SIZING_PADDING:
 -            outsideBoxSizing = aCellFrame->GetUsedBorder().TopBottom();
@@ -1445,6 +1393,8 @@ diff --git a/layout/tables/nsTableRowFrame.cpp b/layout/tables/nsTableRowFrame.c
 -          default:
 -            // NS_STYLE_BOX_SIZING_BORDER
 -            break;
++        if (position->mBoxSizing == NS_STYLE_BOX_SIZING_CONTENT) {
++          outsideBoxSizing = aCellFrame->GetUsedBorderAndPadding().TopBottom();
          }
        }
  
@@ -1467,12 +1417,13 @@ diff --git a/layout/xul/nsResizerFrame.cpp b/layout/xul/nsResizerFrame.cpp
            nsRect rect = frameToResize->GetScreenRectInAppUnits();
 -          switch (frameToResize->StylePosition()->mBoxSizing) {
 -            case NS_STYLE_BOX_SIZING_CONTENT:
-+          if (frameToResize->StylePosition()->mBoxSizing == NS_STYLE_BOX_SIZING_CONTENT) {
-               rect.Deflate(frameToResize->GetUsedPadding());
+-              rect.Deflate(frameToResize->GetUsedPadding());
 -            case NS_STYLE_BOX_SIZING_PADDING:
 -              rect.Deflate(frameToResize->GetUsedBorder());
 -            default:
 -              break;
++          if (frameToResize->StylePosition()->mBoxSizing == NS_STYLE_BOX_SIZING_CONTENT) {
++            rect.Deflate(frameToResize->GetUsedBorderAndPadding());
            }
  
            mMouseDownRect =
@@ -1484,11 +1435,12 @@ diff --git a/layout/xul/nsResizerFrame.cpp b/layout/xul/nsResizerFrame.cpp
 diff --git a/toolkit/themes/shared/in-content/info-pages.inc.css b/toolkit/themes/shared/in-content/info-pages.inc.css
 --- a/toolkit/themes/shared/in-content/info-pages.inc.css
 +++ b/toolkit/themes/shared/in-content/info-pages.inc.css
-@@ -1,13 +1,13 @@
+@@ -1,14 +1,14 @@
  @import url("chrome://global/skin/in-content/common.css");
  /* Body and container */
  body {
    display: flex;
+   flex-direction: column;
 -  box-sizing: padding-box;
 +  box-sizing: border-box;
    min-height: 100vh;
@@ -1499,15 +1451,3 @@ diff --git a/toolkit/themes/shared/in-content/info-pages.inc.css b/toolkit/theme
    align-items: center;
    justify-content: center;
  }
-@@ -81,9 +81,9 @@ ul {
-   -moz-margin-start: 0;
- }
- 
- /* Trees */
- tree {
-   min-height: 12em;
-   margin-top: 1.2em;
-   width: 100%;
--}
-\ No newline at end of file
-+}
