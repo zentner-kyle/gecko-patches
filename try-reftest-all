@@ -1,0 +1,27 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  a128df24fd47777f4cbad7092bfbb108a05a1c79
+try: -b d -p all -u reftest -t none
+
+diff --git a/dom/base/test/test_bug320799.html b/dom/base/test/test_bug320799.html
+--- a/dom/base/test/test_bug320799.html
++++ b/dom/base/test/test_bug320799.html
+@@ -6,17 +6,17 @@ https://bugzilla.mozilla.org/show_bug.cg
+ <head>
+   <title>Test for Bug 320799</title>
+   <script type="application/javascript" src="/tests/SimpleTest/SimpleTest.js"></script>
+   <link rel="stylesheet" type="text/css" href="/tests/SimpleTest/test.css"/>
+ </head>
+ <body>
+ <a target="_blank" href="https://bugzilla.mozilla.org/show_bug.cgi?id=320799">Mozilla Bug 320799</a>
+ <p id="display">
+-  <select id="s" style="width: 100px; box-sizing: content-box; border: 0">
++  <select id="s" style="width: 100px; box-sizing: border-box; border: 0">
+     <option>This is a test, it really is a test I tell you</option>
+   </select>
+   <select id="s2">
+     <option>x</option>
+     <option>x</option>
+     <option>x</option>
+     <option>x</option>
+     <option>x</option>

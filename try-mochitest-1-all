@@ -1,0 +1,5 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  1b688ec2d3f8d9e9ce973a7e9405ed1707b7a2e9
+try: -b d -p all -u mochitest-1 -t none
+

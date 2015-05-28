@@ -1,0 +1,497 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  f986e55c4e0b41c6b50bd74d287614b564d7895f
+Bug 1150081 - Patch 1: Parse CSS contain property.
+
+diff --git a/layout/style/nsCSSKeywordList.h b/layout/style/nsCSSKeywordList.h
+--- a/layout/style/nsCSSKeywordList.h
++++ b/layout/style/nsCSSKeywordList.h
+@@ -325,16 +325,17 @@ CSS_KEY(justify, justify)
+ CSS_KEY(keep-all, keep_all)
+ CSS_KEY(khz, khz)
+ CSS_KEY(korean-hangul-formal, korean_hangul_formal)
+ CSS_KEY(korean-hanja-formal, korean_hanja_formal)
+ CSS_KEY(korean-hanja-informal, korean_hanja_informal)
+ CSS_KEY(landscape, landscape)
+ CSS_KEY(large, large)
+ CSS_KEY(larger, larger)
++CSS_KEY(layout, layout)
+ CSS_KEY(left, left)
+ CSS_KEY(lighten, lighten)
+ CSS_KEY(lighter, lighter)
+ CSS_KEY(line-through, line_through)
+ CSS_KEY(linear, linear)
+ CSS_KEY(lining-nums, lining_nums)
+ CSS_KEY(list-item, list_item)
+ CSS_KEY(local, local)
+@@ -394,16 +395,17 @@ CSS_KEY(opacity, opacity)
+ CSS_KEY(open-quote, open_quote)
+ CSS_KEY(ordinal, ordinal)
+ CSS_KEY(ornaments, ornaments)
+ CSS_KEY(outset, outset)
+ CSS_KEY(outside, outside)
+ CSS_KEY(over, over)
+ CSS_KEY(overlay, overlay)
+ CSS_KEY(overline, overline)
++CSS_KEY(paint, paint)
+ CSS_KEY(padding-box, padding_box)
+ CSS_KEY(painted, painted)
+ CSS_KEY(pan-x, pan_x)
+ CSS_KEY(pan-y, pan_y)
+ CSS_KEY(paused, paused)
+ CSS_KEY(pc, pc)
+ CSS_KEY(perspective, perspective)
+ CSS_KEY(petite-caps, petite_caps)
+@@ -504,16 +506,17 @@ CSS_KEY(start, start)
+ CSS_KEY(static, static)
+ CSS_KEY(status-bar, status_bar)
+ CSS_KEY(step-end, step_end)
+ CSS_KEY(step-start, step_start)
+ CSS_KEY(sticky, sticky)
+ CSS_KEY(stretch, stretch)
+ CSS_KEY(stretch-to-fit, stretch_to_fit)
+ CSS_KEY(stretched, stretched)
++CSS_KEY(strict, strict)
+ CSS_KEY(stroke, stroke)
+ CSS_KEY(stroke-box, stroke_box)
+ CSS_KEY(style, style)
+ CSS_KEY(styleset, styleset)
+ CSS_KEY(stylistic, stylistic)
+ CSS_KEY(sub, sub)
+ CSS_KEY(subgrid, subgrid)
+ CSS_KEY(super, super)
+diff --git a/layout/style/nsCSSParser.cpp b/layout/style/nsCSSParser.cpp
+--- a/layout/style/nsCSSParser.cpp
++++ b/layout/style/nsCSSParser.cpp
+@@ -882,16 +882,17 @@ protected:
+   bool ParseGridColumnRowStartEnd(nsCSSProperty aPropID);
+   bool ParseGridColumnRow(nsCSSProperty aStartPropID,
+                           nsCSSProperty aEndPropID);
+   bool ParseGridArea();
+ 
+   // for 'clip' and '-moz-image-region'
+   bool ParseRect(nsCSSProperty aPropID);
+   bool ParseColumns();
++  bool ParseContain(nsCSSValue& aValue);
+   bool ParseContent();
+   bool ParseCounterData(nsCSSProperty aPropID);
+   bool ParseCursor();
+   bool ParseFont();
+   bool ParseFontSynthesis(nsCSSValue& aValue);
+   bool ParseSingleAlternate(int32_t& aWhichFeature, nsCSSValue& aValue);
+   bool ParseFontVariantAlternates(nsCSSValue& aValue);
+   bool MergeBitmaskValue(int32_t aNewValue, const int32_t aMasks[],
+@@ -10283,16 +10284,18 @@ CSSParserImpl::ParseSingleValueProperty(
+       case eCSSProperty_text_decoration_line:
+         return ParseTextDecorationLine(aValue);
+       case eCSSProperty_text_combine_upright:
+         return ParseTextCombineUpright(aValue);
+       case eCSSProperty_text_overflow:
+         return ParseTextOverflow(aValue);
+       case eCSSProperty_touch_action:
+         return ParseTouchAction(aValue);
++      case eCSSProperty_contain:
++        return ParseContain(aValue);
+       default:
+         MOZ_ASSERT(false, "should not reach here");
+         return false;
+     }
+   }
+ 
+   uint32_t variant = nsCSSProps::ParserVariant(aPropID);
+   if (variant == 0) {
+@@ -12390,16 +12393,38 @@ CSSParserImpl::ParseFontVariantEastAsian
+   NS_ASSERTION(maskEastAsian[ArrayLength(maskEastAsian) - 1] ==
+                  MASK_END_VALUE,
+                "incorrectly terminated array");
+ 
+   return ParseBitmaskValues(aValue, nsCSSProps::kFontVariantEastAsianKTable,
+                             maskEastAsian);
+ }
+ 
++static const KTableValue strictTable[] = {
++  eCSSKeyword_strict,             NS_STYLE_CONTAIN_STRICT,
++  eCSSKeyword_UNKNOWN,-1
++};
++
++static const int32_t maskContain[] = {
++  MASK_END_VALUE
++};
++
++bool
++CSSParserImpl::ParseContain(nsCSSValue& aValue)
++{
++  if (ParseVariant(aValue,
++                   VARIANT_INHERIT | VARIANT_NONE | VARIANT_KEYWORD,
++                   strictTable)) {
++    return true;
++  } else {
++    return ParseBitmaskValues(aValue, nsCSSProps::kContainKTable,
++                              maskContain);
++  }
++}
++
+ static const int32_t maskLigatures[] = {
+   NS_FONT_VARIANT_LIGATURES_COMMON_MASK,
+   NS_FONT_VARIANT_LIGATURES_DISCRETIONARY_MASK,
+   NS_FONT_VARIANT_LIGATURES_HISTORICAL_MASK,
+   NS_FONT_VARIANT_LIGATURES_CONTEXTUAL_MASK,
+   MASK_END_VALUE
+ };
+ 
+diff --git a/layout/style/nsCSSPropList.h b/layout/style/nsCSSPropList.h
+--- a/layout/style/nsCSSPropList.h
++++ b/layout/style/nsCSSPropList.h
+@@ -1482,16 +1482,27 @@ CSS_PROP_COLUMN(
+     CSS_PROP_DOMPROP_PREFIXED(ColumnRuleWidth),
+     CSS_PROPERTY_PARSE_VALUE |
+         CSS_PROPERTY_VALUE_NONNEGATIVE,
+     "",
+     VARIANT_HKL | VARIANT_CALC,
+     kBorderWidthKTable,
+     CSS_PROP_NO_OFFSET,
+     eStyleAnimType_Custom)
++CSS_PROP_DISPLAY(
++    contain,
++    contain,
++    Contain,
++    CSS_PROPERTY_PARSE_VALUE |
++        CSS_PROPERTY_VALUE_PARSER_FUNCTION,
++    "",
++    VARIANT_HK,
++    kContainKTable,
++    CSS_PROP_NO_OFFSET,
++    eStyleAnimType_None)
+ CSS_PROP_CONTENT(
+     content,
+     content,
+     Content,
+     CSS_PROPERTY_PARSE_FUNCTION |
+         CSS_PROPERTY_START_IMAGE_LOADS,
+     "",
+     0,
+diff --git a/layout/style/nsCSSProps.cpp b/layout/style/nsCSSProps.cpp
+--- a/layout/style/nsCSSProps.cpp
++++ b/layout/style/nsCSSProps.cpp
+@@ -1128,16 +1128,25 @@ KTableValue nsCSSProps::kDisplayKTable[]
+   eCSSKeyword_ruby_text,           NS_STYLE_DISPLAY_RUBY_TEXT,
+   eCSSKeyword_ruby_text_container, NS_STYLE_DISPLAY_RUBY_TEXT_CONTAINER,
+   // The next entry is controlled by the layout.css.display-contents.enabled
+   // pref.
+   eCSSKeyword_contents,            NS_STYLE_DISPLAY_CONTENTS,
+   eCSSKeyword_UNKNOWN,-1
+ };
+ 
++const KTableValue nsCSSProps::kContainKTable[] = {
++  eCSSKeyword_none,               NS_STYLE_CONTAIN_NONE,
++  eCSSKeyword_strict,             NS_STYLE_CONTAIN_STRICT,
++  eCSSKeyword_layout,             NS_STYLE_CONTAIN_LAYOUT,
++  eCSSKeyword_style,              NS_STYLE_CONTAIN_STYLE,
++  eCSSKeyword_paint,              NS_STYLE_CONTAIN_PAINT,
++  eCSSKeyword_UNKNOWN,-1
++};
++
+ const KTableValue nsCSSProps::kEmptyCellsKTable[] = {
+   eCSSKeyword_show,                 NS_STYLE_TABLE_EMPTY_CELLS_SHOW,
+   eCSSKeyword_hide,                 NS_STYLE_TABLE_EMPTY_CELLS_HIDE,
+   eCSSKeyword_UNKNOWN,-1
+ };
+ 
+ const KTableValue nsCSSProps::kAlignContentKTable[] = {
+   eCSSKeyword_flex_start,    NS_STYLE_ALIGN_CONTENT_FLEX_START,
+diff --git a/layout/style/nsCSSProps.h b/layout/style/nsCSSProps.h
+--- a/layout/style/nsCSSProps.h
++++ b/layout/style/nsCSSProps.h
+@@ -604,16 +604,17 @@ public:
+   static const KTableValue kColorKTable[];
+   static const KTableValue kContentKTable[];
+   static const KTableValue kControlCharacterVisibilityKTable[];
+   static const KTableValue kCursorKTable[];
+   static const KTableValue kDirectionKTable[];
+   // Not const because we modify its entries when various 
+   // "layout.css.*.enabled" prefs changes:
+   static KTableValue kDisplayKTable[];
++  static const KTableValue kContainKTable[];
+   static const KTableValue kElevationKTable[];
+   static const KTableValue kEmptyCellsKTable[];
+   static const KTableValue kAlignContentKTable[];
+   static const KTableValue kAlignItemsKTable[];
+   static const KTableValue kAlignSelfKTable[];
+   static const KTableValue kFlexDirectionKTable[];
+   static const KTableValue kFlexWrapKTable[];
+   static const KTableValue kJustifyContentKTable[];
+diff --git a/layout/style/nsComputedDOMStyle.cpp b/layout/style/nsComputedDOMStyle.cpp
+--- a/layout/style/nsComputedDOMStyle.cpp
++++ b/layout/style/nsComputedDOMStyle.cpp
+@@ -4001,16 +4001,39 @@ nsComputedDOMStyle::DoGetDisplay()
+ {
+   nsROCSSPrimitiveValue *val = new nsROCSSPrimitiveValue;
+   val->SetIdent(nsCSSProps::ValueToKeywordEnum(StyleDisplay()->mDisplay,
+                                                nsCSSProps::kDisplayKTable));
+   return val;
+ }
+ 
+ CSSValue*
++nsComputedDOMStyle::DoGetContain()
++{
++  nsROCSSPrimitiveValue* val = new nsROCSSPrimitiveValue;
++
++  int32_t mask = StyleDisplay()->mContain;
++
++  if (mask == 0) {
++    val->SetIdent(eCSSKeyword_none);
++  } else if (mask == NS_STYLE_CONTAIN_STRICT) {
++    val->SetIdent(eCSSKeyword_strict);
++  } else {
++    nsAutoString valueStr;
++
++    nsStyleUtil::AppendBitmaskCSSValue(eCSSProperty_contain,
++      mask, NS_STYLE_CONTAIN_LAYOUT,
++      NS_STYLE_CONTAIN_PAINT, valueStr);
++    val->SetString(valueStr);
++  }
++
++  return val;
++}
++
++CSSValue*
+ nsComputedDOMStyle::DoGetPosition()
+ {
+   nsROCSSPrimitiveValue *val = new nsROCSSPrimitiveValue;
+   val->SetIdent(nsCSSProps::ValueToKeywordEnum(StyleDisplay()->mPosition,
+                                                nsCSSProps::kPositionKTable));
+   return val;
+ }
+ 
+diff --git a/layout/style/nsComputedDOMStyle.h b/layout/style/nsComputedDOMStyle.h
+--- a/layout/style/nsComputedDOMStyle.h
++++ b/layout/style/nsComputedDOMStyle.h
+@@ -387,16 +387,17 @@ private:
+   mozilla::dom::CSSValue* DoGetDirection();
+   mozilla::dom::CSSValue* DoGetUnicodeBidi();
+ 
+   /* Display properties */
+   mozilla::dom::CSSValue* DoGetBinding();
+   mozilla::dom::CSSValue* DoGetClear();
+   mozilla::dom::CSSValue* DoGetFloat();
+   mozilla::dom::CSSValue* DoGetDisplay();
++  mozilla::dom::CSSValue* DoGetContain();
+   mozilla::dom::CSSValue* DoGetPosition();
+   mozilla::dom::CSSValue* DoGetClip();
+   mozilla::dom::CSSValue* DoGetImageOrientation();
+   mozilla::dom::CSSValue* DoGetWillChange();
+   mozilla::dom::CSSValue* DoGetOverflow();
+   mozilla::dom::CSSValue* DoGetOverflowX();
+   mozilla::dom::CSSValue* DoGetOverflowY();
+   mozilla::dom::CSSValue* DoGetOverflowClipBox();
+diff --git a/layout/style/nsComputedDOMStylePropertyList.h b/layout/style/nsComputedDOMStylePropertyList.h
+--- a/layout/style/nsComputedDOMStylePropertyList.h
++++ b/layout/style/nsComputedDOMStylePropertyList.h
+@@ -97,16 +97,17 @@ COMPUTED_STYLE_PROP(border_top_width,   
+ COMPUTED_STYLE_PROP(bottom,                        Bottom)
+ COMPUTED_STYLE_PROP(box_decoration_break,          BoxDecorationBreak)
+ COMPUTED_STYLE_PROP(box_shadow,                    BoxShadow)
+ COMPUTED_STYLE_PROP(box_sizing,                    BoxSizing)
+ COMPUTED_STYLE_PROP(caption_side,                  CaptionSide)
+ COMPUTED_STYLE_PROP(clear,                         Clear)
+ COMPUTED_STYLE_PROP(clip,                          Clip)
+ COMPUTED_STYLE_PROP(color,                         Color)
++COMPUTED_STYLE_PROP(contain,                       Contain)
+ COMPUTED_STYLE_PROP(content,                       Content)
+ COMPUTED_STYLE_PROP(counter_increment,             CounterIncrement)
+ COMPUTED_STYLE_PROP(counter_reset,                 CounterReset)
+ COMPUTED_STYLE_PROP(cursor,                        Cursor)
+ COMPUTED_STYLE_PROP(direction,                     Direction)
+ COMPUTED_STYLE_PROP(display,                       Display)
+ COMPUTED_STYLE_PROP(empty_cells,                   EmptyCells)
+ COMPUTED_STYLE_PROP(flex_basis,                    FlexBasis)
+diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
+--- a/layout/style/nsRuleNode.cpp
++++ b/layout/style/nsRuleNode.cpp
+@@ -5271,16 +5271,22 @@ nsRuleNode::ComputeDisplayData(void* aSt
+             SETFCT_OPACITY | SETFCT_UNSET_INITIAL);
+ 
+   // display: enum, inherit, initial
+   SetDiscrete(*aRuleData->ValueForDisplay(), display->mDisplay, canStoreInRuleTree,
+               SETDSC_ENUMERATED | SETDSC_UNSET_INITIAL,
+               parentDisplay->mDisplay,
+               NS_STYLE_DISPLAY_INLINE, 0, 0, 0, 0);
+ 
++  // contain: enum, inherit, initial
++  SetDiscrete(*aRuleData->ValueForContain(), display->mContain, canStoreInRuleTree,
++              SETDSC_ENUMERATED | SETDSC_UNSET_INITIAL,
++              parentDisplay->mContain,
++              NS_STYLE_CONTAIN_NONE, 0, 0, 0, 0);
++
+   // mix-blend-mode: enum, inherit, initial
+   SetDiscrete(*aRuleData->ValueForMixBlendMode(), display->mMixBlendMode,
+               canStoreInRuleTree,
+               SETDSC_ENUMERATED | SETDSC_UNSET_INITIAL,
+               parentDisplay->mMixBlendMode, NS_STYLE_BLEND_NORMAL,
+               0, 0, 0, 0);
+ 
+   // scroll-behavior: enum, inherit, initial
+diff --git a/layout/style/nsStyleConsts.h b/layout/style/nsStyleConsts.h
+--- a/layout/style/nsStyleConsts.h
++++ b/layout/style/nsStyleConsts.h
+@@ -439,16 +439,23 @@ static inline mozilla::css::Side operato
+ #define NS_STYLE_DISPLAY_INLINE_GRID            32
+ #define NS_STYLE_DISPLAY_RUBY                   33
+ #define NS_STYLE_DISPLAY_RUBY_BASE              34
+ #define NS_STYLE_DISPLAY_RUBY_BASE_CONTAINER    35
+ #define NS_STYLE_DISPLAY_RUBY_TEXT              36
+ #define NS_STYLE_DISPLAY_RUBY_TEXT_CONTAINER    37
+ #define NS_STYLE_DISPLAY_CONTENTS               38
+ 
++// See nsStyleDisplay
++#define NS_STYLE_CONTAIN_NONE                   0
++#define NS_STYLE_CONTAIN_STRICT                 7
++#define NS_STYLE_CONTAIN_LAYOUT                 1
++#define NS_STYLE_CONTAIN_STYLE                  2
++#define NS_STYLE_CONTAIN_PAINT                  4
++
+ // See nsStylePosition
+ #define NS_STYLE_ALIGN_CONTENT_FLEX_START       0
+ #define NS_STYLE_ALIGN_CONTENT_FLEX_END         1
+ #define NS_STYLE_ALIGN_CONTENT_CENTER           2
+ #define NS_STYLE_ALIGN_CONTENT_SPACE_BETWEEN    3
+ #define NS_STYLE_ALIGN_CONTENT_SPACE_AROUND     4
+ #define NS_STYLE_ALIGN_CONTENT_STRETCH          5
+ 
+diff --git a/layout/style/nsStyleStruct.cpp b/layout/style/nsStyleStruct.cpp
+--- a/layout/style/nsStyleStruct.cpp
++++ b/layout/style/nsStyleStruct.cpp
+@@ -2577,16 +2577,17 @@ mozilla::StyleAnimation::operator==(cons
+ 
+ nsStyleDisplay::nsStyleDisplay()
+   : mWillChangeBitField(0)
+ {
+   MOZ_COUNT_CTOR(nsStyleDisplay);
+   mAppearance = NS_THEME_NONE;
+   mDisplay = NS_STYLE_DISPLAY_INLINE;
+   mOriginalDisplay = mDisplay;
++  mContain = NS_STYLE_CONTAIN_NONE;
+   mPosition = NS_STYLE_POSITION_STATIC;
+   mFloats = NS_STYLE_FLOAT_NONE;
+   mOriginalFloats = mFloats;
+   mBreakType = NS_STYLE_CLEAR_NONE;
+   mBreakInside = NS_STYLE_PAGE_BREAK_AUTO;
+   mBreakBefore = false;
+   mBreakAfter = false;
+   mOverflowX = NS_STYLE_OVERFLOW_VISIBLE;
+@@ -2705,16 +2706,17 @@ nsStyleDisplay::nsStyleDisplay(const nsS
+ 
+ nsChangeHint nsStyleDisplay::CalcDifference(const nsStyleDisplay& aOther) const
+ {
+   nsChangeHint hint = nsChangeHint(0);
+ 
+   if (!EqualURIs(mBinding, aOther.mBinding)
+       || mPosition != aOther.mPosition
+       || mDisplay != aOther.mDisplay
++      || mContain != aOther.mContain
+       || (mFloats == NS_STYLE_FLOAT_NONE) != (aOther.mFloats == NS_STYLE_FLOAT_NONE)
+       || mOverflowX != aOther.mOverflowX
+       || mOverflowY != aOther.mOverflowY
+       || mScrollBehavior != aOther.mScrollBehavior
+       || mScrollSnapTypeX != aOther.mScrollSnapTypeX
+       || mScrollSnapTypeY != aOther.mScrollSnapTypeY
+       || mScrollSnapPointsX != aOther.mScrollSnapPointsX
+       || mScrollSnapPointsY != aOther.mScrollSnapPointsY
+diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
+--- a/layout/style/nsStyleStruct.h
++++ b/layout/style/nsStyleStruct.h
+@@ -2061,16 +2061,17 @@ struct nsStyleDisplay {
+   typedef nsStyleBackground::Position Position;
+ 
+   // We guarantee that if mBinding is non-null, so are mBinding->GetURI() and
+   // mBinding->mOriginPrincipal.
+   nsRefPtr<mozilla::css::URLValue> mBinding;    // [reset]
+   nsRect  mClip;                // [reset] offsets from upper-left border edge
+   float   mOpacity;             // [reset]
+   uint8_t mDisplay;             // [reset] see nsStyleConsts.h NS_STYLE_DISPLAY_*
++  uint8_t mContain;             // [reset] see nsStyleConsts.h NS_STYLE_CONTAIN_*
+   uint8_t mOriginalDisplay;     // [reset] saved mDisplay for position:absolute/fixed
+                                 //         and float:left/right; otherwise equal
+                                 //         to mDisplay
+   uint8_t mAppearance;          // [reset]
+   uint8_t mPosition;            // [reset] see nsStyleConsts.h
+   uint8_t mFloats;              // [reset] see nsStyleConsts.h NS_STYLE_FLOAT_*
+   uint8_t mOriginalFloats;      // [reset] saved mFloats for position:absolute/fixed;
+                                 //         otherwise equal to mFloats
+diff --git a/layout/style/test/property_database.js b/layout/style/test/property_database.js
+--- a/layout/style/test/property_database.js
++++ b/layout/style/test/property_database.js
+@@ -6154,16 +6154,50 @@ if (SpecialPowers.getBoolPref("layout.cs
+     invalid_values: gridAreaInvalidValues
+   };
+ }
+ 
+ if (SpecialPowers.getBoolPref("layout.css.display-contents.enabled")) {
+   gCSSProperties["display"].other_values.push("contents");
+ }
+ 
++if (SpecialPowers.getBoolPref("layout.css.contain.enabled")) {
++  gCSSProperties["contain"] = {
++    domProp: "contain",
++    inherited: false,
++    type: CSS_TYPE_LONGHAND,
++    initial_values: [ "none" ],
++    other_values: [
++      "strict",
++      "layout",
++      "style",
++      "layout style",
++      "style layout",
++      "paint",
++      "layout paint",
++      "paint layout",
++      "style paint",
++      "paint style",
++      "layout style paint",
++      "layout paint style",
++      "style paint layout",
++      "paint style layout",
++    ],
++    invalid_values: [
++      "",
++      "none strict",
++      "strict layout",
++      "strict layout style",
++      "auto",
++      "10px",
++      "0",
++    ]
++  };
++}
++
+ if (SpecialPowers.getBoolPref("layout.css.image-orientation.enabled")) {
+   gCSSProperties["image-orientation"] = {
+     domProp: "imageOrientation",
+     inherited: true,
+     type: CSS_TYPE_LONGHAND,
+     initial_values: [
+       "0deg",
+       "0grad",
+diff --git a/modules/libpref/init/all.js b/modules/libpref/init/all.js
+--- a/modules/libpref/init/all.js
++++ b/modules/libpref/init/all.js
+@@ -2247,16 +2247,19 @@ pref("layout.css.all-shorthand.enabled",
+ pref("layout.css.variables.enabled", true);
+ 
+ // Is support for CSS overflow-clip-box enabled for non-UA sheets?
+ pref("layout.css.overflow-clip-box.enabled", false);
+ 
+ // Is support for CSS grid enabled?
+ pref("layout.css.grid.enabled", false);
+ 
++// Is support for CSS contain enabled?
++pref("layout.css.contain.enabled", false);
++
+ // Is support for CSS Ruby enabled?
+ //
+ // When this pref is removed, make sure that the pref callback registration
+ // in nsLayoutStylesheetCache::EnsureGlobal and the invalidation of
+ // mUASheet in nsLayoutStylesheetCache::DependentPrefChanged (if it's not
+ // otherwise needed) are removed.
+ pref("layout.css.ruby.enabled", true);
+ 

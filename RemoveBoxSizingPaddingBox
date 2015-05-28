@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  ff2e0722804149cc85a6f4a26ae9983a10e4800c
+# Parent  f986e55c4e0b41c6b50bd74d287614b564d7895f
 Bug 1166728 - Remove box-sizing: padding-box, as per CSS WG. r=dholbert
 
 diff --git a/browser/components/privatebrowsing/content/aboutPrivateBrowsing.css b/browser/components/privatebrowsing/content/aboutPrivateBrowsing.css
@@ -28,7 +28,7 @@ diff --git a/browser/components/privatebrowsing/content/aboutPrivateBrowsing.css
 diff --git a/browser/themes/linux/searchbar.css b/browser/themes/linux/searchbar.css
 --- a/browser/themes/linux/searchbar.css
 +++ b/browser/themes/linux/searchbar.css
-@@ -158,17 +158,17 @@ searchbar[oneoffui] .search-go-button:-m
+@@ -163,17 +163,17 @@ searchbar[oneoffui] .search-go-button:-m
    padding: 0 0;
    background: none;
    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAWCAYAAAABxvaqAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3gofECQNNVW2/AAAABBJREFUGFdjOHPmzH8GehEA/KpKg9YTf4AAAAAASUVORK5CYII=');
@@ -50,7 +50,7 @@ diff --git a/browser/themes/linux/searchbar.css b/browser/themes/linux/searchbar
 diff --git a/browser/themes/osx/searchbar.css b/browser/themes/osx/searchbar.css
 --- a/browser/themes/osx/searchbar.css
 +++ b/browser/themes/osx/searchbar.css
-@@ -181,17 +181,17 @@ searchbar[oneoffui] .search-go-button:-m
+@@ -186,17 +186,17 @@ searchbar[oneoffui] .search-go-button:-m
    margin: 0 0;
    padding: 0 0;
    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAWCAYAAAABxvaqAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3gofECQNNVW2/AAAABBJREFUGFdjOHPmzH8GehEA/KpKg9YTf4AAAAAASUVORK5CYII=');
@@ -94,7 +94,7 @@ diff --git a/browser/themes/shared/aboutNetError.css b/browser/themes/shared/abo
 diff --git a/browser/themes/windows/searchbar.css b/browser/themes/windows/searchbar.css
 --- a/browser/themes/windows/searchbar.css
 +++ b/browser/themes/windows/searchbar.css
-@@ -172,17 +172,17 @@ searchbar[oneoffui] .search-go-button:-m
+@@ -220,17 +220,17 @@ searchbar[oneoffui] .search-go-button:-m
    padding: 0 0;
    background: none;
    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAWCAYAAAABxvaqAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3gofECQNNVW2/AAAABBJREFUGFdjOHPmzH8GehEA/KpKg9YTf4AAAAAASUVORK5CYII=');
@@ -126,7 +126,7 @@ diff --git a/dom/base/test/test_bug320799.html b/dom/base/test/test_bug320799.ht
  <a target="_blank" href="https://bugzilla.mozilla.org/show_bug.cgi?id=320799">Mozilla Bug 320799</a>
  <p id="display">
 -  <select id="s" style="width: 100px; box-sizing: padding-box">
-+  <select id="s" style="width: 100px; box-sizing: content-box; border: 0">
++  <select id="s" style="width: 100px; box-sizing: border-box; border: 0">
      <option>This is a test, it really is a test I tell you</option>
    </select>
    <select id="s2">
@@ -138,7 +138,7 @@ diff --git a/dom/base/test/test_bug320799.html b/dom/base/test/test_bug320799.ht
 diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
 --- a/layout/base/nsLayoutUtils.cpp
 +++ b/layout/base/nsLayoutUtils.cpp
-@@ -4402,45 +4402,36 @@ nsLayoutUtils::IntrinsicForContainer(nsR
+@@ -4403,45 +4403,36 @@ nsLayoutUtils::IntrinsicForContainer(nsR
            (styleMinBSize.GetUnit() == eStyleUnit_Coord &&
             styleMinBSize.GetCoordValue() == 0)) ||
          styleMaxBSize.GetUnit() != eStyleUnit_None) {
@@ -185,7 +185,7 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
            h = std::max(0, h - bSizeTakenByBoxSizing);
            result = NSCoordMulDiv(h, ratio.ISize(wm), ratio.BSize(wm));
          }
-@@ -4479,25 +4470,16 @@ nsLayoutUtils::IntrinsicForContainer(nsR
+@@ -4480,25 +4471,16 @@ nsLayoutUtils::IntrinsicForContainer(nsR
    // linearly, they are handled monotonically.
    nscoord coordOutsideISize = 0;
    float pctOutsideISize = 0;
@@ -211,7 +211,7 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
      min += coordOutsideISize;
      result = NSCoordSaturatingAdd(result, coordOutsideISize);
      pctTotal += pctOutsideISize;
-@@ -4798,22 +4780,18 @@ nsLayoutUtils::ComputeSizeWithIntrinsicD
+@@ -4799,22 +4781,18 @@ nsLayoutUtils::ComputeSizeWithIntrinsicD
    // Note: throughout the following section of the function, I avoid
    // a * (b / c) because of its reduced accuracy relative to a * b / c
    // or (a * b) / c (which are equivalent).
@@ -261,7 +261,7 @@ diff --git a/layout/forms/test/test_textarea_resize.html b/layout/forms/test/tes
 diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
 --- a/layout/generic/nsFrame.cpp
 +++ b/layout/generic/nsFrame.cpp
-@@ -4174,22 +4174,18 @@ nsFrame::ComputeSize(nsRenderingContext 
+@@ -4175,22 +4175,18 @@ nsFrame::ComputeSize(nsRenderingContext 
  {
    LogicalSize result = ComputeAutoSize(aRenderingContext, aWM,
                                         aCBSize, aAvailableISize,
