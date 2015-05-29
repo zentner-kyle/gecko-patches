@@ -1,0 +1,239 @@
+From: L. David Baron <dbaron@dbaron.org>
+
+Bug 1159042 patch 2 - Allow reflow roots to have overflow, and allow that overflow to change during reflow.
+
+diff --git a/layout/base/nsPresShell.cpp b/layout/base/nsPresShell.cpp
+--- a/layout/base/nsPresShell.cpp
++++ b/layout/base/nsPresShell.cpp
+@@ -173,16 +173,17 @@
+ #include "ChildIterator.h"
+ #include "RestyleManager.h"
+ #include "nsIDOMHTMLElement.h"
+ #include "nsIDragSession.h"
+ #include "nsIFrameInlines.h"
+ #include "mozilla/gfx/2D.h"
+ #include "nsSubDocumentFrame.h"
+ #include "nsQueryObject.h"
++#include "RestyleTracker.h"
+ 
+ #ifdef ANDROID
+ #include "nsIDocShellTreeOwner.h"
+ #endif
+ 
+ #ifdef MOZ_TASK_TRACER
+ #include "GeckoTaskTracer.h"
+ using namespace mozilla::tasktracer;
+@@ -2094,17 +2095,17 @@ PresShell::ResizeReflowIgnoreOverride(ns
+         nsAutoCauseReflowNotifier crNotifier(this);
+         WillDoReflow();
+ 
+         // Kick off a top-down reflow
+         AUTO_LAYOUT_PHASE_ENTRY_POINT(GetPresContext(), Reflow);
+         nsViewManager::AutoDisableRefresh refreshBlocker(mViewManager);
+ 
+         mDirtyRoots.RemoveElement(rootFrame);
+-        DoReflow(rootFrame, true);
++        DoReflow(rootFrame, true, nullptr);
+       }
+ 
+       DidDoReflow(true, false);
+     }
+   }
+ 
+   rootFrame = mFrameConstructor->GetRootFrame();
+   if (aHeight == NS_UNCONSTRAINEDSIZE && rootFrame) {
+@@ -9156,17 +9157,18 @@ PresShell::ScheduleReflowOffTimer()
+                                          nsITimer::TYPE_ONE_SHOT))) {
+       return false;
+     }
+   }
+   return true;
+ }
+ 
+ bool
+-PresShell::DoReflow(nsIFrame* target, bool aInterruptible)
++PresShell::DoReflow(nsIFrame* target, bool aInterruptible,
++                    OverflowChangedTracker* aOverflowTracker)
+ {
+   if (mIsZombie) {
+     return true;
+   }
+ 
+   gfxTextPerfMetrics* tp = mPresContext->GetTextPerfMetrics();
+   TimeStamp timeStart;
+   if (tp) {
+@@ -9197,16 +9199,20 @@ PresShell::DoReflow(nsIFrame* target, bo
+ 
+   if (mReflowContinueTimer) {
+     mReflowContinueTimer->Cancel();
+     mReflowContinueTimer = nullptr;
+   }
+ 
+   const bool isRoot = target == mFrameConstructor->GetRootFrame();
+ 
++  MOZ_ASSERT(isRoot || aOverflowTracker,
++             "caller must provide overflow tracker when reflowing "
++             "non-root frames");
++
+   nsRenderingContext rcx(CreateReferenceRenderingContext());
+ 
+ #ifdef DEBUG
+   mCurrentReflowRoot = target;
+ #endif
+ 
+   // If the target frame is the root of the frame hierarchy, then
+   // use all the available space. If it's simply a `reflow root',
+@@ -9214,16 +9220,21 @@ PresShell::DoReflow(nsIFrame* target, bo
+   WritingMode wm = target->GetWritingMode();
+   LogicalSize size(wm);
+   if (isRoot) {
+     size = LogicalSize(wm, mPresContext->GetVisibleArea().Size());
+   } else {
+     size = target->GetLogicalSize();
+   }
+ 
++  nsOverflowAreas oldOverflow; // initialized and used only when !isRoot
++  if (!isRoot) {
++    oldOverflow = target->GetOverflowAreas();
++  }
++
+   NS_ASSERTION(!target->GetNextInFlow() && !target->GetPrevInFlow(),
+                "reflow roots should never split");
+ 
+   // Don't pass size directly to the reflow state, since a
+   // constrained height implies page/column breaking.
+   LogicalSize reflowSize(wm, size.ISize(wm), NS_UNCONSTRAINEDSIZE);
+   nsHTMLReflowState reflowState(mPresContext, target, &rcx, reflowSize,
+                                 nsHTMLReflowState::CALLER_WILL_INIT);
+@@ -9282,22 +9293,16 @@ PresShell::DoReflow(nsIFrame* target, bo
+   // height was unconstrained to start with.
+   nsRect boundsRelativeToTarget = nsRect(0, 0, desiredSize.Width(), desiredSize.Height());
+   NS_ASSERTION((isRoot &&
+                 size.BSize(wm) == NS_UNCONSTRAINEDSIZE) ||
+                (desiredSize.ISize(wm) == size.ISize(wm) &&
+                 desiredSize.BSize(wm) == size.BSize(wm)),
+                "non-root frame's desired size changed during an "
+                "incremental reflow");
+-  NS_ASSERTION(isRoot ||
+-               desiredSize.VisualOverflow().IsEqualInterior(boundsRelativeToTarget),
+-               "non-root reflow roots must not have visible overflow");
+-  NS_ASSERTION(isRoot ||
+-               desiredSize.ScrollableOverflow().IsEqualEdges(boundsRelativeToTarget),
+-               "non-root reflow roots must not have scrollable overflow");
+   NS_ASSERTION(status == NS_FRAME_COMPLETE,
+                "reflow roots should never split");
+ 
+   target->SetSize(boundsRelativeToTarget.Size());
+ 
+   // Always use boundsRelativeToTarget here, not desiredSize.GetVisualOverflowArea(),
+   // because for root frames (where they could be different, since root frames
+   // are allowed to have overflow) the root view bounds need to match the
+@@ -9313,16 +9318,22 @@ PresShell::DoReflow(nsIFrame* target, bo
+   if (isRoot && size.BSize(wm) == NS_UNCONSTRAINEDSIZE) {
+     mPresContext->SetVisibleArea(boundsRelativeToTarget);
+   }
+ 
+ #ifdef DEBUG
+   mCurrentReflowRoot = nullptr;
+ #endif
+ 
++  if (!isRoot && oldOverflow != target->GetOverflowAreas()) {
++    // The overflow area changed.  Propagate this change to ancestors.
++    aOverflowTracker->AddFrame(target->GetParent(),
++                               OverflowChangedTracker::CHILDREN_CHANGED);
++  }
++
+   NS_ASSERTION(mPresContext->HasPendingInterrupt() ||
+                mFramesToDirty.Count() == 0,
+                "Why do we need to dirty anything if not interrupted?");
+ 
+   mIsReflowing = false;
+   bool interrupted = mPresContext->HasPendingInterrupt();
+   if (interrupted) {
+     // Make sure target gets reflowed again.
+@@ -9415,37 +9426,41 @@ PresShell::ProcessReflowCommands(bool aI
+ 
+     // Scope for the reflow entry point
+     {
+       nsAutoScriptBlocker scriptBlocker;
+       WillDoReflow();
+       AUTO_LAYOUT_PHASE_ENTRY_POINT(GetPresContext(), Reflow);
+       nsViewManager::AutoDisableRefresh refreshBlocker(mViewManager);
+ 
++      OverflowChangedTracker overflowTracker;
++
+       do {
+         // Send an incremental reflow notification to the target frame.
+         int32_t idx = mDirtyRoots.Length() - 1;
+         nsIFrame *target = mDirtyRoots[idx];
+         mDirtyRoots.RemoveElementAt(idx);
+ 
+         if (!NS_SUBTREE_DIRTY(target)) {
+           // It's not dirty anymore, which probably means the notification
+           // was posted in the middle of a reflow (perhaps with a reflow
+           // root in the middle).  Don't do anything.
+           continue;
+         }
+ 
+-        interrupted = !DoReflow(target, aInterruptible);
++        interrupted = !DoReflow(target, aInterruptible, &overflowTracker);
+ 
+         // Keep going until we're out of reflow commands, or we've run
+         // past our deadline, or we're interrupted.
+       } while (!interrupted && !mDirtyRoots.IsEmpty() &&
+                (!aInterruptible || PR_IntervalNow() < deadline));
+ 
+       interrupted = !mDirtyRoots.IsEmpty();
++
++      overflowTracker.Flush();
+     }
+ 
+     // Exiting the scriptblocker might have killed us
+     if (!mIsDestroying) {
+       DidDoReflow(aInterruptible, interrupted);
+     }
+ 
+     // DidDoReflow might have killed us
+diff --git a/layout/base/nsPresShell.h b/layout/base/nsPresShell.h
+--- a/layout/base/nsPresShell.h
++++ b/layout/base/nsPresShell.h
+@@ -46,16 +46,17 @@ class ReflowCountMgr;
+ #endif
+ 
+ class nsPresShellEventCB;
+ class nsAutoCauseReflowNotifier;
+ 
+ namespace mozilla {
+ class CSSStyleSheet;
+ class EventDispatchingCallback;
++class OverflowChangedTracker;
+ } // namespace mozilla
+ 
+ // 250ms.  This is actually pref-controlled, but we use this value if we fail
+ // to get the pref for any reason.
+ #define PAINTLOCK_EVENT_DELAY 250
+ 
+ class PresShell final : public nsIPresShell,
+                         public nsStubDocumentObserver,
+@@ -440,17 +441,20 @@ protected:
+   // MaybeScheduleReflow and the reflow timer ScheduleReflowOffTimer
+   // sets up.
+   void     ScheduleReflow();
+ 
+   // Reflow regardless of whether the override bit has been set.
+   nsresult ResizeReflowIgnoreOverride(nscoord aWidth, nscoord aHeight);
+ 
+   // DoReflow returns whether the reflow finished without interruption
+-  bool DoReflow(nsIFrame* aFrame, bool aInterruptible);
++  // If aFrame is not the root frame, the caller must pass a non-null
++  // aOverflowTracker.
++  bool DoReflow(nsIFrame* aFrame, bool aInterruptible,
++                mozilla::OverflowChangedTracker* aOverflowTracker);
+ #ifdef DEBUG
+   void DoVerifyReflow();
+   void VerifyHasDirtyRootAncestor(nsIFrame* aFrame);
+ #endif
+ 
+   // Helper for ScrollContentIntoView
+   void DoScrollContentIntoView();
+ 

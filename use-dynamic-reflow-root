@@ -1,0 +1,68 @@
+From: L. David Baron <dbaron@dbaron.org>
+
+Bug 1159042 patch 4 - Use NS_FRAME_DYNAMIC_REFLOW_ROOT.
+
+diff --git a/layout/base/nsPresShell.cpp b/layout/base/nsPresShell.cpp
+--- a/layout/base/nsPresShell.cpp
++++ b/layout/base/nsPresShell.cpp
+@@ -2778,17 +2778,18 @@ PresShell::VerifyHasDirtyRootAncestor(ns
+   // handles the root frame correctly.
+   if (!aFrame->GetParent()) {
+     return;
+   }
+ 
+   // Make sure that there is a reflow root ancestor of |aFrame| that's
+   // in mDirtyRoots already.
+   while (aFrame && (aFrame->GetStateBits() & NS_FRAME_HAS_DIRTY_CHILDREN)) {
+-    if (((aFrame->GetStateBits() & NS_FRAME_REFLOW_ROOT) ||
++    if (((aFrame->GetStateBits() &
++          (NS_FRAME_REFLOW_ROOT | NS_FRAME_DYNAMIC_REFLOW_ROOT)) ||
+          !aFrame->GetParent()) &&
+         mDirtyRoots.Contains(aFrame)) {
+       return;
+     }
+ 
+     aFrame = aFrame->GetParent();
+   }
+   NS_NOTREACHED("Frame has dirty bits set but isn't scheduled to be "
+@@ -2848,17 +2849,18 @@ PresShell::FrameNeedsReflow(nsIFrame *aF
+     bool wasDirty = NS_SUBTREE_DIRTY(subtreeRoot);
+     subtreeRoot->AddStateBits(aBitToAdd);
+ 
+     // Now if subtreeRoot is a reflow root we can cut off this reflow at it if
+     // the bit being added is NS_FRAME_HAS_DIRTY_CHILDREN.
+     bool targetFrameDirty = (aBitToAdd == NS_FRAME_IS_DIRTY);
+ 
+ #define FRAME_IS_REFLOW_ROOT(_f)                   \
+-  ((_f->GetStateBits() & NS_FRAME_REFLOW_ROOT) &&  \
++  ((_f->GetStateBits() & \
++    (NS_FRAME_REFLOW_ROOT | NS_FRAME_DYNAMIC_REFLOW_ROOT)) && \
+    (_f != subtreeRoot || !targetFrameDirty))
+ 
+ 
+     // Mark the intrinsic widths as dirty on the frame, all of its ancestors,
+     // and all of its descendants, if needed:
+ 
+     if (aIntrinsicDirty != eResize) {
+       // Mark argument and all ancestors dirty. (Unless we hit a reflow
+diff --git a/layout/generic/nsHTMLReflowState.cpp b/layout/generic/nsHTMLReflowState.cpp
+--- a/layout/generic/nsHTMLReflowState.cpp
++++ b/layout/generic/nsHTMLReflowState.cpp
+@@ -2370,16 +2370,17 @@ nsCSSOffsetState::InitOffsets(nscoord aI
+     needPaddingProp = false;
+   }
+   else if (frame->IsSVGText()) {
+     ComputedPhysicalPadding().SizeTo(0, 0, 0, 0);
+     needPaddingProp = false;
+   }
+   else if (aPadding) { // padding is an input arg
+     ComputedPhysicalPadding() = *aPadding;
++    // FIXME
+     needPaddingProp = frame->StylePadding()->IsWidthDependent() ||
+ 	  (frame->GetStateBits() & NS_FRAME_REFLOW_ROOT);
+   }
+   else {
+     needPaddingProp = ComputePadding(aInlineDirPercentBasis,
+                                      aBlockDirPercentBasis, aFrameType);
+   }
+ 

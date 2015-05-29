@@ -1,0 +1,159 @@
+From: L. David Baron <dbaron@dbaron.org>
+
+Bug 1159042 patch 3 - Add NS_FRAME_DYNAMIC_REFLOW_ROOT on frames that we can dynamically make reflow roots.
+
+diff --git a/layout/generic/nsFrameStateBits.h b/layout/generic/nsFrameStateBits.h
+--- a/layout/generic/nsFrameStateBits.h
++++ b/layout/generic/nsFrameStateBits.h
+@@ -170,16 +170,20 @@ FRAME_STATE_BIT(Generic, 19, NS_FRAME_RE
+ // TEXT_IS_IN_TOKEN_MATHML.  That's OK because we only check the
+ // NS_FRAME_IS_PUSHED_FLOAT bit on frames which we already know are
+ // out-of-flow.
+ FRAME_STATE_BIT(Generic, 32, NS_FRAME_IS_PUSHED_FLOAT)
+ 
+ // This bit acts as a loop flag for recursive paint server drawing.
+ FRAME_STATE_BIT(Generic, 33, NS_FRAME_DRAWING_AS_PAINTSERVER)
+ 
++// If this bit is set, then reflow may be dispatched from the current
++// frame instead of the root frame.
++FRAME_STATE_BIT(Generic, 34, NS_FRAME_DYNAMIC_REFLOW_ROOT)
++
+ // Frame is a display root and the retained layer tree needs to be updated
+ // at the next paint via display list construction.
+ // Only meaningful for display roots, so we don't really need a global state
+ // bit; we could free up this bit with a little extra complexity.
+ FRAME_STATE_BIT(Generic, 36, NS_FRAME_UPDATE_LAYER_TREE)
+ 
+ // Frame can accept absolutely positioned children.
+ FRAME_STATE_BIT(Generic, 37, NS_FRAME_HAS_ABSPOS_CHILDREN)
+diff --git a/layout/generic/nsHTMLReflowState.cpp b/layout/generic/nsHTMLReflowState.cpp
+--- a/layout/generic/nsHTMLReflowState.cpp
++++ b/layout/generic/nsHTMLReflowState.cpp
+@@ -378,16 +378,17 @@ nsHTMLReflowState::Init(nsPresContext* a
+ 
+   InitFrameType(type);
+   InitCBReflowState();
+ 
+   InitConstraints(aPresContext, aContainingBlockWidth, aContainingBlockHeight,
+                   aBorder, aPadding, type);
+ 
+   InitResizeFlags(aPresContext, type);
++  InitDynamicReflowRoot();
+ 
+   nsIFrame *parent = frame->GetParent();
+   if (parent &&
+       (parent->GetStateBits() & NS_FRAME_IN_CONSTRAINED_BSIZE) &&
+       !(parent->GetType() == nsGkAtoms::scrollFrame &&
+         parent->StyleDisplay()->mOverflowY != NS_STYLE_OVERFLOW_HIDDEN)) {
+     frame->AddStateBits(NS_FRAME_IN_CONSTRAINED_BSIZE);
+   } else if (type == nsGkAtoms::svgForeignObjectFrame) {
+@@ -699,16 +700,88 @@ nsHTMLReflowState::InitResizeFlags(nsPre
+   }
+   if (frame->GetStateBits() & NS_FRAME_IS_DIRTY) {
+     // If we're reflowing everything, then we'll find out if we need
+     // to re-set this.
+     frame->RemoveStateBits(NS_FRAME_CONTAINS_RELATIVE_HEIGHT);
+   }
+ }
+ 
++static inline bool
++IsIntrinsicKeyword(const nsStyleCoord& aCoord)
++{
++  if (aCoord.GetUnit() != eStyleUnit_Enumerated) {
++    return false;
++  }
++
++  // All of the keywords except for 'fill' depend on intrinsic sizes.
++  return aCoord.GetIntValue() != NS_STYLE_WIDTH_AVAILABLE;
++}
++
++void
++nsHTMLReflowState::InitDynamicReflowRoot()
++{
++  auto display = mStyleDisplay->mDisplay;
++  if (frame->IsFrameOfType(nsIFrame::eLineParticipant) ||
++      nsStyleDisplay::IsRubyDisplayType(display) ||
++      mFrameType == NS_CSS_FRAME_TYPE_INTERNAL_TABLE ||
++      display == NS_STYLE_DISPLAY_TABLE ||
++      display == NS_STYLE_DISPLAY_TABLE_CAPTION ||
++      display == NS_STYLE_DISPLAY_INLINE_TABLE) {
++    // We have a display type where 'width' and 'height' don't actually
++    // set the width or height.
++    NS_ASSERTION(!(frame->GetStateBits() & NS_FRAME_DYNAMIC_REFLOW_ROOT),
++                 "should not have dynamic reflow root bit");
++    return;
++  }
++
++  bool canBeDynamicReflowRoot = true;
++
++  // We can't do this if we don't have fixed width and height.
++  // FIXME: For display:block, we should probably optimize inline-size
++  // being auto.
++  // FIXME: Other flex and grid cases, and XUL box cases?
++  const nsStyleCoord& width = mStylePosition->mWidth;
++  const nsStyleCoord& height = mStylePosition->mHeight;
++  if (!width.IsCoordPercentCalcUnit() ||
++      width.HasPercent() ||
++      !height.IsCoordPercentCalcUnit() ||
++      height.HasPercent() ||
++      IsIntrinsicKeyword(mStylePosition->mMinWidth) ||
++      IsIntrinsicKeyword(mStylePosition->mMaxWidth) ||
++      IsIntrinsicKeyword(mStylePosition->mMinHeight) ||
++      IsIntrinsicKeyword(mStylePosition->mMaxHeight) ||
++      ((mStylePosition->mMinWidth.GetUnit() == eStyleUnit_Auto ||
++        mStylePosition->mMinHeight.GetUnit() == eStyleUnit_Auto) &&
++       frame->IsFlexItem())) {
++    canBeDynamicReflowRoot = false;
++  }
++
++  // If we participate in a container's block reflow context, we can't
++  // be a dynamic reflow root.
++  if (canBeDynamicReflowRoot &&
++      frame->IsFrameOfType(nsIFrame::eBlockFrame) &&
++      !(frame->GetStateBits() & NS_BLOCK_FLOAT_MGR)) {
++    canBeDynamicReflowRoot = false;
++  }
++
++  // The above check also checks that margins don't collapse through us.
++  NS_ASSERTION(!canBeDynamicReflowRoot ||
++               !frame->IsFrameOfType(nsIFrame::eBlockFrame) ||
++               (frame->GetStateBits() & NS_BLOCK_MARGIN_ROOT),
++               "this code needs to be adjusted to check for margin "
++               "collapsing");
++
++  if (canBeDynamicReflowRoot) {
++    frame->AddStateBits(NS_FRAME_DYNAMIC_REFLOW_ROOT);
++  } else {
++    frame->RemoveStateBits(NS_FRAME_DYNAMIC_REFLOW_ROOT);
++  }
++}
++
+ nscoord
+ nsHTMLReflowState::GetContainingBlockContentISize(WritingMode aWritingMode) const
+ {
+   if (!mCBReflowState) {
+     return 0;
+   }
+   return mCBReflowState->GetWritingMode().IsOrthogonalTo(aWritingMode)
+     ? mCBReflowState->ComputedBSize()
+diff --git a/layout/generic/nsHTMLReflowState.h b/layout/generic/nsHTMLReflowState.h
+--- a/layout/generic/nsHTMLReflowState.h
++++ b/layout/generic/nsHTMLReflowState.h
+@@ -865,16 +865,17 @@ public:
+                                        nsHTMLReflowState* aState,
+                                        void* aValue);
+ #endif
+ 
+ protected:
+   void InitFrameType(nsIAtom* aFrameType);
+   void InitCBReflowState();
+   void InitResizeFlags(nsPresContext* aPresContext, nsIAtom* aFrameType);
++  void InitDynamicReflowRoot();
+ 
+   void InitConstraints(nsPresContext* aPresContext,
+                        nscoord         aContainingBlockWidth,
+                        nscoord         aContainingBlockHeight,
+                        const nsMargin* aBorder,
+                        const nsMargin* aPadding,
+                        nsIAtom*        aFrameType);
+ 

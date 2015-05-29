@@ -1,0 +1,106 @@
+From: L. David Baron <dbaron@dbaron.org>
+
+Bug 1159042 patch 1 - Replace rootFrame variable with isRoot boolean in PresShell::DoReflow.
+
+diff --git a/layout/base/nsPresShell.cpp b/layout/base/nsPresShell.cpp
+--- a/layout/base/nsPresShell.cpp
++++ b/layout/base/nsPresShell.cpp
+@@ -9195,46 +9195,46 @@ PresShell::DoReflow(nsIFrame* target, bo
+     docShell->AddProfileTimelineMarker("Reflow", TRACING_INTERVAL_START);
+   }
+ 
+   if (mReflowContinueTimer) {
+     mReflowContinueTimer->Cancel();
+     mReflowContinueTimer = nullptr;
+   }
+ 
+-  nsIFrame* rootFrame = mFrameConstructor->GetRootFrame();
++  const bool isRoot = target == mFrameConstructor->GetRootFrame();
+ 
+   nsRenderingContext rcx(CreateReferenceRenderingContext());
+ 
+ #ifdef DEBUG
+   mCurrentReflowRoot = target;
+ #endif
+ 
+   // If the target frame is the root of the frame hierarchy, then
+   // use all the available space. If it's simply a `reflow root',
+   // then use the target frame's size as the available space.
+   WritingMode wm = target->GetWritingMode();
+   LogicalSize size(wm);
+-  if (target == rootFrame) {
++  if (isRoot) {
+     size = LogicalSize(wm, mPresContext->GetVisibleArea().Size());
+   } else {
+     size = target->GetLogicalSize();
+   }
+ 
+   NS_ASSERTION(!target->GetNextInFlow() && !target->GetPrevInFlow(),
+                "reflow roots should never split");
+ 
+   // Don't pass size directly to the reflow state, since a
+   // constrained height implies page/column breaking.
+   LogicalSize reflowSize(wm, size.ISize(wm), NS_UNCONSTRAINEDSIZE);
+   nsHTMLReflowState reflowState(mPresContext, target, &rcx, reflowSize,
+                                 nsHTMLReflowState::CALLER_WILL_INIT);
+   reflowState.mOrthogonalLimit = size.BSize(wm);
+ 
+-  if (rootFrame == target) {
++  if (isRoot) {
+     reflowState.Init(mPresContext);
+ 
+     // When the root frame is being reflowed with unconstrained block-size
+     // (which happens when we're called from
+     // nsDocumentViewer::SizeToContent), we're effectively doing a
+     // resize in the block direction, since it changes the meaning of
+     // percentage block-sizes even if no block-sizes actually changed.
+     // The same applies when we reflow again after that computation. This is
+@@ -9276,26 +9276,26 @@ PresShell::DoReflow(nsIFrame* target, bo
+   nsHTMLReflowMetrics desiredSize(reflowState);
+   target->Reflow(mPresContext, desiredSize, reflowState, status);
+ 
+   // If an incremental reflow is initiated at a frame other than the
+   // root frame, then its desired size had better not change!  If it's
+   // initiated at the root, then the size better not change unless its
+   // height was unconstrained to start with.
+   nsRect boundsRelativeToTarget = nsRect(0, 0, desiredSize.Width(), desiredSize.Height());
+-  NS_ASSERTION((target == rootFrame &&
++  NS_ASSERTION((isRoot &&
+                 size.BSize(wm) == NS_UNCONSTRAINEDSIZE) ||
+                (desiredSize.ISize(wm) == size.ISize(wm) &&
+                 desiredSize.BSize(wm) == size.BSize(wm)),
+                "non-root frame's desired size changed during an "
+                "incremental reflow");
+-  NS_ASSERTION(target == rootFrame ||
++  NS_ASSERTION(isRoot ||
+                desiredSize.VisualOverflow().IsEqualInterior(boundsRelativeToTarget),
+                "non-root reflow roots must not have visible overflow");
+-  NS_ASSERTION(target == rootFrame ||
++  NS_ASSERTION(isRoot ||
+                desiredSize.ScrollableOverflow().IsEqualEdges(boundsRelativeToTarget),
+                "non-root reflow roots must not have scrollable overflow");
+   NS_ASSERTION(status == NS_FRAME_COMPLETE,
+                "reflow roots should never split");
+ 
+   target->SetSize(boundsRelativeToTarget.Size());
+ 
+   // Always use boundsRelativeToTarget here, not desiredSize.GetVisualOverflowArea(),
+@@ -9305,17 +9305,17 @@ PresShell::DoReflow(nsIFrame* target, bo
+   nsContainerFrame::SyncFrameViewAfterReflow(mPresContext, target,
+                                              target->GetView(),
+                                              boundsRelativeToTarget);
+   nsContainerFrame::SyncWindowProperties(mPresContext, target,
+                                          target->GetView(), &rcx,
+                                          nsContainerFrame::SET_ASYNC);
+ 
+   target->DidReflow(mPresContext, nullptr, nsDidReflowStatus::FINISHED);
+-  if (target == rootFrame && size.BSize(wm) == NS_UNCONSTRAINEDSIZE) {
++  if (isRoot && size.BSize(wm) == NS_UNCONSTRAINEDSIZE) {
+     mPresContext->SetVisibleArea(boundsRelativeToTarget);
+   }
+ 
+ #ifdef DEBUG
+   mCurrentReflowRoot = nullptr;
+ #endif
+ 
+   NS_ASSERTION(mPresContext->HasPendingInterrupt() ||

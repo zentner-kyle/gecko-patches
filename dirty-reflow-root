@@ -1,0 +1,27 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  e8bfa68730d986148c799b0666ba4e3dc6f6e762
+Bug 1169440 Add nsChangeHint_DirtyRoot to correctly reflow roots.
+
+diff --git a/layout/base/nsChangeHint.h b/layout/base/nsChangeHint.h
+--- a/layout/base/nsChangeHint.h
++++ b/layout/base/nsChangeHint.h
+@@ -167,16 +167,18 @@ enum nsChangeHint {
+   /**
+    * This will cause rendering observers to be invalidated.
+    */
+   nsChangeHint_InvalidateRenderingObservers = 0x400000
+ 
+   // IMPORTANT NOTE: When adding new hints, consider whether you need to
+   // add them to NS_HintsNotHandledForDescendantsIn() below.  Please also
+   // add them to RestyleManager::ChangeHintToString.
++
++  nsChangeHint_DirtyRoot = 0x800000;
+ };
+ 
+ // Redefine these operators to return nothing. This will catch any use
+ // of these operators on hints. We should not be using these operators
+ // on nsChangeHints
+ inline void operator<(nsChangeHint s1, nsChangeHint s2) {}
+ inline void operator>(nsChangeHint s1, nsChangeHint s2) {}
+ inline void operator!=(nsChangeHint s1, nsChangeHint s2) {}
