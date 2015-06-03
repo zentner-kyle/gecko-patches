@@ -1,0 +1,48 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  ede6a68da020112a5e974bc25b2e2e413fa9f638
+Bug 1170781 - Implement CSS 'contain: paint'.
+
+diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
+--- a/layout/generic/nsFrame.cpp
++++ b/layout/generic/nsFrame.cpp
+@@ -2241,16 +2241,21 @@ nsIFrame::BuildDisplayListForChild(nsDis
+   // If painting is restricted to just the background of the top level frame,
+   // then we have nothing to do here.
+   if (aBuilder->IsBackgroundOnly())
+     return;
+ 
+   nsIFrame* child = aChild;
+   if (child->GetStateBits() & NS_FRAME_TOO_DEEP_IN_FRAME_TREE)
+     return;
++  const nsStyleDisplay* ourDisp = StyleDisplay();
++  Maybe<DisplayListClipState::AutoClipContainingBlockDescendantsToContentBox> clip;
++  if (ourDisp->mContain & NS_STYLE_CONTAIN_PAINT) {
++    clip.emplace(aBuilder, this);
++  }
+   
+   bool isSVG = (child->GetStateBits() & NS_FRAME_SVG_LAYOUT);
+ 
+   // true if this is a real or pseudo stacking context
+   bool pseudoStackingContext =
+     (aFlags & DISPLAY_CHILD_FORCE_PSEUDO_STACKING_CONTEXT) != 0;
+   if (!isSVG &&
+       (aFlags & DISPLAY_CHILD_INLINE) &&
+@@ -2340,17 +2345,16 @@ nsIFrame::BuildDisplayListForChild(nsDis
+       // situations where we're going to ignore a scrollframe's clipping;
+       // we wouldn't want to clip the dirty area to the scrollframe's
+       // bounds in that case.
+     }
+   }
+ 
+   // XXX need to have inline-block and inline-table set pseudoStackingContext
+   
+-  const nsStyleDisplay* ourDisp = StyleDisplay();
+   // REVIEW: Taken from nsBoxFrame::Paint
+   // Don't paint our children if the theme object is a leaf.
+   if (IsThemed(ourDisp) &&
+       !PresContext()->GetTheme()->WidgetIsContainer(ourDisp->mAppearance))
+     return;
+ 
+   // Child is composited if it's transformed, partially transparent, or has
+   // SVG effects or a blend mode..

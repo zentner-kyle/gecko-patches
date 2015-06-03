@@ -1,5 +1,6 @@
-RemoveBoxSizingPaddingBoxTests
 ParseContain
+ContainPaint
+RemoveBoxSizingPaddingBoxTests
 try-linux-minimal
 try-patch
 do-reflow-isroot-boolean
