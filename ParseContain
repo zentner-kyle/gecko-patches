@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  9eae3880b132898a96a80d497cba2b9523e049a4
+# Parent  5b4c240e1a36ed27db67f21dc35c1ca2e8934d0c
 Bug 1170173 - Parse CSS 'contain' property.
 
 diff --git a/browser/devtools/styleinspector/test/browser_ruleview_completion-new-property_02.js b/browser/devtools/styleinspector/test/browser_ruleview_completion-new-property_02.js
@@ -122,7 +122,7 @@ diff --git a/layout/style/nsCSSParser.cpp b/layout/style/nsCSSParser.cpp
  
    uint32_t variant = nsCSSProps::ParserVariant(aPropID);
    if (variant == 0) {
-@@ -12392,16 +12395,45 @@ CSSParserImpl::ParseFontVariantEastAsian
+@@ -12392,16 +12395,39 @@ CSSParserImpl::ParseFontVariantEastAsian
    NS_ASSERTION(maskEastAsian[ArrayLength(maskEastAsian) - 1] ==
                   MASK_END_VALUE,
                 "incorrectly terminated array");
@@ -134,17 +134,11 @@ diff --git a/layout/style/nsCSSParser.cpp b/layout/style/nsCSSParser.cpp
 +bool
 +CSSParserImpl::ParseContain(nsCSSValue& aValue)
 +{
-+  static const int32_t maskContain[] = {
-+    MASK_END_VALUE
-+  };
-+
-+  if (ParseVariant(aValue,
-+                   VARIANT_INHERIT | VARIANT_NONE,
-+                   nullptr)) {
++  if (ParseVariant(aValue, VARIANT_INHERIT | VARIANT_NONE, nullptr)) {
 +    return true;
 +  }
-+  if (!ParseBitmaskValues(aValue, nsCSSProps::kContainKTable,
-+                                     maskContain)) {
++  static const int32_t maskContain[] = { MASK_END_VALUE };
++  if (!ParseBitmaskValues(aValue, nsCSSProps::kContainKTable, maskContain)) {
 +    return false;
 +  }
 +  if (aValue.GetIntValue() & NS_STYLE_CONTAIN_STRICT) {
@@ -187,10 +181,10 @@ diff --git a/layout/style/nsCSSPropList.h b/layout/style/nsCSSPropList.h
 +    CSS_PROPERTY_PARSE_VALUE |
 +        CSS_PROPERTY_VALUE_PARSER_FUNCTION,
 +    "layout.css.contain.enabled",
-+    // Does not affect parsing, but is needed for tab completion.
++    // Does not affect parsing, but is needed for tab completion in devtools:
 +    VARIANT_HK | VARIANT_NONE,
 +    kContainKTable,
-+    offsetof(nsStyleDisplay, mContain),
++    CSS_PROP_NO_OFFSET,
 +    eStyleAnimType_None)
  CSS_PROP_CONTENT(
      content,
@@ -213,11 +207,11 @@ diff --git a/layout/style/nsCSSProps.cpp b/layout/style/nsCSSProps.cpp
  };
  
 +const KTableValue nsCSSProps::kContainKTable[] = {
-+  eCSSKeyword_none,               NS_STYLE_CONTAIN_NONE,
-+  eCSSKeyword_strict,             NS_STYLE_CONTAIN_STRICT,
-+  eCSSKeyword_layout,             NS_STYLE_CONTAIN_LAYOUT,
-+  eCSSKeyword_style,              NS_STYLE_CONTAIN_STYLE,
-+  eCSSKeyword_paint,              NS_STYLE_CONTAIN_PAINT,
++  eCSSKeyword_none,    NS_STYLE_CONTAIN_NONE,
++  eCSSKeyword_strict,  NS_STYLE_CONTAIN_STRICT,
++  eCSSKeyword_layout,  NS_STYLE_CONTAIN_LAYOUT,
++  eCSSKeyword_style,   NS_STYLE_CONTAIN_STYLE,
++  eCSSKeyword_paint,   NS_STYLE_CONTAIN_PAINT,
 +  eCSSKeyword_UNKNOWN,-1
 +};
 +
@@ -265,15 +259,15 @@ diff --git a/layout/style/nsCSSValue.cpp b/layout/style/nsCSSValue.cpp
 +    case eCSSProperty_contain:
 +      if (intValue & NS_STYLE_CONTAIN_STRICT) {
 +        NS_ASSERTION(intValue == (NS_STYLE_CONTAIN_STRICT | NS_STYLE_CONTAIN_ALL_BITS),
-+                     "contain: strict should imply contain: layout style paint.");
++                     "contain: strict should imply contain: layout style paint");
 +        // Only output strict.
 +        intValue = NS_STYLE_CONTAIN_STRICT;
 +      }
 +      nsStyleUtil::AppendBitmaskCSSValue(aProperty,
-+          intValue,
-+          NS_STYLE_CONTAIN_STRICT,
-+          NS_STYLE_CONTAIN_PAINT,
-+          aResult);
++                                         intValue,
++                                         NS_STYLE_CONTAIN_STRICT,
++                                         NS_STYLE_CONTAIN_PAINT,
++                                         aResult);
 +      break;
 +
      default:
@@ -306,14 +300,14 @@ diff --git a/layout/style/nsComputedDOMStyle.cpp b/layout/style/nsComputedDOMSty
 +    val->SetIdent(eCSSKeyword_none);
 +  } else if (mask & NS_STYLE_CONTAIN_STRICT) {
 +    NS_ASSERTION(mask == (NS_STYLE_CONTAIN_STRICT | NS_STYLE_CONTAIN_ALL_BITS),
-+                 "contain: strict should imply contain: layout style paint.");
++                 "contain: strict should imply contain: layout style paint");
 +    val->SetIdent(eCSSKeyword_strict);
 +  } else {
 +    nsAutoString valueStr;
 +
 +    nsStyleUtil::AppendBitmaskCSSValue(eCSSProperty_contain,
-+      mask, NS_STYLE_CONTAIN_LAYOUT,
-+      NS_STYLE_CONTAIN_PAINT, valueStr);
++                                       mask, NS_STYLE_CONTAIN_LAYOUT,
++                                       NS_STYLE_CONTAIN_PAINT, valueStr);
 +    val->SetString(valueStr);
 +  }
 +
@@ -571,7 +565,7 @@ diff --git a/layout/style/test/property_database.js b/layout/style/test/property
 diff --git a/modules/libpref/init/all.js b/modules/libpref/init/all.js
 --- a/modules/libpref/init/all.js
 +++ b/modules/libpref/init/all.js
-@@ -2246,16 +2246,19 @@ pref("layout.css.all-shorthand.enabled",
+@@ -2253,16 +2253,19 @@ pref("layout.css.all-shorthand.enabled",
  pref("layout.css.variables.enabled", true);
  
  // Is support for CSS overflow-clip-box enabled for non-UA sheets?

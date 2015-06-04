@@ -1,151 +1,12 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  c1b5d8affea5a6457bbf2aa545298e50af3d5e95
+# Parent  cdc8e05cbdb7e6739b94cc4e84aecab46d3f3d2e
 Bug 1170781 - Implement CSS 'contain: paint'.
 
-diff --git a/layout/generic/nsFontInflationData.cpp b/layout/generic/nsFontInflationData.cpp
---- a/layout/generic/nsFontInflationData.cpp
-+++ b/layout/generic/nsFontInflationData.cpp
-@@ -19,28 +19,30 @@ using namespace mozilla::layout;
- NS_DECLARE_FRAME_PROPERTY(FontInflationDataProperty,
-                           DeleteValue<nsFontInflationData>)
- 
- /* static */ nsFontInflationData*
- nsFontInflationData::FindFontInflationDataFor(const nsIFrame *aFrame)
- {
-   // We have one set of font inflation data per block formatting context.
-   const nsIFrame *bfc = FlowRootFor(aFrame);
--  NS_ASSERTION(bfc->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT,
-+  NS_ASSERTION(bfc->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT ||
-+               bfc->StyleDisplay()->mContain & NS_STYLE_CONTAIN_PAINT,
-                "should have found a flow root");
- 
-   return static_cast<nsFontInflationData*>(
-              bfc->Properties().Get(FontInflationDataProperty()));
- }
- 
- /* static */ bool
- nsFontInflationData::UpdateFontInflationDataISizeFor(const nsHTMLReflowState& aReflowState)
- {
-   nsIFrame *bfc = aReflowState.frame;
--  NS_ASSERTION(bfc->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT,
-+  NS_ASSERTION(bfc->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT ||
-+               bfc->StyleDisplay()->mContain & NS_STYLE_CONTAIN_PAINT,
-                "should have been given a flow root");
-   FrameProperties bfcProps(bfc->Properties());
-   nsFontInflationData *data = static_cast<nsFontInflationData*>(
-                                 bfcProps.Get(FontInflationDataProperty()));
-   bool oldInflationEnabled;
-   nscoord oldNCAISize;
-   if (data) {
-     oldNCAISize = data->mNCAISize;
-@@ -59,17 +61,18 @@ nsFontInflationData::UpdateFontInflation
- 
-   return oldInflationEnabled &&
-          oldNCAISize != data->mNCAISize;
- }
- 
- /* static */ void
- nsFontInflationData::MarkFontInflationDataTextDirty(nsIFrame *aBFCFrame)
- {
--  NS_ASSERTION(aBFCFrame->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT,
-+  NS_ASSERTION(aBFCFrame->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT ||
-+               aBFCFrame->StyleDisplay()->mContain & NS_STYLE_CONTAIN_PAINT,
-                "should have been given a flow root");
- 
-   FrameProperties bfcProps(aBFCFrame->Properties());
-   nsFontInflationData *data = static_cast<nsFontInflationData*>(
-                                 bfcProps.Get(FontInflationDataProperty()));
-   if (data) {
-     data->MarkTextDirty();
-   }
-@@ -172,17 +175,18 @@ ComputeDescendantISize(const nsHTMLReflo
- 
-   return result;
- }
- 
- void
- nsFontInflationData::UpdateISize(const nsHTMLReflowState &aReflowState)
- {
-   nsIFrame *bfc = aReflowState.frame;
--  NS_ASSERTION(bfc->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT,
-+  NS_ASSERTION(bfc->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT ||
-+               bfc->StyleDisplay()->mContain & NS_STYLE_CONTAIN_PAINT,
-                "must be block formatting context");
- 
-   nsIFrame *firstInflatableDescendant =
-              FindEdgeInflatableFrameIn(bfc, eFromStart);
-   if (!firstInflatableDescendant) {
-     mTextAmount = 0;
-     mTextThreshold = 0; // doesn't matter
-     mTextDirty = false;
-@@ -243,17 +247,18 @@ nsFontInflationData::FindEdgeInflatableF
-   for (uint32_t i = 0, len = lists.Length(); i < len; ++i) {
-     const nsFrameList& list =
-       lists[(aDirection == eFromStart) ? i : len - i - 1].mList;
-     for (nsIFrame *kid = (aDirection == eFromStart) ? list.FirstChild()
-                                                     : list.LastChild();
-          kid;
-          kid = (aDirection == eFromStart) ? kid->GetNextSibling()
-                                           : kid->GetPrevSibling()) {
--      if (kid->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT) {
-+      if (kid->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT ||
-+          kid->StyleDisplay()->mContain & NS_STYLE_CONTAIN_PAINT) {
-         // Goes in a different set of inflation data.
-         continue;
-       }
- 
-       if (kid->GetType() == nsGkAtoms::textFrame) {
-         nsIContent *content = kid->GetContent();
-         if (content && kid == content->GetPrimaryFrame()) {
-           uint32_t len = nsTextFrameUtils::
-@@ -328,17 +333,18 @@ nsFontInflationData::ScanTextIn(nsIFrame
-   // FIXME: Should probably only scan the text that's actually going to
-   // be inflated!
- 
-   nsIFrame::ChildListIterator lists(aFrame);
-   for (; !lists.IsDone(); lists.Next()) {
-     nsFrameList::Enumerator kids(lists.CurrentList());
-     for (; !kids.AtEnd(); kids.Next()) {
-       nsIFrame *kid = kids.get();
--      if (kid->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT) {
-+      if (kid->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT ||
-+          kid->StyleDisplay()->mContain & NS_STYLE_CONTAIN_PAINT) {
-         // Goes in a different set of inflation data.
-         continue;
-       }
- 
-       nsIAtom *fType = kid->GetType();
-       if (fType == nsGkAtoms::textFrame) {
-         nsIContent *content = kid->GetContent();
-         if (content && kid == content->GetPrimaryFrame()) {
-diff --git a/layout/generic/nsFontInflationData.h b/layout/generic/nsFontInflationData.h
---- a/layout/generic/nsFontInflationData.h
-+++ b/layout/generic/nsFontInflationData.h
-@@ -54,17 +54,18 @@ private:
-   // by multiplying the number of characters found by the font size
-   // (yielding the inline-size that would be occupied by the characters if
-   // they were all em squares).  But stop scanning if mTextAmount
-   // crosses mTextThreshold.
-   void ScanTextIn(nsIFrame *aFrame);
- 
-   static const nsIFrame* FlowRootFor(const nsIFrame *aFrame)
-   {
--    while (!(aFrame->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT)) {
-+    while (!(aFrame->GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT ||
-+             aFrame->StyleDisplay()->mContain & NS_STYLE_CONTAIN_PAINT)) {
-       aFrame = aFrame->GetParent();
-     }
-     return aFrame;
-   }
- 
-   nsIFrame *mBFCFrame;
-   nscoord mNCAISize;
-   nscoord mTextAmount, mTextThreshold;
 diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
 --- a/layout/generic/nsFrame.cpp
 +++ b/layout/generic/nsFrame.cpp
-@@ -2241,16 +2241,21 @@ nsIFrame::BuildDisplayListForChild(nsDis
+@@ -2241,16 +2241,26 @@ nsIFrame::BuildDisplayListForChild(nsDis
    // If painting is restricted to just the background of the top level frame,
    // then we have nothing to do here.
    if (aBuilder->IsBackgroundOnly())
@@ -155,9 +16,14 @@ diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
    if (child->GetStateBits() & NS_FRAME_TOO_DEEP_IN_FRAME_TREE)
      return;
 +  const nsStyleDisplay* ourDisp = StyleDisplay();
-+  Maybe<DisplayListClipState::AutoClipContainingBlockDescendantsToContentBox> clip;
++  Maybe<DisplayListClipState::AutoSaveRestore> clip;
 +  if (ourDisp->mContain & NS_STYLE_CONTAIN_PAINT) {
-+    clip.emplace(aBuilder, this);
++    clip.emplace(aBuilder);
++    nsRect contentRect = GetContentRectRelativeToSelf() +
++      aBuilder->ToReferenceFrame(this);
++    nscoord radii[8];
++    GetContentBoxBorderRadii(radii);
++    clip->ClipContentDescendants(contentRect, radii);
 +  }
    
    bool isSVG = (child->GetStateBits() & NS_FRAME_SVG_LAYOUT);
@@ -167,7 +33,7 @@ diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
      (aFlags & DISPLAY_CHILD_FORCE_PSEUDO_STACKING_CONTEXT) != 0;
    if (!isSVG &&
        (aFlags & DISPLAY_CHILD_INLINE) &&
-@@ -2340,17 +2345,16 @@ nsIFrame::BuildDisplayListForChild(nsDis
+@@ -2340,17 +2350,16 @@ nsIFrame::BuildDisplayListForChild(nsDis
        // situations where we're going to ignore a scrollframe's clipping;
        // we wouldn't want to clip the dirty area to the scrollframe's
        // bounds in that case.
@@ -185,26 +51,6 @@ diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
  
    // Child is composited if it's transformed, partially transparent, or has
    // SVG effects or a blend mode..
-@@ -3906,17 +3910,18 @@ nsFrame::MarkIntrinsicISizesDirty()
-     SizeNeedsRecalc(metrics->mMinSize);
-     SizeNeedsRecalc(metrics->mMaxSize);
-     SizeNeedsRecalc(metrics->mBlockPrefSize);
-     SizeNeedsRecalc(metrics->mBlockMinSize);
-     CoordNeedsRecalc(metrics->mFlex);
-     CoordNeedsRecalc(metrics->mAscent);
-   }
- 
--  if (GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT) {
-+  if (GetStateBits() & NS_FRAME_FONT_INFLATION_FLOW_ROOT ||
-+      StyleDisplay()->mContain & NS_STYLE_CONTAIN_PAINT) {
-     nsFontInflationData::MarkFontInflationDataTextDirty(this);
-   }
- }
- 
- /* virtual */ nscoord
- nsFrame::GetMinISize(nsRenderingContext *aRenderingContext)
- {
-   nscoord result = 0;
 diff --git a/layout/style/nsStyleStructInlines.h b/layout/style/nsStyleStructInlines.h
 --- a/layout/style/nsStyleStructInlines.h
 +++ b/layout/style/nsStyleStructInlines.h
