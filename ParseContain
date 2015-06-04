@@ -1,8 +1,30 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  a2d68ee6628cf610ad3d0d1bf4b576276c849e5c
+# Parent  9eae3880b132898a96a80d497cba2b9523e049a4
 Bug 1170173 - Parse CSS 'contain' property.
 
+diff --git a/browser/devtools/styleinspector/test/browser_ruleview_completion-new-property_02.js b/browser/devtools/styleinspector/test/browser_ruleview_completion-new-property_02.js
+--- a/browser/devtools/styleinspector/test/browser_ruleview_completion-new-property_02.js
++++ b/browser/devtools/styleinspector/test/browser_ruleview_completion-new-property_02.js
+@@ -20,17 +20,17 @@ let testData = [
+   ["d", {}, "direction", 0, 3],
+   ["VK_DOWN", {}, "display", 1, 3],
+   ["VK_TAB", {}, "", -1, 10],
+   ["VK_DOWN", {}, "-moz-box", 0, 10],
+   ["n", {}, "none", -1, 0],
+   ["VK_TAB", {shiftKey: true}, "display", -1, 0],
+   ["VK_BACK_SPACE", {}, "", -1, 0],
+   ["c", {}, "caption-side", 0, 10],
+-  ["o", {}, "color", 0, 6],
++  ["o", {}, "color", 0, 7],
+   ["VK_TAB", {}, "none", -1, 0],
+   ["r", {}, "rebeccapurple", 0, 6],
+   ["VK_DOWN", {}, "red", 1, 6],
+   ["VK_DOWN", {}, "rgb", 2, 6],
+   ["VK_DOWN", {}, "rgba", 3, 6],
+   ["VK_DOWN", {}, "rosybrown", 4, 6],
+   ["VK_DOWN", {}, "royalblue", 5, 6],
+   ["VK_RIGHT", {}, "royalblue", -1, 0],
 diff --git a/layout/style/nsCSSKeywordList.h b/layout/style/nsCSSKeywordList.h
 --- a/layout/style/nsCSSKeywordList.h
 +++ b/layout/style/nsCSSKeywordList.h
@@ -149,7 +171,7 @@ diff --git a/layout/style/nsCSSParser.cpp b/layout/style/nsCSSParser.cpp
 diff --git a/layout/style/nsCSSPropList.h b/layout/style/nsCSSPropList.h
 --- a/layout/style/nsCSSPropList.h
 +++ b/layout/style/nsCSSPropList.h
-@@ -1482,16 +1482,27 @@ CSS_PROP_COLUMN(
+@@ -1482,16 +1482,28 @@ CSS_PROP_COLUMN(
      CSS_PROP_DOMPROP_PREFIXED(ColumnRuleWidth),
      CSS_PROPERTY_PARSE_VALUE |
          CSS_PROPERTY_VALUE_NONNEGATIVE,
@@ -165,9 +187,10 @@ diff --git a/layout/style/nsCSSPropList.h b/layout/style/nsCSSPropList.h
 +    CSS_PROPERTY_PARSE_VALUE |
 +        CSS_PROPERTY_VALUE_PARSER_FUNCTION,
 +    "layout.css.contain.enabled",
-+    VARIANT_HK, // Does not affect parsing, but is needed for tab completion.
++    // Does not affect parsing, but is needed for tab completion.
++    VARIANT_HK | VARIANT_NONE,
 +    kContainKTable,
-+    CSS_PROP_NO_OFFSET,
++    offsetof(nsStyleDisplay, mContain),
 +    eStyleAnimType_None)
  CSS_PROP_CONTENT(
      content,
@@ -230,7 +253,7 @@ diff --git a/layout/style/nsCSSProps.h b/layout/style/nsCSSProps.h
 diff --git a/layout/style/nsCSSValue.cpp b/layout/style/nsCSSValue.cpp
 --- a/layout/style/nsCSSValue.cpp
 +++ b/layout/style/nsCSSValue.cpp
-@@ -1287,16 +1287,28 @@ nsCSSValue::AppendToString(nsCSSProperty
+@@ -1287,16 +1287,30 @@ nsCSSValue::AppendToString(nsCSSProperty
        break;
  
      case eCSSProperty_clip_path:
@@ -241,12 +264,14 @@ diff --git a/layout/style/nsCSSValue.cpp b/layout/style/nsCSSValue.cpp
  
 +    case eCSSProperty_contain:
 +      if (intValue & NS_STYLE_CONTAIN_STRICT) {
++        NS_ASSERTION(intValue == (NS_STYLE_CONTAIN_STRICT | NS_STYLE_CONTAIN_ALL_BITS),
++                     "contain: strict should imply contain: layout style paint.");
 +        // Only output strict.
 +        intValue = NS_STYLE_CONTAIN_STRICT;
 +      }
 +      nsStyleUtil::AppendBitmaskCSSValue(aProperty,
 +          intValue,
-+          NS_STYLE_CONTAIN_LAYOUT,
++          NS_STYLE_CONTAIN_STRICT,
 +          NS_STYLE_CONTAIN_PAINT,
 +          aResult);
 +      break;
@@ -262,7 +287,7 @@ diff --git a/layout/style/nsCSSValue.cpp b/layout/style/nsCSSValue.cpp
 diff --git a/layout/style/nsComputedDOMStyle.cpp b/layout/style/nsComputedDOMStyle.cpp
 --- a/layout/style/nsComputedDOMStyle.cpp
 +++ b/layout/style/nsComputedDOMStyle.cpp
-@@ -4001,16 +4001,39 @@ nsComputedDOMStyle::DoGetDisplay()
+@@ -4001,16 +4001,41 @@ nsComputedDOMStyle::DoGetDisplay()
  {
    nsROCSSPrimitiveValue *val = new nsROCSSPrimitiveValue;
    val->SetIdent(nsCSSProps::ValueToKeywordEnum(StyleDisplay()->mDisplay,
@@ -280,6 +305,8 @@ diff --git a/layout/style/nsComputedDOMStyle.cpp b/layout/style/nsComputedDOMSty
 +  if (mask == 0) {
 +    val->SetIdent(eCSSKeyword_none);
 +  } else if (mask & NS_STYLE_CONTAIN_STRICT) {
++    NS_ASSERTION(mask == (NS_STYLE_CONTAIN_STRICT | NS_STYLE_CONTAIN_ALL_BITS),
++                 "contain: strict should imply contain: layout style paint.");
 +    val->SetIdent(eCSSKeyword_strict);
 +  } else {
 +    nsAutoString valueStr;
@@ -356,11 +383,11 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
                parentDisplay->mDisplay,
                NS_STYLE_DISPLAY_INLINE, 0, 0, 0, 0);
  
-+  // contain: enum, inherit, initial
++  // contain: none, enum, inherit, initial
 +  SetDiscrete(*aRuleData->ValueForContain(), display->mContain, canStoreInRuleTree,
-+              SETDSC_ENUMERATED | SETDSC_UNSET_INITIAL,
++              SETDSC_ENUMERATED | SETDSC_NONE | SETDSC_UNSET_INITIAL,
 +              parentDisplay->mContain,
-+              NS_STYLE_CONTAIN_NONE, 0, 0, 0, 0);
++              NS_STYLE_CONTAIN_NONE, 0, NS_STYLE_CONTAIN_NONE, 0, 0);
 +
    // mix-blend-mode: enum, inherit, initial
    SetDiscrete(*aRuleData->ValueForMixBlendMode(), display->mMixBlendMode,
@@ -424,7 +451,25 @@ diff --git a/layout/style/nsStyleStruct.cpp b/layout/style/nsStyleStruct.cpp
    mBreakBefore = false;
    mBreakAfter = false;
    mOverflowX = NS_STYLE_OVERFLOW_VISIBLE;
-@@ -2705,16 +2706,17 @@ nsStyleDisplay::nsStyleDisplay(const nsS
+@@ -2642,16 +2643,17 @@ nsStyleDisplay::nsStyleDisplay()
+ }
+ 
+ nsStyleDisplay::nsStyleDisplay(const nsStyleDisplay& aSource)
+   : mBinding(aSource.mBinding)
+   , mClip(aSource.mClip)
+   , mOpacity(aSource.mOpacity)
+   , mDisplay(aSource.mDisplay)
+   , mOriginalDisplay(aSource.mOriginalDisplay)
++  , mContain(aSource.mContain)
+   , mAppearance(aSource.mAppearance)
+   , mPosition(aSource.mPosition)
+   , mFloats(aSource.mFloats)
+   , mOriginalFloats(aSource.mOriginalFloats)
+   , mBreakType(aSource.mBreakType)
+   , mBreakInside(aSource.mBreakInside)
+   , mBreakBefore(aSource.mBreakBefore)
+   , mBreakAfter(aSource.mBreakAfter)
+@@ -2705,16 +2707,17 @@ nsStyleDisplay::nsStyleDisplay(const nsS
  
  nsChangeHint nsStyleDisplay::CalcDifference(const nsStyleDisplay& aOther) const
  {
@@ -526,7 +571,7 @@ diff --git a/layout/style/test/property_database.js b/layout/style/test/property
 diff --git a/modules/libpref/init/all.js b/modules/libpref/init/all.js
 --- a/modules/libpref/init/all.js
 +++ b/modules/libpref/init/all.js
-@@ -2247,16 +2247,19 @@ pref("layout.css.all-shorthand.enabled",
+@@ -2246,16 +2246,19 @@ pref("layout.css.all-shorthand.enabled",
  pref("layout.css.variables.enabled", true);
  
  // Is support for CSS overflow-clip-box enabled for non-UA sheets?

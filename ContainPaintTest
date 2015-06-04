@@ -1,0 +1,256 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  84e3c79b4d3482b25b96d80a1396ad992dbe9479
+Bug 1170781 - Patch 2: Test CSS 'contain: paint'.
+
+diff --git a/layout/reftests/css-contain/paint-clip-ref.html b/layout/reftests/css-contain/paint-clip-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/paint-clip-ref.html
+@@ -0,0 +1,24 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  #a {
++      width: 150px;
++      height: 150px;
++      background: green;
++      padding-width: 0;
++      position: absolute;
++      top: 25px;
++      left: 25px;
++  }
++  </style>
++</head>
++<body>
++  <div id="a">
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/paint-clip.html b/layout/reftests/css-contain/paint-clip.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/paint-clip.html
+@@ -0,0 +1,53 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  .root {
++    contain: paint;
++    width: 100px;
++    height: 100px;
++    background: green;
++    margin: 25px;
++    padding: 25px;
++    padding-width: 0;
++  }
++  .a {
++    width: 100px;
++    height: 100px;
++    background: red;
++  }
++  .b {
++    width: 100px;
++    height: 200px;
++    background: red;
++  }
++  .c {
++    width: 100px;
++    height: 100px;
++    background: green;
++  }
++  .background {
++    position: absolute;
++    top: -50px;
++    left: -50px;
++    width: 225px;
++    height: 300px;
++    background: red;
++    z-index: -1;
++  }
++  </style>
++</head>
++<body>
++  <div class="root">
++    <div class="b">
++      <div class="c"> </div>
++      <div class="a"> </div>
++      <div class="background"> </div>
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/paint-containing-block-absolute-ref.html b/layout/reftests/css-contain/paint-containing-block-absolute-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/paint-containing-block-absolute-ref.html
+@@ -0,0 +1,23 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  #a {
++      width: 100px;
++      height: 100px;
++      background: green;
++      position: absolute;
++      top: 50px;
++      left: 50px;
++  }
++  </style>
++</head>
++<body>
++  <div id="a">
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/paint-containing-block-absolute.html b/layout/reftests/css-contain/paint-containing-block-absolute.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/paint-containing-block-absolute.html
+@@ -0,0 +1,34 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  #a {
++      contain: paint;
++      width: 100px;
++      height: 100px;
++      background: red;
++      margin: 50px;
++  }
++  #b {
++      position: absolute;
++      width: 100px;
++      height: 100px;
++      background: green;
++      top: 0;
++      left: 0;
++  }
++  </style>
++</head>
++<body>
++  <div id="a">
++    <div>
++      <div id="b">
++      </div>
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/paint-containing-block-fixed-ref.html b/layout/reftests/css-contain/paint-containing-block-fixed-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/paint-containing-block-fixed-ref.html
+@@ -0,0 +1,20 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  #a {
++      width: 100px;
++      height: 100px;
++      background: green;
++      position: absolute;
++      top: 50px;
++      left: 50px;
++  }
++  </style>
++</head>
++<body>
++  <div id="a">
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/paint-containing-block-fixed.html b/layout/reftests/css-contain/paint-containing-block-fixed.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/paint-containing-block-fixed.html
+@@ -0,0 +1,34 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  #a {
++      contain: paint;
++      width: 100px;
++      height: 100px;
++      background: red;
++      margin: 50px;
++  }
++  #b {
++      position: fixed;
++      width: 100px;
++      height: 100px;
++      background: green;
++      top: 0;
++      left: 0;
++  }
++  </style>
++</head>
++<body>
++  <div id="a">
++    <div>
++      <div id="b">
++      </div>
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/reftest.list b/layout/reftests/css-contain/reftest.list
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/reftest.list
+@@ -0,0 +1,5 @@
++default-preferences pref(layout.css.contain.enabled,true)
++
++== paint-clip.html paint-clip-ref.html
++== paint-containing-block-absolute.html paint-containing-block-absolute-ref.html
++== paint-containing-block-fixed.html paint-containing-block-fixed-ref.html
+diff --git a/layout/reftests/reftest.list b/layout/reftests/reftest.list
+--- a/layout/reftests/reftest.list
++++ b/layout/reftests/reftest.list
+@@ -137,16 +137,19 @@ include css-variables/reftest.list
+ # layout/style/test/test_visited_reftests instead of using the reftest
+ # harness.
+ 
+ include cssom/reftest.list
+ 
+ # columns/
+ include columns/reftest.list
+ 
++#contain
++include css-contain/reftest.list
++
+ # content/
+ include ../../content/test/reftest/reftest.list
+ 
+ # counters/
+ include counters/reftest.list
+ 
+ # counter-style/
+ include counter-style/reftest.list
