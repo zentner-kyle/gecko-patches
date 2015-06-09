@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  84e3c79b4d3482b25b96d80a1396ad992dbe9479
+# Parent  d539ecdc84116edd3359cf994d1369a595886600
 Bug 1170781 - Patch 2: Test CSS 'contain: paint'.
 
 diff --git a/layout/reftests/css-contain/paint-clip-ref.html b/layout/reftests/css-contain/paint-clip-ref.html
@@ -221,16 +221,167 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
+diff --git a/layout/reftests/css-contain/paint-formatting-context-float-ref.html b/layout/reftests/css-contain/paint-formatting-context-float-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/paint-formatting-context-float-ref.html
+@@ -0,0 +1,28 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  #left {
++    float: left;
++    height: 50px;
++    width: 10px;
++    background: blue;
++  }
++  #a {
++      background: green;
++      margin: 10px;
++      width: 50px;
++      height: 50px;
++  }
++  </style>
++</head>
++<body>
++  <div id="left"> </div>
++  <div id="a">
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/paint-formatting-context-float.html b/layout/reftests/css-contain/paint-formatting-context-float.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/paint-formatting-context-float.html
+@@ -0,0 +1,37 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  #left {
++    float: left;
++    height: 50px;
++    width: 10px;
++    background: blue;
++  }
++  #a {
++      contain: paint;
++      background: red;
++      margin: 10px;
++      width: 50px;
++      height: 50px;
++  }
++  #b {
++      clear: left;
++      width: 50px;
++      height: 50px;
++      background: green;
++  }
++  </style>
++</head>
++<body>
++  <div id="left"> </div>
++  <div id="a">
++    <div id="b">
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/paint-formatting-context-margin-ref.html b/layout/reftests/css-contain/paint-formatting-context-margin-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/paint-formatting-context-margin-ref.html
+@@ -0,0 +1,29 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  #a {
++      background: blue;
++      margin: 10px;
++      width: 50px;
++      height: 50px;
++  }
++  #b {
++      position: relative;
++      width: 50px;
++      height: 40px;
++      background: green;
++      top: 10px;
++  }
++  </style>
++</head>
++<body>
++  <div id="a">
++    <div id="b"> </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/paint-formatting-context-margin.html b/layout/reftests/css-contain/paint-formatting-context-margin.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/paint-formatting-context-margin.html
+@@ -0,0 +1,35 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  #a {
++      contain: paint;
++      background: blue;
++      margin: 10px;
++      width: 50px;
++      height: 50px;
++  }
++  #b {
++      width: 50px;
++      height: 40px;
++      background: green;
++      margin-top: 10px;
++  }
++  #c {
++      background: red;
++      width: 50px;
++      height: 10px;
++  }
++  </style>
++</head>
++<body>
++  <div id="a">
++    <div id="b"> </div>
++    <div id="c"> </div>
++  </div>
++</body>
++</html>
 diff --git a/layout/reftests/css-contain/reftest.list b/layout/reftests/css-contain/reftest.list
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/css-contain/reftest.list
-@@ -0,0 +1,5 @@
+@@ -0,0 +1,7 @@
 +default-preferences pref(layout.css.contain.enabled,true)
 +
 +== paint-clip.html paint-clip-ref.html
 +== paint-containing-block-absolute.html paint-containing-block-absolute-ref.html
 +== paint-containing-block-fixed.html paint-containing-block-fixed-ref.html
++== paint-formatting-context-float.html paint-formatting-context-float-ref.html
++== paint-formatting-context-margin.html paint-formatting-context-margin-ref.html
 diff --git a/layout/reftests/reftest.list b/layout/reftests/reftest.list
 --- a/layout/reftests/reftest.list
 +++ b/layout/reftests/reftest.list

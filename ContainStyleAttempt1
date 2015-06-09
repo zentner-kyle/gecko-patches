@@ -1,0 +1,296 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  c8c5c7c9f13e2dfb991d251c3cb685d81ba93614
+
+diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
+--- a/layout/base/nsCSSFrameConstructor.cpp
++++ b/layout/base/nsCSSFrameConstructor.cpp
+@@ -4762,16 +4762,21 @@ nsCSSFrameConstructor::InitAndRestoreFra
+   // Initialize the frame
+   aNewFrame->Init(aContent, aParentFrame, nullptr);
+   aNewFrame->AddStateBits(aState.mAdditionalStateBits);
+ 
+   if (aState.mFrameState) {
+     // Restore frame state for just the newly created frame.
+     RestoreFrameStateFor(aNewFrame, aState.mFrameState);
+   }
++  if (aNewFrame->StyleDisplay()->mContain & NS_STYLE_CONTAIN_STYLE) {
++    if (mCounterManager.AddRoots(aNewFrame)) {
++      CountersDirty();
++    }
++  }
+ 
+   if (aAllowCounters &&
+       mCounterManager.AddCounterResetsAndIncrements(aNewFrame)) {
+     CountersDirty();
+   }
+ }
+ 
+ already_AddRefed<nsStyleContext>
+diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
+--- a/layout/base/nsCounterManager.cpp
++++ b/layout/base/nsCounterManager.cpp
+@@ -74,17 +74,17 @@ void nsCounterUseNode::Calc(nsCounterLis
+ }
+ 
+ // assign the correct |mValueAfter| value to a node that has been inserted
+ // Should be called immediately after calling |Insert|.
+ void nsCounterChangeNode::Calc(nsCounterList *aList)
+ {
+     NS_ASSERTION(!aList->IsDirty(),
+                  "Why are we calculating with a dirty list?");
+-    if (mType == RESET) {
++    if (mType == RESET || mType == ROOT) {
+         mValueAfter = mChangeValue;
+     } else {
+         NS_ASSERTION(mType == INCREMENT, "invalid type");
+         mValueAfter = nsCounterManager::IncrementCounter(aList->ValueBefore(this),
+                                                          mChangeValue);
+     }
+ }
+ 
+@@ -147,29 +147,32 @@ nsCounterList::SetScope(nsCounterNode *a
+ 
+     for (nsCounterNode *prev = Prev(aNode), *start;
+          prev; prev = start->mScopePrev) {
+         // If |prev| starts a scope (because it's a real or implied
+         // reset), we want it as the scope start rather than the start
+         // of its enclosing scope.  Otherwise, there's no enclosing
+         // scope, so the next thing in prev's scope shares its scope
+         // start.
+-        start = (prev->mType == nsCounterNode::RESET || !prev->mScopeStart)
++        start = (prev->mType == nsCounterNode::RESET ||
++                 prev->mType == nsCounterNode::ROOT ||
++                 !prev->mScopeStart)
+                   ? prev : prev->mScopeStart;
+ 
+         // |startContent| is analogous to |nodeContent| (see above).
+         nsIContent *startContent = start->mPseudoFrame->GetContent()->GetParent();
+         NS_ASSERTION(nodeContent || !startContent,
+                      "null check on startContent should be sufficient to "
+                      "null check nodeContent as well, since if nodeContent "
+                      "is for the root, startContent (which is before it) "
+                      "must be too");
+ 
+              // A reset's outer scope can't be a scope created by a sibling.
+-        if (!(aNode->mType == nsCounterNode::RESET &&
++        if (!((aNode->mType == nsCounterNode::RESET ||
++               aNode->mType == nsCounterNode::ROOT) &&
+               nodeContent == startContent) &&
+               // everything is inside the root (except the case above,
+               // a second reset on the root)
+             (!startContent ||
+              nsContentUtils::ContentIsDescendantOf(nodeContent,
+                                                    startContent))) {
+             aNode->mScopeStart = start;
+             aNode->mScopePrev  = prev;
+@@ -257,16 +260,42 @@ nsCounterManager::AddResetOrIncrement(ns
+     // Don't call Calc() if the list is already dirty -- it'll be recalculated
+     // anyway, and trying to calculate with a dirty list doesn't work.
+     if (MOZ_LIKELY(!counterList->IsDirty())) {
+         node->Calc(counterList);
+     }
+     return false;
+ }
+ 
++struct AddRootArgs {
++    nsIFrame *mFrame;
++    bool mDirty;
++};
++
++static PLDHashOperator
++AddRoot(const nsAString& aKey, nsCounterList* aList, void* vargs) {
++    struct AddRootArgs *args = static_cast<AddRootArgs*>(vargs);
++    // XXX Is it safe to always use 0 as the index?
++    nsCounterChangeNode *node =
++        new nsCounterChangeNode(args->mFrame, nsCounterNode::ROOT, 0, 0);
++    aList->Insert(node);
++    if (!aList->IsLast(node)) {
++        aList->SetDirty();
++        args->mDirty |= true;
++    }
++    return PL_DHASH_NEXT;
++}
++
++bool
++nsCounterManager::AddRoots(nsIFrame *aFrame) {
++    struct AddRootArgs args = { aFrame, false };
++    mNames.EnumerateRead(AddRoot, static_cast<void*>(&args));
++    return args.mDirty;
++}
++
+ nsCounterList*
+ nsCounterManager::CounterListFor(const nsSubstring& aCounterName)
+ {
+     // XXX Why doesn't nsTHashtable provide an API that allows us to use
+     // get/put in one hashtable lookup?
+     nsCounterList *counterList;
+     if (!mNames.Get(aCounterName, &counterList)) {
+         counterList = new nsCounterList();
+diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
+--- a/layout/base/nsCounterManager.h
++++ b/layout/base/nsCounterManager.h
+@@ -19,17 +19,18 @@
+ class nsCounterList;
+ struct nsCounterUseNode;
+ struct nsCounterChangeNode;
+ 
+ struct nsCounterNode : public nsGenConNode {
+     enum Type {
+         RESET,     // a "counter number" pair in 'counter-reset'
+         INCREMENT, // a "counter number" pair in 'counter-increment'
+-        USE        // counter() or counters() in 'content'
++        USE,       // counter() or counters() in 'content'
++        ROOT,      // a "contain: style" entry
+     };
+ 
+     Type mType;
+ 
+     // Counter value after this node
+     int32_t mValueAfter;
+ 
+     // mScopeStart points to the node (usually a RESET, but not in the
+@@ -52,17 +53,17 @@ struct nsCounterNode : public nsGenConNo
+     // mScopeStart.  Being null for a non-RESET means that it is an
+     // implied 'counter-reset'.  Being null for a RESET means it has no
+     // outer scope.
+     nsCounterNode *mScopePrev;
+ 
+     inline nsCounterUseNode* UseNode();
+     inline nsCounterChangeNode* ChangeNode();
+ 
+-    // For RESET and INCREMENT nodes, aPseudoFrame need not be a
++    // For RESET, ROOT, and INCREMENT nodes, aPseudoFrame need not be a
+     // pseudo-element, and aContentIndex represents the index within the
+     // 'counter-reset' or 'counter-increment' property instead of within
+     // the 'content' property but offset to ensure that (reset,
+     // increment, use) sort in that order.  (This slight weirdness
+     // allows sharing a lot of code with 'quotes'.)
+     nsCounterNode(int32_t aContentIndex, Type aType)
+         : nsGenConNode(aContentIndex)
+         , mType(aType)
+@@ -128,17 +129,17 @@ struct nsCounterChangeNode : public nsCo
+     // 'counter-increment' or 'counter-reset' property.
+     nsCounterChangeNode(nsIFrame* aPseudoFrame,
+                         nsCounterNode::Type aChangeType,
+                         int32_t aChangeValue,
+                         int32_t aPropIndex)
+         : nsCounterNode(// Fake a content index for resets and increments
+                         // that comes before all the real content, with
+                         // the resets first, in order, and then the increments.
+-                        aPropIndex + (aChangeType == RESET
++                        aPropIndex + ((aChangeType == RESET || aChangeType == ROOT)
+                                         ? (INT32_MIN) 
+                                         : (INT32_MIN / 2)),
+                         aChangeType)
+         , mChangeValue(aChangeValue)
+     {
+         NS_ASSERTION(aPropIndex >= 0, "out of range");
+         NS_ASSERTION(aChangeType == INCREMENT || aChangeType == RESET,
+                      "bad type");
+@@ -154,17 +155,17 @@ struct nsCounterChangeNode : public nsCo
+ inline nsCounterUseNode* nsCounterNode::UseNode()
+ {
+     NS_ASSERTION(mType == USE, "wrong type");
+     return static_cast<nsCounterUseNode*>(this);
+ }
+ 
+ inline nsCounterChangeNode* nsCounterNode::ChangeNode()
+ {
+-    NS_ASSERTION(mType == INCREMENT || mType == RESET, "wrong type");
++    NS_ASSERTION(mType == INCREMENT || mType == RESET || mType == ROOT, "wrong type");
+     return static_cast<nsCounterChangeNode*>(this);
+ }
+ 
+ inline void nsCounterNode::Calc(nsCounterList* aList)
+ {
+     if (mType == USE)
+         UseNode()->Calc(aList);
+     else
+@@ -220,16 +221,18 @@ private:
+  * counter to keep track of all scopes with that name.
+  */
+ class nsCounterManager {
+ public:
+     nsCounterManager();
+     // Returns true if dirty
+     bool AddCounterResetsAndIncrements(nsIFrame *aFrame);
+ 
++    bool AddRoots(nsIFrame *aFrame);
++
+     // Gets the appropriate counter list, creating it if necessary.
+     // Guaranteed to return non-null. (Uses an infallible hashtable API.)
+     nsCounterList* CounterListFor(const nsSubstring& aCounterName);
+ 
+     // Clean up data in any dirty counter lists.
+     void RecalcAll();
+ 
+     // Set all counter styles dirty
+diff --git a/layout/style/generate-stylestructlist.py b/layout/style/generate-stylestructlist.py
+--- a/layout/style/generate-stylestructlist.py
++++ b/layout/style/generate-stylestructlist.py
+@@ -39,16 +39,17 @@
+ 
+ from __future__ import print_function
+ 
+ import math
+ 
+ NORMAL_DEP = ["Variables"]
+ COLOR_DEP = ["Color"]
+ LENGTH_DEP = ["Font", "Visibility"]
++DISPLAY_DEP = ["Display"]
+ 
+ # List of style structs and their corresponding Check callback functions,
+ # if any.
+ STYLE_STRUCTS = [("INHERITED",) + x for x in [
+     # Inherited style structs.
+     ("Font",           "CheckFontCallback",     NORMAL_DEP + ["Visibility"]),
+     ("Color",          "CheckColorCallback",    NORMAL_DEP),
+     ("List",           "nullptr",               NORMAL_DEP + LENGTH_DEP),
+@@ -60,17 +61,17 @@ STYLE_STRUCTS = [("INHERITED",) + x for 
+     ("SVG",            "nullptr",               NORMAL_DEP + LENGTH_DEP + COLOR_DEP),
+     ("Variables",      "CheckVariablesCallback",[]),
+ ]] + [("RESET",) + x for x in [
+     # Reset style structs.
+     ("Background",     "nullptr",   NORMAL_DEP + LENGTH_DEP + COLOR_DEP),
+     ("Position",       "nullptr",   NORMAL_DEP + LENGTH_DEP),
+     ("TextReset",      "nullptr",   NORMAL_DEP + LENGTH_DEP + COLOR_DEP),
+     ("Display",        "nullptr",   NORMAL_DEP + LENGTH_DEP),
+-    ("Content",        "nullptr",   NORMAL_DEP + LENGTH_DEP),
++    ("Content",        "nullptr",   NORMAL_DEP + LENGTH_DEP + DISPLAY_DEP),
+     ("UIReset",        "nullptr",   NORMAL_DEP),
+     ("Table",          "nullptr",   NORMAL_DEP),
+     ("Margin",         "nullptr",   NORMAL_DEP + LENGTH_DEP),
+     ("Padding",        "nullptr",   NORMAL_DEP + LENGTH_DEP),
+     ("Border",         "nullptr",   NORMAL_DEP + LENGTH_DEP + COLOR_DEP),
+     ("Outline",        "nullptr",   NORMAL_DEP + LENGTH_DEP + COLOR_DEP),
+     ("XUL",            "nullptr",   NORMAL_DEP),
+     ("SVGReset",       "nullptr",   NORMAL_DEP + LENGTH_DEP + COLOR_DEP),
+diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
+--- a/layout/style/nsRuleNode.cpp
++++ b/layout/style/nsRuleNode.cpp
+@@ -7988,16 +7988,24 @@ nsRuleNode::ComputeContentData(void* aSt
+                                const RuleDetail aRuleDetail,
+                                const bool aCanStoreInRuleTree)
+ {
+   uint32_t count;
+   nsAutoString buffer;
+ 
+   COMPUTE_START_RESET(Content, (), content, parentContent)
+ 
++  if (aContext->StyleDisplay()->mContain & NS_STYLE_CONTAIN_STYLE) {
++    if (maybeFakeParentData.isNothing()) {
++      maybeFakeParentData.emplace();
++    }
++    parentContent = maybeFakeParentData.ptr();
++    printf("CONTAIN: created fake parentContent.\n");
++  }
++
+   // content: [string, url, counter, attr, enum]+, normal, none, inherit
+   const nsCSSValue* contentValue = aRuleData->ValueForContent();
+   switch (contentValue->GetUnit()) {
+   case eCSSUnit_Null:
+     break;
+ 
+   case eCSSUnit_Normal:
+   case eCSSUnit_None:

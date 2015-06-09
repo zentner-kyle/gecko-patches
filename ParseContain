@@ -1,7 +1,7 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
 # Parent  5b4c240e1a36ed27db67f21dc35c1ca2e8934d0c
-Bug 1170173 - Parse CSS 'contain' property.
+Bug 1170173 - Parse CSS 'contain' property. r=dholbert
 
 diff --git a/browser/devtools/styleinspector/test/browser_ruleview_completion-new-property_02.js b/browser/devtools/styleinspector/test/browser_ruleview_completion-new-property_02.js
 --- a/browser/devtools/styleinspector/test/browser_ruleview_completion-new-property_02.js
