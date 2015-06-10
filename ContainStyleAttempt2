@@ -1,6 +1,7 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
 # Parent  c8c5c7c9f13e2dfb991d251c3cb685d81ba93614
+Bug 1172087 - Implement counter behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
 --- a/layout/base/nsCSSFrameConstructor.cpp
@@ -54,17 +55,9 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  nsCounterUseNode::GetText(nsString& aResult)
  {
      aResult.Truncate();
-@@ -140,42 +144,54 @@ nsCounterList::SetScope(nsCounterNode *a
-         return;
-     }
+@@ -147,35 +151,47 @@ nsCounterList::SetScope(nsCounterNode *a
  
-     // Get the content node for aNode's rendering object's *parent*,
-     // since scope includes siblings, so we want a descendant check on
-     // parents.
-     nsIContent *nodeContent = aNode->mPseudoFrame->GetContent()->GetParent();
- 
--    for (nsCounterNode *prev = Prev(aNode), *start;
-+    for (nsCounterNode *prev = Prev(aNode), *start = nullptr;
+     for (nsCounterNode *prev = Prev(aNode), *start;
           prev; prev = start->mScopePrev) {
          // If |prev| starts a scope (because it's a real or implied
          // reset), we want it as the scope start rather than the start
@@ -192,22 +185,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 --- a/layout/base/nsCounterManager.h
 +++ b/layout/base/nsCounterManager.h
-@@ -5,31 +5,33 @@
-  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
- 
- /* implementation of CSS counters (for numbering things) */
- 
- #ifndef nsCounterManager_h_
- #define nsCounterManager_h_
- 
- #include "mozilla/Attributes.h"
-+#include "mozilla/AutoRestore.h"
- #include "nsGenConList.h"
- #include "nsAutoPtr.h"
- #include "nsClassHashtable.h"
- #include "mozilla/Likely.h"
- #include "CounterStyleManager.h"
- 
+@@ -19,17 +19,18 @@
  class nsCounterList;
  struct nsCounterUseNode;
  struct nsCounterChangeNode;
@@ -227,7 +205,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      int32_t mValueAfter;
  
      // mScopeStart points to the node (usually a RESET, but not in the
-@@ -135,17 +137,18 @@ struct nsCounterChangeNode : public nsCo
+@@ -135,17 +136,18 @@ struct nsCounterChangeNode : public nsCo
                          // the resets first, in order, and then the increments.
                          aPropIndex + (aChangeType == RESET
                                          ? (INT32_MIN) 
@@ -247,7 +225,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      // assign the correct |mValueAfter| value to a node that has been inserted
      // Should be called immediately after calling |Insert|.
      void Calc(nsCounterList* aList);
-@@ -154,17 +157,18 @@ struct nsCounterChangeNode : public nsCo
+@@ -154,17 +156,18 @@ struct nsCounterChangeNode : public nsCo
  inline nsCounterUseNode* nsCounterNode::UseNode()
  {
      NS_ASSERTION(mType == USE, "wrong type");
@@ -267,7 +245,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      if (mType == USE)
          UseNode()->Calc(aList);
      else
-@@ -193,38 +197,46 @@ public:
+@@ -193,38 +196,48 @@ public:
      static nsCounterNode* Next(nsCounterNode* aNode) {
          return static_cast<nsCounterNode*>(nsGenConList::Next(aNode));
      }
@@ -279,6 +257,8 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 +        if (aNode->mScopePrev &&
 +            aNode->mScopePrev->mType == nsCounterNode::ROOT &&
 +            aNode->mScopePrev == aNode->mScopeStart) {
++          // If we are the first node in our scope, and our scope starts with a
++          // ROOT, the value "before" us is 0.
 +          return 0;
 +        }
          return aNode->mScopePrev ? aNode->mScopePrev->mValueAfter : 0;
@@ -314,7 +294,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      // Gets the appropriate counter list, creating it if necessary.
      // Guaranteed to return non-null. (Uses an infallible hashtable API.)
      nsCounterList* CounterListFor(const nsSubstring& aCounterName);
-@@ -270,13 +282,39 @@ public:
+@@ -270,13 +283,39 @@ public:
          return newValue;
      }
  
