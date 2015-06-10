@@ -27,7 +27,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 --- a/layout/base/nsCounterManager.cpp
 +++ b/layout/base/nsCounterManager.cpp
-@@ -76,20 +76,26 @@ void nsCounterUseNode::Calc(nsCounterLis
+@@ -76,20 +76,24 @@ void nsCounterUseNode::Calc(nsCounterLis
  // assign the correct |mValueAfter| value to a node that has been inserted
  // Should be called immediately after calling |Insert|.
  void nsCounterChangeNode::Calc(nsCounterList *aList)
@@ -39,12 +39,10 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 -    } else {
 -        NS_ASSERTION(mType == INCREMENT, "invalid type");
 +    } else if (mType == INCREMENT) {
-+        printf("CONTAIN: ValueBefore = %d\n", aList->ValueBefore(this));
          mValueAfter = nsCounterManager::IncrementCounter(aList->ValueBefore(this),
                                                           mChangeValue);
 +    } else /* if (mType == ROOT) */ {
 +        NS_ASSERTION(mType == ROOT, "invalid type");
-+          printf("CONTAIN: Calc-ing ROOT\n");
 +        // Root has no effect on the next sibling, but acts like a root in
 +        // nsCounterList::ValueBefore.
 +        mValueAfter = aList->ValueBefore(this);
@@ -56,8 +54,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  nsCounterUseNode::GetText(nsString& aResult)
  {
      aResult.Truncate();
-@@ -139,45 +145,99 @@ nsCounterList::SetScope(nsCounterNode *a
-         aNode->mScopePrev = nullptr;
+@@ -140,42 +144,54 @@ nsCounterList::SetScope(nsCounterNode *a
          return;
      }
  
@@ -65,7 +62,6 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
      // since scope includes siblings, so we want a descendant check on
      // parents.
      nsIContent *nodeContent = aNode->mPseudoFrame->GetContent()->GetParent();
-+    //nsIContent *parentContent = nodeContent->GetParent();
  
 -    for (nsCounterNode *prev = Prev(aNode), *start;
 +    for (nsCounterNode *prev = Prev(aNode), *start = nullptr;
@@ -80,18 +76,6 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +                 prev->mType == nsCounterNode::ROOT ||
 +                 !prev->mScopeStart)
                    ? prev : prev->mScopeStart;
-+        //nsCounterNode *scan = prev;
-+        //while (!start) {
-+            //if (scan->mType == nsCounterNode::RESET || !scan->mScopeStart) {
-+                //// Found a normal RESET or true root.
-+                //start = scan;
-+            //} else if (scan->mType == nsCounterNode::ROOT &&
-+                       //nsContentUtils::ContentIsDescendant(scan->mPseudoFrame->GetContent(),
-+                                                           //nodeContent)) {
-+                //start = scan;
-+            //}
-+        //}
-+
  
          // |startContent| is analogous to |nodeContent| (see above).
          nsIContent *startContent = start->mPseudoFrame->GetContent()->GetParent();
@@ -100,36 +84,8 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
                       "null check nodeContent as well, since if nodeContent "
                       "is for the root, startContent (which is before it) "
                       "must be too");
-+        //if (start->mType == nsCounterNode::ROOT) {
-+            //(startContent &&
-+            //!nsContentUtils::ContentIsDescendantOf(nodeContent, startContent))) {
-+            //printf("CONTAIN: continue\n");
-+            //continue;
-+        //}
-+
-+        //if (start->mType == nsCounterNode::ROOT) {
-+            //if (!startContent ||
-+                //!nodeContent->GetParent() ||
-+                //!nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent(),
-+                                                      //startContent)) {
-+                //continue;
-+                ////aNode->mScopeStart = start;
-+                ////aNode->mScopePrev  = prev;
-+                ////return;
-+            //}
-+            ////if (startContent &&
-+                ////nodeContent->GetParent() &&
-+                ////nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent(),
-+                                                      ////startContent)) {
-+                ////aNode->mScopeStart = start;
-+                ////aNode->mScopePrev  = prev;
-+                ////return;
-+            ////}
-+            ////else {
-+                ////continue;
-+            ////}
-+        //}
  
++
               // A reset's outer scope can't be a scope created by a sibling.
          if (!(aNode->mType == nsCounterNode::RESET &&
                nodeContent == startContent) &&
@@ -139,27 +95,24 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
               nsContentUtils::ContentIsDescendantOf(nodeContent,
 -                                                   startContent))) {
 +                                                   startContent)) &&
++            // If we found a ROOT node, we need to make sure we are actually a
++            // child of that node.
 +            (start->mType != nsCounterNode::ROOT ||
 +             (startContent &&
 +              nodeContent->GetParent() &&
 +              nodeContent->GetParent()->GetParent() &&
-+              nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent()->GetParent(),
++              nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent()
++                                                               ->GetParent(),
 +                                                    startContent)))) {
              aNode->mScopeStart = start;
              aNode->mScopePrev  = prev;
-+            //if (prev->mType == nsCounterNode::ROOT && (startContent &&
-+                  //nsContentUtils::ContentIsDescendantOf(nodeContent, startContent))) {
-+              //aNode->mScopeStart = prev;
-+            //}
              return;
          }
      }
  
      aNode->mScopeStart = nullptr;
      aNode->mScopePrev  = nullptr;
- }
- 
-@@ -204,40 +264,75 @@ nsCounterList::RecalcAll()
+@@ -204,40 +220,73 @@ nsCounterList::RecalcAll()
                  useNode->GetText(text);
                  useNode->mText->SetData(text);
              }
@@ -201,7 +154,6 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 -    for (i = 0, i_end = styleContent->CounterResetCount(); i != i_end; ++i)
 +    for (i = 0, i_end = styleContent->CounterResetCount(); i != i_end; ++i) {
 +        if (mPhantomRoot) {
-+            printf("CONTAIN: Has phantom root.\n");
 +            nsCounterList *counterList =
 +              CounterListFor(styleContent->GetCounterResetAt(i)->mCounter);
 +            if (!counterList->ContainsFrame(mPhantomRoot)) {
@@ -217,7 +169,6 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +    }
 +    for (i = 0, i_end = styleContent->CounterIncrementCount(); i != i_end; ++i) {
 +        if (mPhantomRoot) {
-+            printf("CONTAIN: Has phantom root.\n");
 +            nsCounterList *counterList =
 +              CounterListFor(styleContent->GetCounterIncrementAt(i)->mCounter);
 +            if (!counterList->ContainsFrame(mPhantomRoot)) {
@@ -316,7 +267,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      if (mType == USE)
          UseNode()->Calc(aList);
      else
-@@ -193,38 +197,47 @@ public:
+@@ -193,38 +197,46 @@ public:
      static nsCounterNode* Next(nsCounterNode* aNode) {
          return static_cast<nsCounterNode*>(nsGenConList::Next(aNode));
      }
@@ -328,7 +279,6 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 +        if (aNode->mScopePrev &&
 +            aNode->mScopePrev->mType == nsCounterNode::ROOT &&
 +            aNode->mScopePrev == aNode->mScopeStart) {
-+          printf("CONTAIN: Found ROOT.\n");
 +          return 0;
 +        }
          return aNode->mScopePrev ? aNode->mScopePrev->mValueAfter : 0;
@@ -364,7 +314,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      // Gets the appropriate counter list, creating it if necessary.
      // Guaranteed to return non-null. (Uses an infallible hashtable API.)
      nsCounterList* CounterListFor(const nsSubstring& aCounterName);
-@@ -270,13 +283,43 @@ public:
+@@ -270,13 +282,39 @@ public:
          return newValue;
      }
  
@@ -390,18 +340,14 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 +    : mActive(use)
 +    , mManager(aManager)
 +  {
-+      printf("CONTAIN: ScopePush\n");
 +      if (mActive) {
-+          printf("CONTAIN: Active! ScopePush\n");
 +          mSavedValue = mManager->mPhantomRoot;
 +          mManager->mPhantomRoot = aFrame;
 +      }
 +  }
 +  ~nsCounterScopePush()
 +  {
-+      printf("CONTAIN: ScopePop\n");
 +      if (mActive) {
-+          printf("CONTAIN: Active! ScopePop\n");
 +          mManager->mPhantomRoot = mSavedValue;
 +      }
 +  }
