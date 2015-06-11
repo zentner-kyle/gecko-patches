@@ -50,7 +50,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 diff --git a/layout/base/nsQuoteList.cpp b/layout/base/nsQuoteList.cpp
 --- a/layout/base/nsQuoteList.cpp
 +++ b/layout/base/nsQuoteList.cpp
-@@ -26,16 +26,64 @@ nsQuoteNode::InitTextFrame(nsGenConList*
+@@ -26,16 +26,53 @@ nsQuoteNode::InitTextFrame(nsGenConList*
  
    // Don't set up text for 'no-open-quote' and 'no-close-quote'.
    if (IsRealQuote()) {
@@ -61,47 +61,36 @@ diff --git a/layout/base/nsQuoteList.cpp b/layout/base/nsQuoteList.cpp
  
 +static bool IsDescendantOf(nsQuoteNode *aParent, nsQuoteNode *aChild)
 +{
-+  bool res = false;
 +  nsIFrame *pFrame, *cFrame;
 +  nsIContent *pContent, *cContent;
-+  if (aParent && aChild) {
-+    printf("parent && child");
-+    if ((pFrame = aParent->mPseudoFrame)) {
-+      printf(" && pFrame");
-+      if ((cFrame = aChild->mPseudoFrame)) {
-+      printf(" && cFrame");
-+        if ((pContent = pFrame->GetContent())) {
-+          printf(" && pContent");
-+          if ((cContent = cFrame->GetContent())) {
-+            printf(" && cContent");
-+            if (nsContentUtils::ContentIsDescendantOf(cContent, pContent)) {
-+              printf(" && IsDec(cContent, pContent)");
-+              res = true;
-+            }
-+          }
-+        }
-+      }
-+    }
++  if (aParent && aChild &&
++      // These are all assignments, not equality checks.
++      (pFrame = aParent->mPseudoFrame) &&
++      (cFrame = aChild->mPseudoFrame) &&
++      (pContent = pFrame->GetContent()) &&
++      (cContent = cFrame->GetContent()) &&
++      nsContentUtils::ContentIsDescendantOf(cContent, pContent)) {
++    return true;
 +  }
-+  printf("\n");
-+  return res;
-+  //return (aParent && aChild &&
-+          //aParent->mPseudoFrame && aChild->mPseudoFrame &&
-+          //aParent->mPseudoFrame->GetContent()->GetParent() &&
-+          //aChild->mPseudoFrame->GetContent()->GetParent() &&
-+          //nsContentUtils::ContentIsDescendantOf(aParent->mPseudoFrame->GetContent()->GetParent(),
-+                                                //aChild->mPseudoFrame->GetContent()->GetParent()));
++  return false;
 +}
 +
 +
++// Scans up the scopes for a node before this node (starting at aPrevNode),
++// until a parent node is found.
 +void
 +nsQuoteNode::UpdateScope(nsQuoteNode *aPrevNode)
 +{
-+  for (; aPrevNode; aPrevNode = aPrevNode->mScopeStart) {
-+    if (aPrevNode->mType == eStyleContentType_ScopeStart &&
-+        IsDescendantOf(aPrevNode, this)) {
-+      printf("mScopeStart = %p\n", static_cast<void*>(aPrevNode));
-+      mScopeStart = aPrevNode;
++  if (aPrevNode->mType == eStyleContentType_ScopeStart &&
++      IsDescendantOf(aPrevNode, this)) {
++    mScopeStart = aPrevNode;
++    return;
++  }
++  for (nsQuoteNode *node = aPrevNode->mScopeStart; node; node = node->mScopeStart) {
++    NS_ASSERTION(node->mType == eStyleContentType_ScopeStart,
++                 "Quote scopes should only begin with ScopeStart nodes");
++    if (IsDescendantOf(node, this)) {
++      mScopeStart = node;
 +      return;
 +    }
 +  }
@@ -115,7 +104,7 @@ diff --git a/layout/base/nsQuoteList.cpp b/layout/base/nsQuoteList.cpp
                 "should only be called when mText should be non-null");
    const nsStyleQuotes* styleQuotes = mPseudoFrame->StyleQuotes();
    int32_t quotesCount = styleQuotes->QuotesCount(); // 0 if 'quotes:none'
-@@ -58,26 +106,35 @@ nsQuoteNode::Text()
+@@ -58,18 +95,25 @@ nsQuoteNode::Text()
                 : styleQuotes->CloseQuoteAt(quoteDepth);
    }
    return result;
@@ -137,22 +126,12 @@ diff --git a/layout/base/nsQuoteList.cpp b/layout/base/nsQuoteList.cpp
    } else {
      aNode->mDepthBefore = Prev(aNode)->DepthAfter();
    }
-+  PrintChain();
  }
  
  void
  nsQuoteList::RecalcAll()
  {
-+  PrintChain();
-   nsQuoteNode *node = FirstNode();
-   if (!node)
-     return;
- 
-   do {
-     int32_t oldDepth = node->mDepthBefore;
-     Calc(node);
- 
-@@ -108,22 +165,26 @@ nsQuoteList::PrintChain()
+@@ -108,22 +152,26 @@ nsQuoteList::PrintChain()
            printf("noOpen");
            break;
          case (eStyleContentType_CloseQuote):
