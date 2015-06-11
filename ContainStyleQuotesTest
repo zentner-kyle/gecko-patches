@@ -1,0 +1,125 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  d0fcac989463ca62cfd9ece0826d431259428a7b
+Bug 1172087 - Test quote behavior for "contain: style"
+
+diff --git a/layout/reftests/css-contain/reftest.list b/layout/reftests/css-contain/reftest.list
+--- a/layout/reftests/css-contain/reftest.list
++++ b/layout/reftests/css-contain/reftest.list
+@@ -1,8 +1,9 @@
+ default-preferences pref(layout.css.contain.enabled,true)
+ 
+ == paint-clip.html paint-clip-ref.html
+ == paint-containing-block-absolute.html paint-containing-block-absolute-ref.html
+ == paint-containing-block-fixed.html paint-containing-block-fixed-ref.html
+ == paint-formatting-context-float.html paint-formatting-context-float-ref.html
+ == paint-formatting-context-margin.html paint-formatting-context-margin-ref.html
+ == style-counter-increment.html style-counter-increment-ref.html
++== style-quote.html style-quote-ref.html
+diff --git a/layout/reftests/css-contain/style-quote-ref.html b/layout/reftests/css-contain/style-quote-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/style-quote-ref.html
+@@ -0,0 +1,52 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 2em;
++  }
++  .set {
++    width: 0px;
++    height: 0px;
++  }
++  .qopen:before {
++    content: open-quote;
++  }
++  .nqopen:before {
++    content: no-open-quote;
++  }
++  .qclose:after {
++    content: close-quote;
++  }
++  .nqclose:after {
++    content: no-close-quote;
++  }
++  </style>
++</head>
++<body>
++  <p class="qopen"> 
++Lorem ipsum dolor sit amet, cu per agam quaerendum reprehendunt, scripta vivendo perfecto vis eu. Sea fastidii principes an. Sed in duis senserit, et cum impedit voluptaria, in nam sumo affert recteque. Sanctus suavitate voluptatibus te ius. Eos id insolens gloriatur repudiandae, vim in adhuc principes reprimique, vis ad omnium pericula reprimique.
++  </p>
++
++  <p class="qopen">
++Nec at facilisi ullamcorper vituperatoribus, stet ipsum luptatum sit eu, volumus invenire ea sea. An mentitum suscipit sea, tractatos theophrastus ad cum, pro nonumy soluta vivendum ei. Sonet quando labores has ut, ad justo fabulas senserit has, tale concludaturque sea ne. Has nominavi intellegebat eu, eum ubique recteque deterruisset ut, nullam aliquip vim no. Porro latine disputationi vix ei, usu no nihil integre, no facer forensibus nam. Eu vero affert nec.
++  </p>
++
++  <div class="set nqclose"> </div>
++  <div class="set nqclose"> </div>
++  <p class="qopen qclose">
++At cum erat integre, id vis tritani laboramus. Vero partiendo conclusionemque ex est. Inani partiendo splendide sed no. Putant doctus interpretaris vis id, eius habemus eu eam, quot vivendum vim at. Usu dolore nostro accumsan ea.
++  </p>
++  <div class="set nqopen"> </div>
++  <div class="set nqopen"> </div>
++
++  <p class="qclose">
++In pro feugiat vocibus nusquam, delenit delectus an usu, pro labore facilisi theophrastus ut. Mea et wisi petentium corrumpit, ius euismod volutpat ei. At aeque eripuit sadipscing est, eu congue graeci noluisse mea, et usu sale partiendo inciderint. Eu usu utroque blandit. Eu nam tale wisi everti, autem noluisse ex duo.
++  </p>
++
++  <p class="qclose">
++Mei agam noluisse at, sed id augue impetus, in exerci interpretaris vix. Per et delenit alienum, ut bonorum dolorum assueverit per. His et electram intellegat, eu dolorum aliquando temporibus cum, oblique labitur ponderum ut vel. Et sonet numquam euismod sea, pri no mazim choro delicatissimi. Mutat detraxit no sed, ad option pertinax usu. Sed eirmod adolescens cu, est ea hinc nulla recteque.
++  </p>
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/style-quote.html b/layout/reftests/css-contain/style-quote.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/style-quote.html
+@@ -0,0 +1,45 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 2em;
++  }
++  .container {
++    contain: style;
++  }
++  .set {
++    width: 0px;
++    height: 0px;
++  }
++  .qopen:before {
++    content: open-quote;
++  }
++  .qclose:after {
++    content: close-quote;
++  }
++  </style>
++</head>
++<body>
++  <p class="qopen"> 
++Lorem ipsum dolor sit amet, cu per agam quaerendum reprehendunt, scripta vivendo perfecto vis eu. Sea fastidii principes an. Sed in duis senserit, et cum impedit voluptaria, in nam sumo affert recteque. Sanctus suavitate voluptatibus te ius. Eos id insolens gloriatur repudiandae, vim in adhuc principes reprimique, vis ad omnium pericula reprimique.
++  </p>
++
++  <p class="qopen">
++Nec at facilisi ullamcorper vituperatoribus, stet ipsum luptatum sit eu, volumus invenire ea sea. An mentitum suscipit sea, tractatos theophrastus ad cum, pro nonumy soluta vivendum ei. Sonet quando labores has ut, ad justo fabulas senserit has, tale concludaturque sea ne. Has nominavi intellegebat eu, eum ubique recteque deterruisset ut, nullam aliquip vim no. Porro latine disputationi vix ei, usu no nihil integre, no facer forensibus nam. Eu vero affert nec.
++  </p>
++
++  <p class="container qopen qclose">
++At cum erat integre, id vis tritani laboramus. Vero partiendo conclusionemque ex est. Inani partiendo splendide sed no. Putant doctus interpretaris vis id, eius habemus eu eam, quot vivendum vim at. Usu dolore nostro accumsan ea.
++  </p>
++
++  <p class="qclose">
++In pro feugiat vocibus nusquam, delenit delectus an usu, pro labore facilisi theophrastus ut. Mea et wisi petentium corrumpit, ius euismod volutpat ei. At aeque eripuit sadipscing est, eu congue graeci noluisse mea, et usu sale partiendo inciderint. Eu usu utroque blandit. Eu nam tale wisi everti, autem noluisse ex duo.
++  </p>
++
++  <p class="qclose">
++Mei agam noluisse at, sed id augue impetus, in exerci interpretaris vix. Per et delenit alienum, ut bonorum dolorum assueverit per. His et electram intellegat, eu dolorum aliquando temporibus cum, oblique labitur ponderum ut vel. Et sonet numquam euismod sea, pri no mazim choro delicatissimi. Mutat detraxit no sed, ad option pertinax usu. Sed eirmod adolescens cu, est ea hinc nulla recteque.
++  </p>
++</body>
++</html>

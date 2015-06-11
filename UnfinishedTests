@@ -1,0 +1,136 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  340ef2dc262aa1b037ef2349892970c3900e1c32
+
+diff --git a/layout/reftests/multi-reflow-root/flexbox-simple.html b/layout/reftests/multi-reflow-root/flexbox-simple.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/multi-reflow-root/flexbox-simple.html
+@@ -0,0 +1,27 @@
++<!DOCTYPE html>
++<html class="reftest-wait">
++  <!-- Test that reflow roots are not erroneously created in the middle of a
++    flexbox layout. -->
++  <head>
++    <meta charset="utf-8">
++    <script type="application/javascript;version=1.8">
++    function doTest() {
++      let outer = document.getElementById('outer')
++      outer.removeChild(document.getElementById('middle-2'))
++      let html = document.getElementsByTagName('html')[0]
++      html.removeClass('reftest-wait')
++    }
++    </script>
++  </head>
++  <body onload="doTest()">
++    <div id="outer" style="display: flex; width: 100px; height: 100px;">
++      <div id="middle" style="width: 10px; height: 10px; flex: 1 0 10px;">
++        <div id="inner" style="widht: 100%; height: 100%; background:red;">
++        </div>
++      </div>
++      <div id="middle-2" style="flex: 1 0 10px;">
++      </div>
++    </div>
++  </body>
++</html>
++
+diff --git a/layout/style/test/test_bug1159042.html b/layout/style/test/test_bug1159042.html
+new file mode 100644
+--- /dev/null
++++ b/layout/style/test/test_bug1159042.html
+@@ -0,0 +1,56 @@
++<!DOCTYPE HTML>
++<html>
++<!--
++https://bugzilla.mozilla.org/show_bug.cgi?id=1159042
++-->
++<head>
++  <meta charset="utf-8">
++  <title>Test for Bug 1159042</title>
++  <script type="application/javascript" src="/tests/SimpleTest/SimpleTest.js"></script>
++  <link rel="stylesheet" type="text/css" href="/tests/SimpleTest/test.css"/>
++</head>
++<body onload="doTest()">
++<a target="_blank" href="https://bugzilla.mozilla.org/show_bug.cgi?id=1159042">Mozilla Bug 1159042</a>
++<div id="top">
++  <!-- 76 (an arbitrary, small integer) divs -->
++<div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div> <div>
++<div id="level-3" style="width:30px; height:30px;">
++<div id="level-2" style="width:20px; height:20px;">
++<div id="level-1" style="width:10px; height:10px;">
++</div>
++</div>
++</div>
++  <!-- 76 (an arbitrary, small integer) divs -->
++</div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div> </div>
++</div>
++</body>
++<script type="application/javascript;version=1.8">
++function doTest() {
++  "use strict";
++  const gUtils = SpecialPowers.getDOMWindowUtils(window);
++  function reflowsFrom(func) {
++    let origFramesReflowed = gUtils.framesReflowed;
++    func();
++    return gUtils.framesReflowed - origFramesReflowed;
++  }
++
++  let id = document.getElementById;
++  let setWidth = (i, v) => id(i).style.width = v
++
++  /* When the page is first loaded, we should have made all of the inner div's
++     into reflow roots.  We will now check this by looking at how many frames get
++     reflowed for each of the following modifications. */
++
++  /* This should only reflow in innermost div. */
++  is(reflowsFrom(() => id('level-1').style.width = "15px"), 1, "1 frame should have been reflowed.");
++
++  /* This should make level-2's frame no longer a reflow root, and cause the
++     inner two frames to be reflowed. */
++  is(reflowsFrom(() => id('level-2').style.width = "auto"), 2, "2 frames should have been reflowed.");
++
++  /* Now that level-2's frame is no longer a reflow root, we should need to
++     reflow the two innermost frames. */
++  is(reflowsFrom(() => id('level-1').style.width = "10px"), 2, "2 frames should have been reflowed.");
++}
++</script>
++</html>
+diff --git a/layout/style/test/test_contain_paint_clip.html b/layout/style/test/test_contain_paint_clip.html
+new file mode 100644
+--- /dev/null
++++ b/layout/style/test/test_contain_paint_clip.html
+@@ -0,0 +1,34 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <script>
++    function doTest() {
++      console.log(window.getComputedStyle(document.getElementById('a'))['contain']);
++    }
++  </script>
++  <style>
++  #a {
++      contain: paint;
++      width: 100px;
++      height: 100px;
++      background: red;
++      padding-width: 0;
++  }
++  #b {
++      width: 100px;
++      height: 200px;
++      background: green;
++  }
++  </style>
++</head>
++<!--<body onload="doTest()">-->
++<body>
++  <div id="a">
++    <div id="c">
++      <div id="b">
++      </div>
++    </div>
++  </div>
++</body>
++</html>

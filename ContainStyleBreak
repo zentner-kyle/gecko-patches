@@ -1,0 +1,103 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  340ef2dc262aa1b037ef2349892970c3900e1c32
+Bug 1172087 - Implement page break behavior for "contain: style"
+
+diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
+--- a/layout/base/nsCSSFrameConstructor.cpp
++++ b/layout/base/nsCSSFrameConstructor.cpp
+@@ -766,16 +766,18 @@ public:
+   // during frame construction.  If true, don't make any SetPrimaryFrame()
+   // calls, except for generated content which doesn't have a primary frame
+   // yet.  The mCreatingExtraFrames == true mode is meant to be used for
+   // construction of random "extra" frames for elements via normal frame
+   // construction APIs (e.g. replication of things across pages in paginated
+   // mode).
+   bool                      mCreatingExtraFrames;
+ 
++  bool                      mStyleContained;
++
+   nsCOMArray<nsIContent>    mGeneratedTextNodesWithInitializer;
+ 
+   TreeMatchContext          mTreeMatchContext;
+ 
+   // Constructor
+   // Use the passed-in history state.
+   nsFrameConstructorState(nsIPresShell*          aPresShell,
+                           nsContainerFrame*      aFixedContainingBlock,
+@@ -939,16 +941,17 @@ nsFrameConstructorState::nsFrameConstruc
+     mFrameState(aHistoryState),
+     mAdditionalStateBits(nsFrameState(0)),
+     // If the fixed-pos containing block is equal to the abs-pos containing
+     // block, use the abs-pos containing block's abs-pos list for fixed-pos
+     // frames.
+     mFixedPosIsAbsPos(aFixedContainingBlock == aAbsoluteContainingBlock),
+     mHavePendingPopupgroup(false),
+     mCreatingExtraFrames(false),
++    mStyleContained(false),
+     mTreeMatchContext(true, nsRuleWalker::eRelevantLinkUnvisited,
+                       aPresShell->GetDocument()),
+     mCurrentPendingBindingInsertionPoint(nullptr)
+ {
+ #ifdef MOZ_XUL
+   nsIRootBox* rootBox = nsIRootBox::GetRootBox(aPresShell);
+   if (rootBox) {
+     mPopupItems.containingBlock = rootBox->GetPopupSetFrame();
+@@ -973,16 +976,17 @@ nsFrameConstructorState::nsFrameConstruc
+     // See PushAbsoluteContaningBlock below
+     mAdditionalStateBits(nsFrameState(0)),
+     // If the fixed-pos containing block is equal to the abs-pos containing
+     // block, use the abs-pos containing block's abs-pos list for fixed-pos
+     // frames.
+     mFixedPosIsAbsPos(aFixedContainingBlock == aAbsoluteContainingBlock),
+     mHavePendingPopupgroup(false),
+     mCreatingExtraFrames(false),
++    mStyleContained(false),
+     mTreeMatchContext(true, nsRuleWalker::eRelevantLinkUnvisited,
+                       aPresShell->GetDocument()),
+     mCurrentPendingBindingInsertionPoint(nullptr)
+ {
+ #ifdef MOZ_XUL
+   nsIRootBox* rootBox = nsIRootBox::GetRootBox(aPresShell);
+   if (rootBox) {
+     mPopupItems.containingBlock = rootBox->GetPopupSetFrame();
+@@ -5638,16 +5642,17 @@ nsCSSFrameConstructor::AddFrameConstruct
+        display->mDisplay != NS_STYLE_DISPLAY_TABLE_COLUMN)) {
+     SetAsUndisplayedContent(aState, aItems, aContent, styleContext, isGeneratedContent);
+     return;
+   }
+ 
+   bool canHavePageBreak =
+     (aFlags & ITEM_ALLOW_PAGE_BREAK) &&
+     aState.mPresContext->IsPaginated() &&
++    !aState.mStyleContained &&
+     !display->IsAbsolutelyPositionedStyle() &&
+     !(bits & FCDATA_IS_TABLE_PART) &&
+     !(bits & FCDATA_IS_SVG_TEXT);
+ 
+   if (canHavePageBreak && display->mBreakBefore) {
+     AddPageBreakItem(aContent, aStyleContext, aItems);
+   }
+ 
+@@ -10339,19 +10344,21 @@ nsCSSFrameConstructor::ProcessChildren(n
+     ++mCurrentDepth;
+   }
+ 
+   if (!aPossiblyLeafFrame) {
+     aPossiblyLeafFrame = aFrame;
+   }
+   nsCounterScopePush saveCounters(&mCounterManager, aFrame, 
+                                   aFrame->StyleDisplay()->IsStyleContaining());
++  AutoRestore<bool> savedStyleContainment(aState.mStyleContained);
+   if (aFrame->StyleDisplay()->IsStyleContaining()) {
+     (new nsQuoteNode(eStyleContentType_ScopeStart, -1))
+       ->InitTextFrame(&mQuoteList, aFrame, nullptr);
++    aState.mStyleContained = true;
+   }
+ 
+   // XXXbz ideally, this would do all the pushing of various
+   // containing blocks as needed, so callers don't have to do it...
+ 
+   bool haveFirstLetterStyle = false, haveFirstLineStyle = false;
+   if (aAllowBlockStyles) {
+     ShouldHaveSpecialBlockStyle(aContent, aStyleContext, &haveFirstLetterStyle,

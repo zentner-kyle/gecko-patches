@@ -5,6 +5,9 @@ try-linux-minimal
 ContainStyleAttempt2
 ContainStyleCounterTest
 ContainStyleQuotes
+ContainStyleQuotesTest
+ContainStyleBreak
+UnfinishedTests
 ContainStyleQuotesAttempt1
 ContainStyleAttempt1
 RemoveBoxSizingPaddingBoxTests
