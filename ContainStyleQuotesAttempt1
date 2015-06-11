@@ -1,0 +1,247 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  0379f82bb42f26c4bde96b37dd3b3917fd19d252
+
+diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
+--- a/layout/base/nsCSSFrameConstructor.cpp
++++ b/layout/base/nsCSSFrameConstructor.cpp
+@@ -1701,16 +1701,20 @@ nsCSSFrameConstructor::CreateGeneratedCo
+       }
+ 
+       break;
+     }
+ 
+   case eStyleContentType_Uninitialized:
+     NS_NOTREACHED("uninitialized content type");
+     return nullptr;
++
++  default:
++    NS_NOTREACHED("Unknown content type");
++    return nullptr;
+   } // switch
+ 
+   return nullptr;
+ }
+ 
+ /*
+  * aParentFrame - the frame that should be the parent of the generated
+  *   content.  This is the frame for the corresponding content node,
+@@ -10336,16 +10340,18 @@ nsCSSFrameConstructor::ProcessChildren(n
+     ++mCurrentDepth;
+   }
+ 
+   if (!aPossiblyLeafFrame) {
+     aPossiblyLeafFrame = aFrame;
+   }
+   nsCounterScopePush saveCounters(&mCounterManager, aFrame, 
+                                   aFrame->StyleDisplay()->IsStyleContaining());
++  nsQuoteScopePush saveQuotes(&mQuoteList, aFrame, 0,
++                              aFrame->StyleDisplay()->IsStyleContaining());
+ 
+   // XXXbz ideally, this would do all the pushing of various
+   // containing blocks as needed, so callers don't have to do it...
+ 
+   bool haveFirstLetterStyle = false, haveFirstLineStyle = false;
+   if (aAllowBlockStyles) {
+     ShouldHaveSpecialBlockStyle(aContent, aStyleContext, &haveFirstLetterStyle,
+                                 &haveFirstLineStyle);
+diff --git a/layout/base/nsQuoteList.cpp b/layout/base/nsQuoteList.cpp
+--- a/layout/base/nsQuoteList.cpp
++++ b/layout/base/nsQuoteList.cpp
+@@ -71,16 +71,17 @@ nsQuoteList::Calc(nsQuoteNode* aNode)
+ }
+ 
+ void
+ nsQuoteList::RecalcAll()
+ {
+   nsQuoteNode *node = FirstNode();
+   if (!node)
+     return;
++  PrintChain();
+ 
+   do {
+     int32_t oldDepth = node->mDepthBefore;
+     Calc(node);
+ 
+     if (node->mDepthBefore != oldDepth && node->mText && node->IsRealQuote())
+       node->mText->SetData(*node->Text());
+ 
+@@ -108,16 +109,22 @@ nsQuoteList::PrintChain()
+           printf("noOpen");
+           break;
+         case (eStyleContentType_CloseQuote):
+           printf("close");
+           break;
+         case (eStyleContentType_NoCloseQuote):
+           printf("noClose");
+           break;
++        case (eStyleContentType_ScopeStart):
++          printf("scopeStart");
++          break;
++        case (eStyleContentType_ScopeEnd):
++          printf("scopeEnd");
++          break;
+         default:
+           printf("unknown!!!");
+     }
+     printf(" %d - %d,", node->Depth(), node->DepthAfter());
+     if (node->mText) {
+       nsAutoString data;
+       node->mText->GetData(data);
+       printf(" \"%s\",", NS_ConvertUTF16toUTF8(data).get());
+diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
+--- a/layout/base/nsQuoteList.h
++++ b/layout/base/nsQuoteList.h
+@@ -13,25 +13,27 @@
+ 
+ struct nsQuoteNode : public nsGenConNode {
+   // open-quote, close-quote, no-open-quote, or no-close-quote
+   const nsStyleContentType mType;
+ 
+   // Quote depth before this quote, which is always non-negative.
+   int32_t mDepthBefore;
+ 
+-  nsQuoteNode(nsStyleContentType& aType, uint32_t aContentIndex)
++  nsQuoteNode(nsStyleContentType aType, uint32_t aContentIndex)
+     : nsGenConNode(aContentIndex)
+     , mType(aType)
+     , mDepthBefore(0)
+   {
+     NS_ASSERTION(aType == eStyleContentType_OpenQuote ||
+                  aType == eStyleContentType_CloseQuote ||
+                  aType == eStyleContentType_NoOpenQuote ||
+-                 aType == eStyleContentType_NoCloseQuote,
++                 aType == eStyleContentType_NoCloseQuote ||
++                 aType == eStyleContentType_ScopeStart ||
++                 aType == eStyleContentType_ScopeEnd,
+                  "incorrect type");
+     NS_ASSERTION(aContentIndex <= INT32_MAX, "out of range");
+   }
+ 
+   virtual bool InitTextFrame(nsGenConList* aList, 
+           nsIFrame* aPseudoFrame, nsIFrame* aTextFrame) override;
+ 
+   // is this 'open-quote' or 'no-open-quote'?
+@@ -54,17 +56,17 @@ struct nsQuoteNode : public nsGenConNode
+   // Depth of the quote for *this* node.  Either non-negative or -1.
+   // -1 means this is a closing quote that tried to decrement the
+   // counter below zero (which means no quote should be rendered).
+   int32_t Depth() {
+     return IsOpenQuote() ? mDepthBefore : mDepthBefore - 1;
+   }
+ 
+   // always non-negative
+-  int32_t DepthAfter() {
++  virtual int32_t DepthAfter() {
+     return IsOpenQuote() ? mDepthBefore + 1
+                          : (mDepthBefore == 0 ? 0 : mDepthBefore - 1);
+   }
+ 
+   // The text that should be displayed for this quote.
+   const nsString* Text();
+ };
+ 
+@@ -77,16 +79,79 @@ public:
+   void Calc(nsQuoteNode* aNode);
+ 
+   nsQuoteNode* Next(nsQuoteNode* aNode) {
+     return static_cast<nsQuoteNode*>(nsGenConList::Next(aNode));
+   }
+   nsQuoteNode* Prev(nsQuoteNode* aNode) {
+     return static_cast<nsQuoteNode*>(nsGenConList::Prev(aNode));
+   }
++
++  void Insert(nsQuoteNode *node) {
++    PrintChain();
++    nsGenConList::Insert(node);
++  }
+   
+   void RecalcAll();
+ #ifdef DEBUG
+   void PrintChain();
+ #endif
+ };
+ 
++struct nsQuoteScopeStart : public nsQuoteNode {
++  nsQuoteScopeStart(uint32_t aContentIndex, nsIFrame *aFrame)
++    : nsQuoteNode(eStyleContentType_ScopeStart, 0)
++  {
++    mPseudoFrame = aFrame;
++  }
++  virtual int32_t DepthAfter() override {
++    //printf("CONTAIN: Calculating scope start.\n");
++    return 0;
++  }
++};
++
++struct nsQuoteScopeEnd : public nsQuoteNode {
++  friend class nsQuoteScopePush;
++private:
++  nsQuoteScopeStart *mStart;
++  nsQuoteScopeEnd(uint32_t aContentIndex, nsQuoteScopeStart *aStart, nsIFrame *aFrame)
++    : nsQuoteNode(eStyleContentType_ScopeEnd, 1)
++    , mStart(aStart)
++  {
++    mPseudoFrame = aFrame;
++  }
++public:
++  virtual int32_t DepthAfter() override {
++    MOZ_ASSERT(mStart, "Scopes should only end if they begin");
++    //printf("CONTAIN: Restored scope quote depth = %d\n", mStart->mDepthBefore);
++    return mStart->mDepthBefore;
++  }
++};
++
++class nsQuoteScopePush {
++private:
++  bool mActive;
++  nsIFrame *mFrame;
++  nsQuoteList *mList;
++  nsQuoteScopeStart *mStart;
++public:
++  explicit nsQuoteScopePush(nsQuoteList *aList, nsIFrame *aFrame, 
++                            uint32_t aContentIndex, bool aActive)
++    : mActive(aActive)
++    , mFrame(aFrame)
++    , mList(aList)
++    , mStart(new nsQuoteScopeStart(aContentIndex, aFrame))
++  {
++    if (mActive) {
++      printf("CONTAIN: Inserting scope start.\n");
++      mList->Insert(mStart);
++    }
++  }
++  ~nsQuoteScopePush()
++  {
++    if (mActive) {
++      printf("CONTAIN: Inserting scope end.\n");
++      mList->Insert(new nsQuoteScopeEnd(mStart->mContentIndex, mStart, mFrame));
++    }
++  }
++};
++
+ #endif /* nsQuoteList_h___ */
+diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
+--- a/layout/style/nsStyleStruct.h
++++ b/layout/style/nsStyleStruct.h
+@@ -2356,17 +2356,19 @@ enum nsStyleContentType {
+   eStyleContentType_Attr          = 20,
+   eStyleContentType_Counter       = 30,
+   eStyleContentType_Counters      = 31,
+   eStyleContentType_OpenQuote     = 40,
+   eStyleContentType_CloseQuote    = 41,
+   eStyleContentType_NoOpenQuote   = 42,
+   eStyleContentType_NoCloseQuote  = 43,
+   eStyleContentType_AltContent    = 50,
+-  eStyleContentType_Uninitialized
++  eStyleContentType_ScopeStart,   // Not actually a content type.
++  eStyleContentType_ScopeEnd,   // Not actually a content type.
++  eStyleContentType_Uninitialized  // Not actually a content type.
+ };
+ 
+ struct nsStyleContentData {
+   nsStyleContentType  mType;
+   union {
+     char16_t *mString;
+     imgRequestProxy *mImage;
+     nsCSSValue::Array* mCounters;

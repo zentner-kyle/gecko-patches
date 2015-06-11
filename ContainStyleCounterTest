@@ -1,0 +1,150 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  0d9703314fed06981eb3fe5a31df237b8b7a1986
+Bug 1172087 - Patch 2: Test counter behavior for "contain: style"
+
+diff --git a/layout/reftests/css-contain/reftest.list b/layout/reftests/css-contain/reftest.list
+--- a/layout/reftests/css-contain/reftest.list
++++ b/layout/reftests/css-contain/reftest.list
+@@ -1,7 +1,8 @@
+ default-preferences pref(layout.css.contain.enabled,true)
+ 
+ == paint-clip.html paint-clip-ref.html
+ == paint-containing-block-absolute.html paint-containing-block-absolute-ref.html
+ == paint-containing-block-fixed.html paint-containing-block-fixed-ref.html
+ == paint-formatting-context-float.html paint-formatting-context-float-ref.html
+ == paint-formatting-context-margin.html paint-formatting-context-margin-ref.html
++== style-counter-increment.html style-counter-increment-ref.html
+diff --git a/layout/reftests/css-contain/style-counter-increment-ref.html b/layout/reftests/css-contain/style-counter-increment-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/style-counter-increment-ref.html
+@@ -0,0 +1,62 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  .list {
++    counter-reset: i 10;
++  }
++  .inc:before {
++    counter-increment: i;
++    content: "Counter = " counter(i);
++    height: 2rem;
++  }
++  .container {
++    counter-reset: i;
++    margin: 2rem;
++  }
++  .set {
++    width: 0px;
++    height: 0px;
++  }
++  </style>
++</head>
++<body>
++  <div class="root">
++    <div class="list">
++      Counter set to 10
++      <div class="inc"> </div>
++      <div class="container">
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++      </div>
++      <div class="set" style="counter-reset: i 11;"> </div>
++      <div class="container">
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++      </div>
++      <div class="set" style="counter-reset: i 11;"> </div>
++      <div class="inc"> </div>
++    </div>
++    <div class="list">
++      Counter reset to 10
++      <div class="container">
++        Counter reset to 20 on container.
++        <div class="inc"> </div>
++        Counter reset to 2 here.
++        <div class="set" style="counter-reset: i 2;"> </div>
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++      </div>
++      <div class="set" style="counter-reset: i 20;"> </div>
++      <div class="inc"> </div>
++      <div class="inc"> </div>
++      <div class="inc"> </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/style-counter-increment.html b/layout/reftests/css-contain/style-counter-increment.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/style-counter-increment.html
+@@ -0,0 +1,61 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  .list {
++    counter-reset: i 10;
++  }
++  .inc:before {
++    counter-increment: i;
++    content: "Counter = " counter(i);
++    height: 2rem;
++  }
++  .container {
++    margin: 2rem;
++    contain: style;
++  }
++  .set {
++    width: 0px;
++    height: 0px;
++  }
++  </style>
++</head>
++<body>
++  <div class="root">
++    <div class="list">
++      Counter set to 10
++      <div class="inc"> </div>
++      <div class="container">
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++      </div>
++      <div class="container">
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++      </div>
++      <div class="inc"> </div>
++    </div>
++    <div class="list">
++      Counter reset to 10
++      <div class="container" style="counter-reset: i 20;">
++        <div>
++          Counter reset to 20 on container.
++          <div class="inc"> </div>
++          Counter reset to 2 here.
++          <div class="set" style="counter-reset: i 2;"> </div>
++          <div class="inc"> </div>
++          <div class="inc"> </div>
++        </div>
++      </div>
++      <div class="inc"> </div>
++      <div class="inc"> </div>
++      <div class="inc"> </div>
++  </div>
++</body>
++</html>

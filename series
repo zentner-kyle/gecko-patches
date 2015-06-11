@@ -3,6 +3,9 @@ ContainPaint
 ContainPaintTest
 try-linux-minimal
 ContainStyleAttempt2
+ContainStyleCounterTest
+ContainStyleQuotes
+ContainStyleQuotesAttempt1
 ContainStyleAttempt1
 RemoveBoxSizingPaddingBoxTests
 try-patch
