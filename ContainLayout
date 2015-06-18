@@ -42,7 +42,8 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  #endif
  
    if (aInsertAfter) {
-@@ -3745,21 +3746,32 @@ nsCSSFrameConstructor::ConstructFrameFro
+@@ -3744,21 +3745,27 @@ nsCSSFrameConstructor::ConstructFrameFro
+   } else {
      ancestorPusher.PushStyleScope(content);
    }
  
@@ -50,24 +51,20 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    nsIFrame* primaryFrame;
    nsStyleContext* const styleContext = aItem.mStyleContext;
    const nsStyleDisplay* display = styleContext->StyleDisplay();
++  nsFrameItems containedItems;
++  nsFrameItems *items = &aFrameItems;
++  if (display->IsLayoutContaining()) {
++    items = &containedItems;
++    aParentFrame = BuildContainment(aState, content, styleContext,
++                                    aParentFrame, containedItems);
++  }
    if (bits & FCDATA_FUNC_IS_FULL_CTOR) {
-+    nsContainerFrame *container = nullptr;
-+    nsRefPtr<nsStyleContext> scrolledContentStyle = nullptr;
-+    bool contained = display->IsLayoutContaining();
-+    nsFrameItems containedFrameItems;
-+    if (contained) {
-+      scrolledContentStyle = BeginBuildingContainment(aState, content,
-+          styleContext, aParentFrame, container);
-+      aParentFrame = container;
-+    }
      newFrame =
        (this->*(data->mFullConstructor))(aState, aItem, aParentFrame,
-                                         display, aFrameItems);
+-                                        display, aFrameItems);
 -    MOZ_ASSERT(newFrame, "Full constructor failed");
++                                        display, *items);
      primaryFrame = newFrame;
-+    if (contained) {
-+      FinishBuildingContainment(container, newFrame, scrolledContentStyle);
-+    }
    } else {
      newFrame =
        (*data->mFunc.mCreationFunc)(mPresShell, styleContext);
@@ -75,32 +72,26 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
      bool allowOutOfFlow = !(bits & FCDATA_DISALLOW_OUT_OF_FLOW);
      bool isPopup = aItem.mIsPopup;
      NS_ASSERTION(!isPopup ||
-                  (aState.mPopupItems.containingBlock &&
-@@ -3769,16 +3781,23 @@ nsCSSFrameConstructor::ConstructFrameFro
+@@ -3825,17 +3832,17 @@ nsCSSFrameConstructor::ConstructFrameFro
+         maybeAbsoluteContainingBlock = blockFrame;
+         maybeAbsoluteContainingBlockStyleFrame = blockFrame;
+       }
  
-     nsContainerFrame* geometricParent =
-       isPopup ? aState.mPopupItems.containingBlock :
-       (allowOutOfFlow ? aState.GetGeometricParent(display, aParentFrame)
-                       : aParentFrame);
+       // Our kids should go into the blockFrame
+       newFrame = blockFrame;
+     }
  
-     // Must init frameToAddToList to null, since it's inout
-     nsIFrame* frameToAddToList = nullptr;
-+    if (display->IsLayoutContaining()) {
-+      printf("CONTAIN: IsLayoutContaining() -> true\n");
-+      nsContainerFrame* containmentFrame = nullptr;
-+      BuildContainment(aState, content, styleContext, newFrame,
-+                       geometricParent, containmentFrame);
-+      newFrame = containmentFrame;
-+    }
-     if ((bits & FCDATA_MAY_NEED_SCROLLFRAME) &&
-         display->IsScrollableOverflow()) {
-       nsContainerFrame* scrollframe = nullptr;
-       BuildScrollFrame(aState, content, styleContext, newFrame,
-                        geometricParent, scrollframe);
-       frameToAddToList = scrollframe;
-     } else {
-       InitAndRestoreFrame(aState, content, geometricParent, newFrame);
-@@ -4442,16 +4461,54 @@ nsCSSFrameConstructor::BeginBuildingScro
+-    aState.AddChild(frameToAddToList, aFrameItems, content, styleContext,
++    aState.AddChild(frameToAddToList, *items, content, styleContext,
+                     aParentFrame, allowOutOfFlow, allowOutOfFlow, isPopup);
+ 
+     nsContainerFrame* newFrameAsContainer = do_QueryFrame(newFrame);
+     if (newFrameAsContainer) {
+ #ifdef MOZ_XUL
+       // Icky XUL stuff, sadly
+ 
+       if (aItem.mIsRootPopupgroup) {
+@@ -4442,16 +4449,36 @@ nsCSSFrameConstructor::BeginBuildingScro
  
    if (gfxScrollFrame) {
       gfxScrollFrame->SetInitialChildList(kPrincipalList, anonymousItems);
@@ -109,42 +100,24 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    return scrolledChildStyle.forget();
  }
  
-+already_AddRefed<nsStyleContext>
-+nsCSSFrameConstructor::BeginBuildingContainment(nsFrameConstructorState& aState,
-+                                                nsIContent*              aContent,
-+                                                nsStyleContext*          aContentStyle,
-+                                                nsContainerFrame*        aParentFrame,
-+                                                nsContainerFrame*&       aNewFrame)
++nsContainerFrame*
++nsCSSFrameConstructor::BuildContainment(nsFrameConstructorState& aState,
++                                        nsIContent*              aContent,
++                                        nsStyleContext*          aContentStyle,
++                                        nsContainerFrame*        aParentFrame,
++                                        nsFrameItems            &aFrameItems)
 +{
-+  nsFrameItems anonymousItems;
++  nsRefPtr<nsStyleContext> containerStyle =
++    mPresShell->StyleSet()->ResolveAnonymousBoxStyle(nsCSSAnonBoxes::containment,
++                                                     aContentStyle);
 +
-+  nsRefPtr<nsStyleContext> contentStyle = aContentStyle;
++  nsContainerFrame *container = new (mPresShell) nsContainmentFrame(containerStyle);
++  InitAndRestoreFrame(aState, aContent, aParentFrame, container);
 +
-+  if (!aNewFrame) {
-+    aNewFrame = new (mPresShell)
-+      nsContainmentFrame(contentStyle);
-+    InitAndRestoreFrame(aState, aContent, aParentFrame, aNewFrame);
-+  }
-+
-+  CreateAnonymousFrames(aState, aContent, aNewFrame, nullptr,
-+                        anonymousItems);
-+
-+  nsStyleSet *styleSet = mPresShell->StyleSet();
-+  nsRefPtr<nsStyleContext> containedChildStyle =
-+    styleSet->ResolveAnonymousBoxStyle(nsCSSAnonBoxes::containment, contentStyle);
-+
-+  aNewFrame->SetInitialChildList(kPrincipalList, anonymousItems);
-+  return containedChildStyle.forget();
-+}
-+
-+void
-+nsCSSFrameConstructor::FinishBuildingContainment(nsContainerFrame* aContainmentFrame,
-+                                                 nsIFrame *aContainedFrame,
-+                                                 nsRefPtr<nsStyleContext> &aContainedChildStyle)
-+{
-+  //aContainedFrame->SetStyleContextWithoutNotification(aContainedChildStyle);
-+  nsFrameList contained(aContainedFrame, aContainedFrame);
-+  aContainmentFrame->AppendFrames(kPrincipalList, contained);
++  CreateAnonymousFrames(aState, aContent, container, nullptr,
++                        aFrameItems);
++  container->SetInitialChildList(kPrincipalList, aFrameItems);
++  return container;
 +}
 +
  void
@@ -155,61 +128,10 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    aScrollFrame->AppendFrames(kPrincipalList, scrolled);
  }
  
-@@ -4500,16 +4557,50 @@ nsCSSFrameConstructor::BuildScrollFrame(
-                              false, aNewFrame);
- 
-   aScrolledFrame->SetStyleContextWithoutNotification(scrolledContentStyle);
-   InitAndRestoreFrame(aState, aContent, aNewFrame, aScrolledFrame);
- 
-   FinishBuildingScrollFrame(aNewFrame, aScrolledFrame);
- }
- 
-+void
-+nsCSSFrameConstructor::BuildContainment(nsFrameConstructorState& aState,
-+                                        nsIContent*              aContent,
-+                                        nsStyleContext*          aContentStyle,
-+                                        nsIFrame*                aContainedFrame,
-+                                        nsContainerFrame*        aParentFrame,
-+                                        nsContainerFrame*&       aNewFrame)
-+{
-+  nsFrameItems anonymousItems;
-+
-+  nsRefPtr<nsStyleContext> contentStyle = aContentStyle;
-+
-+  if (!aNewFrame) {
-+    aNewFrame = new (mPresShell)
-+      nsContainmentFrame(contentStyle);
-+    InitAndRestoreFrame(aState, aContent, aParentFrame, aNewFrame);
-+  }
-+
-+  CreateAnonymousFrames(aState, aContent, aNewFrame, nullptr,
-+                        anonymousItems);
-+
-+  nsStyleSet *styleSet = mPresShell->StyleSet();
-+  nsRefPtr<nsStyleContext> containedChildStyle =
-+    styleSet->ResolveAnonymousBoxStyle(nsCSSAnonBoxes::containment, contentStyle);
-+
-+  aNewFrame->SetInitialChildList(kPrincipalList, anonymousItems);
-+
-+  aContainedFrame->SetStyleContextWithoutNotification(containedChildStyle);
-+  InitAndRestoreFrame(aState, aContent, aNewFrame, aContainedFrame);
-+
-+  nsFrameList contained(aContainedFrame, aContainedFrame);
-+  aNewFrame->AppendFrames(kPrincipalList, contained);
-+}
-+
- const nsCSSFrameConstructor::FrameConstructionData*
- nsCSSFrameConstructor::FindDisplayData(const nsStyleDisplay* aDisplay,
-                                        Element* aElement,
-                                        nsIFrame* aParentFrame,
-                                        nsStyleContext* aStyleContext)
- {
-   PR_STATIC_ASSERT(eParentTypeCount < (1 << (32 - FCDATA_PARENT_TYPE_OFFSET)));
- 
 diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstructor.h
 --- a/layout/base/nsCSSFrameConstructor.h
 +++ b/layout/base/nsCSSFrameConstructor.h
-@@ -1615,16 +1615,35 @@ private:
+@@ -1615,16 +1615,23 @@ private:
    void
    BuildScrollFrame(nsFrameConstructorState& aState,
                     nsIContent*              aContent,
@@ -218,24 +140,12 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
                     nsContainerFrame*        aParentFrame,
                     nsContainerFrame*&       aNewFrame);
  
-+  void
++  nsContainerFrame*
 +  BuildContainment(nsFrameConstructorState& aState,
 +                   nsIContent*              aContent,
 +                   nsStyleContext*          aContentStyle,
-+                   nsIFrame*                aContainedFrame,
 +                   nsContainerFrame*        aParentFrame,
-+                   nsContainerFrame*&       aNewFrame);
-+
-+  already_AddRefed<nsStyleContext>
-+  BeginBuildingContainment(nsFrameConstructorState& aState,
-+                           nsIContent*              aContent,
-+                           nsStyleContext*          aContentStyle,
-+                           nsContainerFrame*        aParentFrame,
-+                           nsContainerFrame*&       aNewFrame);
-+  void
-+  FinishBuildingContainment(nsContainerFrame* aContainmentFrame,
-+                            nsIFrame *aContainedFrame,
-+                            nsRefPtr<nsStyleContext> &containedChildStyle);
++                   nsFrameItems            &aFrameItems);
 +
    // Builds the initial ScrollFrame
    already_AddRefed<nsStyleContext>
@@ -419,29 +329,44 @@ diff --git a/layout/style/nsCSSAnonBoxList.h b/layout/style/nsCSSAnonBoxList.h
  // Inside a grid container, a contiguous run of text gets wrapped in
  // an anonymous block, which is then treated as a grid item.
  CSS_ANON_BOX(anonymousGridItem, ":-moz-anonymous-grid-item")
-diff --git a/layout/style/nsCSSPseudoElementList.h b/layout/style/nsCSSPseudoElementList.h
---- a/layout/style/nsCSSPseudoElementList.h
-+++ b/layout/style/nsCSSPseudoElementList.h
-@@ -33,16 +33,19 @@ CSS_PSEUDO_ELEMENT(firstLetter, ":first-
-                    CSS_PSEUDO_ELEMENT_CONTAINS_ELEMENTS)
- CSS_PSEUDO_ELEMENT(firstLine, ":first-line",
-                    CSS_PSEUDO_ELEMENT_IS_CSS2 |
-                    CSS_PSEUDO_ELEMENT_CONTAINS_ELEMENTS)
+diff --git a/layout/style/nsStyleSet.cpp b/layout/style/nsStyleSet.cpp
+--- a/layout/style/nsStyleSet.cpp
++++ b/layout/style/nsStyleSet.cpp
+@@ -800,16 +800,34 @@ nsStyleSet::GetContext(nsStyleContext* a
+ {
+   NS_PRECONDITION((!aPseudoTag &&
+                    aPseudoType ==
+                      nsCSSPseudoElements::ePseudo_NotPseudoElement) ||
+                   (aPseudoTag &&
+                    nsCSSPseudoElements::GetPseudoType(aPseudoTag) ==
+                      aPseudoType),
+                   "Pseudo mismatch");
++  if (!((!aPseudoTag &&
++                   aPseudoType ==
++                     nsCSSPseudoElements::ePseudo_NotPseudoElement) ||
++                  (aPseudoTag &&
++                   nsCSSPseudoElements::GetPseudoType(aPseudoTag) ==
++                     aPseudoType))) {
++    NS_ASSERTION(aPseudoTag, "");
++    NS_ASSERTION((!aPseudoTag &&
++                    aPseudoType ==
++                      nsCSSPseudoElements::ePseudo_NotPseudoElement), "");
++    NS_ASSERTION((aPseudoTag &&
++                    nsCSSPseudoElements::GetPseudoType(aPseudoTag) ==
++                      aPseudoType), "");
++    NS_ASSERTION(aPseudoTag == nsCSSAnonBoxes::containment, "");
++    printf("aPseudoTag = %p\n", aPseudoTag);
++    printf("nsCSSPseudoElements::GetPseudoType(aPseudoTag) = %d\n", nsCSSPseudoElements::GetPseudoType(aPseudoTag));
++    printf("aPseudoType = %d\n", aPseudoType);
++  }
  
- CSS_PSEUDO_ELEMENT(mozSelection, ":-moz-selection",
-                    CSS_PSEUDO_ELEMENT_CONTAINS_ELEMENTS)
+   if (aVisitedRuleNode == aRuleNode) {
+     // No need to force creation of a visited style in this case.
+     aVisitedRuleNode = nullptr;
+   }
  
-+CSS_PSEUDO_ELEMENT(mozContainment, ":-moz-containment",
-+                   CSS_PSEUDO_ELEMENT_CONTAINS_ELEMENTS)
-+
- // XXXbz should we really allow random content to style these?  Maybe
- // use our flags to prevent that?
- CSS_PSEUDO_ELEMENT(mozFocusInner, ":-moz-focus-inner", 0)
- CSS_PSEUDO_ELEMENT(mozFocusOuter, ":-moz-focus-outer", 0)
- 
- // XXXbz should we really allow random content to style these?  Maybe
- // use our flags to prevent that?
- CSS_PSEUDO_ELEMENT(mozListBullet, ":-moz-list-bullet", 0)
+   // Ensure |aVisitedRuleNode != nullptr| corresponds to the need to
+   // create an if-visited style context, and that in that case, we have
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
