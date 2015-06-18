@@ -162,7 +162,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstructor.h
 --- a/layout/base/nsCSSFrameConstructor.h
 +++ b/layout/base/nsCSSFrameConstructor.h
-@@ -1615,16 +1615,31 @@ private:
+@@ -1615,16 +1615,28 @@ private:
    void
    BuildScrollFrame(nsFrameConstructorState& aState,
                     nsIContent*              aContent,
@@ -176,15 +176,12 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
 +                   nsIContent*              aContent,
 +                   nsStyleContext*          aContentStyle,
 +                   nsContainerFrame*        aParentFrame,
-+                   nsFrameItems            &aParentItems,
-+                   nsFrameItems            &aFrameItems);
++                   nsFrameItems            &aParentItems);
 +  void
 +  AddContainedChildren(nsFrameConstructorState& aState,
 +                      nsIContent*              aContent,
-+                      nsStyleContext*          aContentStyle,
 +                      nsContainerFrame*        aContainer,
-+                      nsFrameItems            &aParentItems,
-+                      nsFrameItems            &aFrameItems);
++                      nsFrameItems            &aContained);
 +
    // Builds the initial ScrollFrame
    already_AddRefed<nsStyleContext>
