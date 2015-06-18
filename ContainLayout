@@ -1,0 +1,270 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  aca1404277c999e0f2ed11c681dd47c985c5af1d
+
+diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
+--- a/layout/base/nsCSSFrameConstructor.cpp
++++ b/layout/base/nsCSSFrameConstructor.cpp
+@@ -32,16 +32,17 @@
+ #include "nsPresShell.h"
+ #include "nsIPresShell.h"
+ #include "nsUnicharUtils.h"
+ #include "nsStyleSet.h"
+ #include "nsViewManager.h"
+ #include "nsStyleConsts.h"
+ #include "nsIDOMXULElement.h"
+ #include "nsContainerFrame.h"
++#include "nsContainmentFrame.h"
+ #include "nsNameSpaceManager.h"
+ #include "nsIComboboxControlFrame.h"
+ #include "nsIListControlFrame.h"
+ #include "nsIDOMCharacterData.h"
+ #include "nsPlaceholderFrame.h"
+ #include "nsTableRowGroupFrame.h"
+ #include "nsIFormControl.h"
+ #include "nsCSSAnonBoxes.h"
+@@ -1146,16 +1147,21 @@ nsFrameConstructorState::AddChild(nsIFra
+                                   bool aIsOutOfFlowPopup,
+                                   bool aInsertAfter,
+                                   nsIFrame* aInsertAfterFrame)
+ {
+   NS_PRECONDITION(!aNewFrame->GetNextSibling(), "Shouldn't happen");
+ 
+   const nsStyleDisplay* disp = aNewFrame->StyleDisplay();
+ 
++  if (disp->mContain & NS_STYLE_CONTAIN_LAYOUT) {
++    aNewFrame = new (mPresShell) nsContainmentFrame(aStyleContext, aNewFrame);
++    aNewFrame->SetParent(aParentFrame);
++  }
++
+   // The comments in GetGeometricParent regarding root table frames
+   // all apply here, unfortunately.
+ 
+   bool needPlaceholder = false;
+   nsFrameState placeholderType;
+   nsFrameItems* frameItems = &aFrameItems;
+ #ifdef MOZ_XUL
+   if (MOZ_UNLIKELY(aIsOutOfFlowPopup)) {
+@@ -1205,17 +1211,17 @@ nsFrameConstructorState::AddChild(nsIFra
+                                                        aStyleContext,
+                                                        aParentFrame,
+                                                        nullptr,
+                                                        placeholderType);
+ 
+     placeholderFrame->AddStateBits(mAdditionalStateBits);
+     // Add the placeholder frame to the flow
+     aFrameItems.AddChild(placeholderFrame);
+-  }
++  } 
+ #ifdef DEBUG
+   else {
+     NS_ASSERTION(aNewFrame->GetParent() == aParentFrame,
+                  "In-flow frame has wrong parent");
+   }
+ #endif
+ 
+   if (aInsertAfter) {
+diff --git a/layout/generic/moz.build b/layout/generic/moz.build
+--- a/layout/generic/moz.build
++++ b/layout/generic/moz.build
+@@ -118,16 +118,17 @@ UNIFIED_SOURCES += [
+     'nsBlockFrame.cpp',
+     'nsBlockReflowContext.cpp',
+     'nsBlockReflowState.cpp',
+     'nsBRFrame.cpp',
+     'nsBulletFrame.cpp',
+     'nsCanvasFrame.cpp',
+     'nsColumnSetFrame.cpp',
+     'nsContainerFrame.cpp',
++    'nsContainmentFrame.cpp',
+     'nsFirstLetterFrame.cpp',
+     'nsFlexContainerFrame.cpp',
+     'nsFloatManager.cpp',
+     'nsFontInflationData.cpp',
+     'nsFrame.cpp',
+     'nsFrameList.cpp',
+     'nsFrameSetFrame.cpp',
+     'nsFrameState.cpp',
+diff --git a/layout/generic/nsContainmentFrame.cpp b/layout/generic/nsContainmentFrame.cpp
+new file mode 100644
+--- /dev/null
++++ b/layout/generic/nsContainmentFrame.cpp
+@@ -0,0 +1,98 @@
++/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++
++#include "nsContainmentFrame.h"
++
++//#include "gfxUtils.h"
++//#include "mozilla/gfx/2D.h"
++//#include "nsDisplayList.h"
++#include "nsFrameManager.h"
++#include "nsLayoutUtils.h"
++//#include "nsPresContext.h"
++//#include "nsRenderingContext.h"
++//#include "nsIFrameInlines.h"
++
++
++NS_IMPL_FRAMEARENA_HELPERS(nsContainmentFrame)
++
++#ifdef DEBUG
++NS_QUERYFRAME_HEAD(nsContainmentFrame)
++  NS_QUERYFRAME_ENTRY(nsContainmentFrame)
++NS_QUERYFRAME_TAIL_INHERITING(nsFrame)
++#endif
++
++/* virtual */ nsSize
++nsContainmentFrame::GetMinSize(nsBoxLayoutState& aBoxLayoutState)
++{
++  nsSize size(0, 0);
++  DISPLAY_MIN_SIZE(this, size);
++  return size;
++}
++
++/* virtual */ nsSize
++nsContainmentFrame::GetPrefSize(nsBoxLayoutState& aBoxLayoutState)
++{
++  nsSize size(0, 0);
++  DISPLAY_PREF_SIZE(this, size);
++  return size;
++}
++
++/* virtual */ nsSize
++nsContainmentFrame::GetMaxSize(nsBoxLayoutState& aBoxLayoutState)
++{
++  nsSize size(NS_INTRINSICSIZE, NS_INTRINSICSIZE);
++  DISPLAY_MAX_SIZE(this, size);
++  return size;
++}
++
++void
++nsContainmentFrame::Reflow(nsPresContext*           aPresContext,
++                           nsHTMLReflowMetrics&     aDesiredSize,
++                           const nsHTMLReflowState& aReflowState,
++                           nsReflowStatus&          aStatus)
++{
++  MarkInReflow();
++  DO_GLOBAL_REFLOW_COUNT("nsContainmentFrame");
++  DISPLAY_REFLOW(aPresContext, this, aReflowState, aDesiredSize, aStatus);
++  aDesiredSize.ClearSize();
++
++  aStatus = NS_FRAME_COMPLETE;
++  NS_FRAME_SET_TRUNCATION(aStatus, aReflowState, aDesiredSize);
++}
++
++void
++nsContainmentFrame::DestroyFrom(nsIFrame* aDestructRoot)
++{
++  mChildFrame->DestroyFrom(aDestructRoot);
++  nsFrame::DestroyFrom(aDestructRoot);
++}
++
++void
++nsContainmentFrame::BuildDisplayList(nsDisplayListBuilder*   aBuilder,
++                                     const nsRect&           aDirtyRect,
++                                     const nsDisplayListSet& aLists)
++{
++  mChildFrame->BuildDisplayList(aBuilder, aDirtyRect, aLists);
++}
++
++#ifdef DEBUG_FRAME_DUMP
++nsresult
++nsContainmentFrame::GetFrameName(nsAString& aResult) const
++{
++  return MakeFrameName(NS_LITERAL_STRING("Containment"), aResult);
++}
++
++void
++nsContainmentFrame::List(FILE* out, const char* aPrefix, uint32_t aFlags) const
++{
++  nsCString str;
++  ListGeneric(str, aPrefix, aFlags);
++
++  str += " containedFrame=";
++  nsFrame::ListTag(str, mChildFrame);
++  fprintf_stderr(out, "%s\n", str.get());
++}
++#endif
+diff --git a/layout/generic/nsContainmentFrame.h b/layout/generic/nsContainmentFrame.h
+new file mode 100644
+--- /dev/null
++++ b/layout/generic/nsContainmentFrame.h
+@@ -0,0 +1,54 @@
++/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef nsContainmentFrame_h___
++#define nsContainmentFrame_h___
++
++//#include "mozilla/Attributes.h"
++#include "nsFrame.h"
++
++class nsContainmentFrame final : public nsFrame {
++public:
++  NS_DECL_FRAMEARENA_HELPERS
++#ifdef DEBUG
++  NS_DECL_QUERYFRAME_TARGET(nsContainmentFrame)
++  NS_DECL_QUERYFRAME
++#endif
++
++  nsContainmentFrame(nsStyleContext* aContext, nsIFrame *aChildFrame)
++    : nsFrame(aContext)
++    , mChildFrame(aChildFrame)
++  {
++  }
++
++  // nsIFrame overrides
++  virtual nsSize GetMinSize(nsBoxLayoutState& aBoxLayoutState) override;
++  virtual nsSize GetPrefSize(nsBoxLayoutState& aBoxLayoutState) override;
++  virtual nsSize GetMaxSize(nsBoxLayoutState& aBoxLayoutState) override;
++
++  virtual void Reflow(nsPresContext* aPresContext,
++                      nsHTMLReflowMetrics& aDesiredSize,
++                      const nsHTMLReflowState& aReflowState,
++                      nsReflowStatus& aStatus) override;
++
++  virtual void DestroyFrom(nsIFrame* aDestructRoot) override;
++
++  virtual void BuildDisplayList(nsDisplayListBuilder*   aBuilder,
++                                const nsRect&           aDirtyRect,
++                                const nsDisplayListSet& aLists) override;
++
++  virtual bool IsEmpty() override { return true; }
++  virtual bool IsSelfEmpty() override { return true; }
++
++#ifdef DEBUG_FRAME_DUMP
++  void List(FILE* out = stderr, const char* aPrefix = "", uint32_t aFlags = 0) const override;
++  virtual nsresult GetFrameName(nsAString& aResult) const override;
++#endif // DEBUG
++
++protected:
++  nsIFrame* mChildFrame;
++};
++
++#endif /* nsContainmentFrame_h___ */
+diff --git a/layout/generic/nsFrameIdList.h b/layout/generic/nsFrameIdList.h
+--- a/layout/generic/nsFrameIdList.h
++++ b/layout/generic/nsFrameIdList.h
+@@ -11,16 +11,17 @@ FRAME_ID(nsBoxFrame)
+ FRAME_ID(nsBulletFrame)
+ FRAME_ID(nsButtonBoxFrame)
+ FRAME_ID(nsCanvasFrame)
+ FRAME_ID(nsColorControlFrame)
+ FRAME_ID(nsColumnSetFrame)
+ FRAME_ID(nsComboboxControlFrame)
+ FRAME_ID(nsComboboxDisplayFrame)
+ FRAME_ID(nsContainerFrame)
++FRAME_ID(nsContainmentFrame)
+ FRAME_ID(nsContinuingTextFrame)
+ FRAME_ID(nsDeckFrame)
+ FRAME_ID(nsDocElementBoxFrame)
+ FRAME_ID(nsFieldSetFrame)
+ FRAME_ID(nsFileControlFrame)
+ FRAME_ID(nsFirstLetterFrame)
+ FRAME_ID(nsFirstLineFrame)
+ FRAME_ID(nsFlexContainerFrame)

@@ -1,0 +1,140 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  1e089e25b8ea155e0f45dcdef5f26e94d270a6aa
+Bug 1172087 - Test page break behavior for "contain: style"
+
+diff --git a/layout/reftests/css-contain/reftest.list b/layout/reftests/css-contain/reftest.list
+--- a/layout/reftests/css-contain/reftest.list
++++ b/layout/reftests/css-contain/reftest.list
+@@ -2,8 +2,9 @@ default-preferences pref(layout.css.cont
+ 
+ == paint-clip.html paint-clip-ref.html
+ == paint-containing-block-absolute.html paint-containing-block-absolute-ref.html
+ == paint-containing-block-fixed.html paint-containing-block-fixed-ref.html
+ == paint-formatting-context-float.html paint-formatting-context-float-ref.html
+ == paint-formatting-context-margin.html paint-formatting-context-margin-ref.html
+ == style-counter-increment.html style-counter-increment-ref.html
+ == style-quote.html style-quote-ref.html
++== style-break.html style-break-ref.html
+diff --git a/layout/reftests/css-contain/style-break-ref.html b/layout/reftests/css-contain/style-break-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/style-break-ref.html
+@@ -0,0 +1,55 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    contain: style;
++    width: 20em;
++    height: 10em;
++    background: orange;
++    border: 1em solid black;
++    margin: 1em;
++  }
++  .b-after {
++  }
++  .b-before {
++  }
++  </style>
++</head>
++<body class="reftest-paint">
++  <div class="container">
++    <div class="b-before"> </div>
++  </div>
++  <div class="container">
++    <div class="b-before"> </div>
++  </div>
++  <div class="container">
++    <div class="b-before"> </div>
++  </div>
++  <div class="container">
++    <div class="b-before"> </div>
++  </div>
++  <div class="container">
++    <div class="b-before"> </div>
++  </div>
++  <div class="container">
++    <div class="b-after"> </div>
++  </div>
++  <div class="container">
++    <div class="b-after"> </div>
++  </div>
++  <div class="container">
++    <div class="b-after"> </div>
++  </div>
++  <div class="container">
++    <div class="b-after"> </div>
++  </div>
++  <div class="container">
++    <div class="b-after"> </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/style-break.html b/layout/reftests/css-contain/style-break.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/style-break.html
+@@ -0,0 +1,57 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    contain: style;
++    width: 20em;
++    height: 10em;
++    background: orange;
++    border: 1em solid black;
++    margin: 1em;
++  }
++  .b-after {
++    page-break-after: always;
++  }
++  .b-before {
++    page-break-before: always;
++  }
++  </style>
++</head>
++<body class="reftest-paint">
++  <div class="container">
++    <div class="b-before"> </div>
++  </div>
++  <div class="container">
++    <div class="b-before"> </div>
++  </div>
++  <div class="container">
++    <div class="b-before"> </div>
++  </div>
++  <div class="container">
++    <div class="b-before"> </div>
++  </div>
++  <div class="container">
++    <div class="b-before"> </div>
++  </div>
++  <div class="container">
++    <div class="b-after"> </div>
++  </div>
++  <div class="container">
++    <div class="b-after"> </div>
++  </div>
++  <div class="container">
++    <div class="b-after"> </div>
++  </div>
++  <div class="container">
++    <div class="b-after"> </div>
++  </div>
++  <div class="container">
++    <div class="b-after"> </div>
++  </div>
++</body>
++</html>

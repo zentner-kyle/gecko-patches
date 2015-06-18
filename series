@@ -1,4 +1,3 @@
-ParseContain
 ContainPaint
 ContainPaintTest
 try-linux-minimal
@@ -7,6 +6,8 @@ ContainStyleCounterTest
 ContainStyleQuotes
 ContainStyleQuotesTest
 ContainStyleBreak
+ContainStyleBreakTest
+ContainLayout
 UnfinishedTests
 ContainStyleQuotesAttempt1
 ContainStyleAttempt1
@@ -26,3 +27,4 @@ try-windows
 CSSGridAreaMultipleDots
 try2
 GridParen2Brace
+ParseContain

@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  340ef2dc262aa1b037ef2349892970c3900e1c32
+# Parent  b0d07d3ce4ec61005c21ffee614b1f0bbb1d7e69
 Bug 1172087 - Implement page break behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -79,7 +79,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
      AddPageBreakItem(aContent, aStyleContext, aItems);
    }
  
-@@ -10339,19 +10344,21 @@ nsCSSFrameConstructor::ProcessChildren(n
+@@ -10339,17 +10344,19 @@ nsCSSFrameConstructor::ProcessChildren(n
      ++mCurrentDepth;
    }
  
@@ -90,14 +90,12 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
                                    aFrame->StyleDisplay()->IsStyleContaining());
 +  AutoRestore<bool> savedStyleContainment(aState.mStyleContained);
    if (aFrame->StyleDisplay()->IsStyleContaining()) {
-     (new nsQuoteNode(eStyleContentType_ScopeStart, -1))
-       ->InitTextFrame(&mQuoteList, aFrame, nullptr);
 +    aState.mStyleContained = true;
+     // A negative content index is needed to indicate that the quote depth is
+     // being changed by this node. Any negative value will do, so -1 is used.
+     (new nsQuoteNode(eStyleContentType_ScopeStart, -1))
+       // Insert the node into the list, with no text frame.
+       ->InitTextFrame(&mQuoteList, aFrame, nullptr);
    }
  
    // XXXbz ideally, this would do all the pushing of various
-   // containing blocks as needed, so callers don't have to do it...
- 
-   bool haveFirstLetterStyle = false, haveFirstLineStyle = false;
-   if (aAllowBlockStyles) {
-     ShouldHaveSpecialBlockStyle(aContent, aStyleContext, &haveFirstLetterStyle,
