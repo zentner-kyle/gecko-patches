@@ -42,7 +42,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  #endif
  
    if (aInsertAfter) {
-@@ -3744,21 +3745,29 @@ nsCSSFrameConstructor::ConstructFrameFro
+@@ -3744,21 +3745,30 @@ nsCSSFrameConstructor::ConstructFrameFro
    } else {
      ancestorPusher.PushStyleScope(content);
    }
@@ -54,7 +54,8 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 +  nsFrameItems containedItems;
 +  nsFrameItems *items = &aFrameItems;
 +  nsContainerFrame *container = nullptr;
-+  if (display->IsLayoutContaining()) {
++  //if (display->IsLayoutContaining()) {
++  if (aParentFrame->StyleDisplay()->IsLayoutContaining()) {
 +    items = &containedItems;
 +    container = BuildContainment(aState, content, styleContext,
 +                                 aParentFrame, aFrameItems);
@@ -74,7 +75,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
      bool allowOutOfFlow = !(bits & FCDATA_DISALLOW_OUT_OF_FLOW);
      bool isPopup = aItem.mIsPopup;
      NS_ASSERTION(!isPopup ||
-@@ -3825,17 +3834,17 @@ nsCSSFrameConstructor::ConstructFrameFro
+@@ -3825,17 +3835,17 @@ nsCSSFrameConstructor::ConstructFrameFro
          maybeAbsoluteContainingBlock = blockFrame;
          maybeAbsoluteContainingBlockStyleFrame = blockFrame;
        }
@@ -93,7 +94,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
        // Icky XUL stuff, sadly
  
        if (aItem.mIsRootPopupgroup) {
-@@ -3929,16 +3938,19 @@ nsCSSFrameConstructor::ConstructFrameFro
+@@ -3929,16 +3939,19 @@ nsCSSFrameConstructor::ConstructFrameFro
        }
  
        // Set the frame's initial child list
@@ -113,7 +114,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
         content->HasAttr(kNameSpaceID_None, nsGkAtoms::tooltiptext) ||
         content->HasAttr(kNameSpaceID_None, nsGkAtoms::tooltip))) {
      nsIRootBox* rootBox = nsIRootBox::GetRootBox(mPresShell);
-@@ -4442,16 +4454,45 @@ nsCSSFrameConstructor::BeginBuildingScro
+@@ -4442,16 +4455,45 @@ nsCSSFrameConstructor::BeginBuildingScro
  
    if (gfxScrollFrame) {
       gfxScrollFrame->SetInitialChildList(kPrincipalList, anonymousItems);
@@ -159,6 +160,24 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    aScrollFrame->AppendFrames(kPrincipalList, scrolled);
  }
  
+@@ -10255,16 +10297,17 @@ nsCSSFrameConstructor::ConstructFramesFr
+   CreateNeededAnonFlexOrGridItems(aState, aItems, aParentFrame);
+   CreateNeededPseudoInternalRubyBoxes(aState, aItems, aParentFrame);
+   CreateNeededPseudoSiblings(aState, aItems, aParentFrame);
+ 
+   aItems.SetTriedConstructingFrames();
+   for (FCItemIterator iter(aItems); !iter.IsDone(); iter.Next()) {
+     NS_ASSERTION(iter.item().DesiredParentType() == GetParentType(aParentFrame),
+                  "Needed pseudos didn't get created; expect bad things");
++    /// XXXkzentner: Maybe insert nsContainmentFrame here?
+     ConstructFramesFromItem(aState, iter, aParentFrame, aFrameItems);
+   }
+ 
+   NS_ASSERTION(!aState.mHavePendingPopupgroup,
+                "Should have proccessed it by now");
+ }
+ 
+ void
 diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstructor.h
 --- a/layout/base/nsCSSFrameConstructor.h
 +++ b/layout/base/nsCSSFrameConstructor.h
@@ -216,7 +235,7 @@ diff --git a/layout/generic/nsContainmentFrame.cpp b/layout/generic/nsContainmen
 new file mode 100644
 --- /dev/null
 +++ b/layout/generic/nsContainmentFrame.cpp
-@@ -0,0 +1,27 @@
+@@ -0,0 +1,60 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
 + * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -227,6 +246,7 @@ new file mode 100644
 +
 +#include "nsFrameManager.h"
 +#include "nsLayoutUtils.h"
++#include "mozilla/AutoRestore.h"
 +
 +
 +NS_IMPL_FRAMEARENA_HELPERS(nsContainmentFrame)
@@ -234,8 +254,40 @@ new file mode 100644
 +#ifdef DEBUG
 +NS_QUERYFRAME_HEAD(nsContainmentFrame)
 +  NS_QUERYFRAME_ENTRY(nsContainmentFrame)
-+NS_QUERYFRAME_TAIL_INHERITING(nsFrame)
++NS_QUERYFRAME_TAIL_INHERITING(nsBlockFrame)
 +#endif
++
++void
++nsContainmentFrame::Reflow(nsPresContext*           aPresContext,
++                           nsHTMLReflowMetrics&     aMetrics,
++                           const nsHTMLReflowState& aReflowState,
++                           nsReflowStatus&          aStatus)
++{
++  MarkInReflow();
++  DO_GLOBAL_REFLOW_COUNT("nsContainmentFrame");
++  DISPLAY_REFLOW(aPresContext, this, aReflowState, aMetrics, aStatus);
++
++
++
++  //AutoRestore<nsHTMLReflowMetrics> savedMetrics(aMetrics);
++  //AutoRestore<nsHTMLReflowMetrics> savedMetrics(aMetrics);
++  //nsHTMLReflowMetrics originalDesiredSize = aMetrics;
++  //nsBlockFrame::Reflow(aPresContext, aMetrics, aReflowState, aStatus);
++  //aMetrics.SetSize(originalDesiredSize.GetWritingMode(),
++      //originalDesiredSize.Size(originalDesiredSize.GetWritingMode()));
++  //NS_FRAME_SET_TRUNCATION(aStatus, aReflowState, originalDesiredSize);
++
++  // Compute our final size
++  nscoord blockEndEdgeOfChildren;
++  ComputeFinalSize(aReflowState, state, aMetrics, &blockEndEdgeOfChildren);
++  nsRect areaBounds = nsRect(0, 0, aMetrics.Width(), aMetrics.Height());
++  ComputeOverflowAreas(areaBounds, aReflowState.mStyleDisplay,
++                       blockEndEdgeOfChildren, aMetrics.mOverflowAreas);
++  FinishAndStoreOverflow(&aMetrics);
++
++  aStatus = NS_FRAME_COMPLETE;
++  NS_FRAME_SET_TRUNCATION(aStatus, aReflowState, aMetrics);
++}
 +
 +#ifdef DEBUG_FRAME_DUMP
 +nsresult
@@ -248,7 +300,7 @@ diff --git a/layout/generic/nsContainmentFrame.h b/layout/generic/nsContainmentF
 new file mode 100644
 --- /dev/null
 +++ b/layout/generic/nsContainmentFrame.h
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,35 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
 + * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -260,7 +312,7 @@ new file mode 100644
 +//#include "mozilla/Attributes.h"
 +#include "nsFrame.h"
 +
-+class nsContainmentFrame final : public nsContainerFrame {
++class nsContainmentFrame final : public nsBlockFrame {
 +public:
 +  NS_DECL_FRAMEARENA_HELPERS
 +#ifdef DEBUG
@@ -269,9 +321,14 @@ new file mode 100644
 +#endif
 +
 +  nsContainmentFrame(nsStyleContext* aContext)
-+    : nsContainerFrame(aContext)
++    : nsBlockFrame(aContext)
 +  {
 +  }
++
++  virtual void Reflow(nsPresContext* aPresContext,
++                      nsHTMLReflowMetrics& aDesiredSize,
++                      const nsHTMLReflowState& aReflowState,
++                      nsReflowStatus& aStatus) override;
 +
 +#ifdef DEBUG_FRAME_DUMP
 +  virtual nsresult GetFrameName(nsAString& aResult) const override;
@@ -304,7 +361,7 @@ diff --git a/layout/reftests/css-contain/layout-zero.html b/layout/reftests/css-
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/css-contain/layout-zero.html
-@@ -0,0 +1,35 @@
+@@ -0,0 +1,37 @@
 +
 +<!DOCTYPE HTML>
 +<html>
@@ -318,6 +375,8 @@ new file mode 100644
 +    contain: layout;
 +    background: red;
 +    border: 1em solid green;
++    width: 100px;
++    height: 100px;
 +  }
 +  </style>
 +</head>
