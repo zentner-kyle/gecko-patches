@@ -54,8 +54,8 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 +  nsFrameItems containedItems;
 +  nsFrameItems *items = &aFrameItems;
 +  nsContainerFrame *container = nullptr;
-+  //if (display->IsLayoutContaining()) {
-+  if (aParentFrame->StyleDisplay()->IsLayoutContaining()) {
++  if (display->IsLayoutContaining()) {
++  //if (aParentFrame->StyleDisplay()->IsLayoutContaining()) {
 +    items = &containedItems;
 +    container = BuildContainment(aState, content, styleContext,
 +                                 aParentFrame, aFrameItems);
@@ -114,7 +114,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
         content->HasAttr(kNameSpaceID_None, nsGkAtoms::tooltiptext) ||
         content->HasAttr(kNameSpaceID_None, nsGkAtoms::tooltip))) {
      nsIRootBox* rootBox = nsIRootBox::GetRootBox(mPresShell);
-@@ -4442,16 +4455,45 @@ nsCSSFrameConstructor::BeginBuildingScro
+@@ -4442,16 +4455,46 @@ nsCSSFrameConstructor::BeginBuildingScro
  
    if (gfxScrollFrame) {
       gfxScrollFrame->SetInitialChildList(kPrincipalList, anonymousItems);
@@ -135,6 +135,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 +                                                     aContentStyle);
 +
 +  nsContainerFrame *container = new (mPresShell) nsContainmentFrame(containerStyle);
++  //nsContainerFrame *container = NS_NewBlockFrame(mPresShell, containerStyle);
 +  InitAndRestoreFrame(aState, aContent, aParentFrame, container);
 +  aState.AddChild(container, aParentItems, aContent, aContentStyle,
 +                  aParentFrame, true, true, false);
@@ -160,7 +161,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    aScrollFrame->AppendFrames(kPrincipalList, scrolled);
  }
  
-@@ -10255,16 +10297,17 @@ nsCSSFrameConstructor::ConstructFramesFr
+@@ -10255,16 +10298,17 @@ nsCSSFrameConstructor::ConstructFramesFr
    CreateNeededAnonFlexOrGridItems(aState, aItems, aParentFrame);
    CreateNeededPseudoInternalRubyBoxes(aState, aItems, aParentFrame);
    CreateNeededPseudoSiblings(aState, aItems, aParentFrame);
@@ -235,7 +236,7 @@ diff --git a/layout/generic/nsContainmentFrame.cpp b/layout/generic/nsContainmen
 new file mode 100644
 --- /dev/null
 +++ b/layout/generic/nsContainmentFrame.cpp
-@@ -0,0 +1,60 @@
+@@ -0,0 +1,221 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
 + * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -247,6 +248,8 @@ new file mode 100644
 +#include "nsFrameManager.h"
 +#include "nsLayoutUtils.h"
 +#include "mozilla/AutoRestore.h"
++#include "nsBlockReflowState.h"
++#include "nsBlockFrame.h"
 +
 +
 +NS_IMPL_FRAMEARENA_HELPERS(nsContainmentFrame)
@@ -267,27 +270,186 @@ new file mode 100644
 +  DO_GLOBAL_REFLOW_COUNT("nsContainmentFrame");
 +  DISPLAY_REFLOW(aPresContext, this, aReflowState, aMetrics, aStatus);
 +
++  const nsHTMLReflowState *reflowState = &aReflowState;
++  nscoord consumedBSize = GetConsumedBSize();
++  Maybe<nsHTMLReflowState> mutableReflowState;
++
++  nsAutoFloatManager autoFloatManager(const_cast<nsHTMLReflowState&>(*reflowState));
++
++  bool needFloatManager = nsBlockFrame::BlockNeedsFloatManager(this);
++  if (needFloatManager)
++    autoFloatManager.CreateFloatManager(aPresContext);
 +
 +
-+  //AutoRestore<nsHTMLReflowMetrics> savedMetrics(aMetrics);
-+  //AutoRestore<nsHTMLReflowMetrics> savedMetrics(aMetrics);
-+  //nsHTMLReflowMetrics originalDesiredSize = aMetrics;
-+  //nsBlockFrame::Reflow(aPresContext, aMetrics, aReflowState, aStatus);
-+  //aMetrics.SetSize(originalDesiredSize.GetWritingMode(),
-+      //originalDesiredSize.Size(originalDesiredSize.GetWritingMode()));
-+  //NS_FRAME_SET_TRUNCATION(aStatus, aReflowState, originalDesiredSize);
++  if (IsFrameTreeTooDeep(*reflowState, aMetrics, aStatus)) {
++    return;
++  }
 +
-+  // Compute our final size
++  bool blockStartMarginRoot, blockEndMarginRoot;
++  IsMarginRoot(&blockStartMarginRoot, &blockEndMarginRoot);
++
++  nsBlockReflowState state(*reflowState, aPresContext, this,
++                           blockStartMarginRoot, blockEndMarginRoot,
++                           needFloatManager, consumedBSize);
++
++
++  if (RenumberLists(aPresContext)) {
++    AddStateBits(NS_FRAME_HAS_DIRTY_CHILDREN);
++  }
++
++  DrainOverflowLines();
++
++  nsOverflowAreas ocBounds;
++  nsReflowStatus ocStatus = NS_FRAME_COMPLETE;
++  if (GetPrevInFlow()) {
++    ReflowOverflowContainerChildren(aPresContext, *reflowState, ocBounds, 0,
++                                    ocStatus);
++  }
++
++  nsOverflowContinuationTracker tracker(this, false);
++  state.mOverflowTracker = &tracker;
++
++  DrainPushedFloats();
++  nsOverflowAreas fcBounds;
++  nsReflowStatus fcStatus = NS_FRAME_COMPLETE;
++  ReflowPushedFloats(state, fcBounds, fcStatus);
++
++
++
++  LazyMarkLinesDirty();
++
++  mState &= ~NS_FRAME_FIRST_REFLOW;
++
++  ReflowDirtyLines(state);
++
++  NS_MergeReflowStatusInto(&state.mReflowStatus, ocStatus);
++  NS_MergeReflowStatusInto(&state.mReflowStatus, fcStatus);
++
++  if (NS_UNCONSTRAINEDSIZE != reflowState->AvailableBSize() &&
++      NS_FRAME_IS_COMPLETE(state.mReflowStatus) &&
++      state.mFloatManager->ClearContinues(FindTrailingClear())) {
++    NS_FRAME_SET_INCOMPLETE(state.mReflowStatus);
++  }
++
++  CheckFloats(state);
++
 +  nscoord blockEndEdgeOfChildren;
-+  ComputeFinalSize(aReflowState, state, aMetrics, &blockEndEdgeOfChildren);
-+  nsRect areaBounds = nsRect(0, 0, aMetrics.Width(), aMetrics.Height());
-+  ComputeOverflowAreas(areaBounds, aReflowState.mStyleDisplay,
-+                       blockEndEdgeOfChildren, aMetrics.mOverflowAreas);
++  ComputeFinalSize(*reflowState, state, aMetrics, &blockEndEdgeOfChildren);
++
 +  FinishAndStoreOverflow(&aMetrics);
 +
-+  aStatus = NS_FRAME_COMPLETE;
-+  NS_FRAME_SET_TRUNCATION(aStatus, aReflowState, aMetrics);
++  if (needFloatManager)
++    state.mFloatManager = nullptr;
++
++  aStatus = state.mReflowStatus;
++  NS_FRAME_SET_TRUNCATION(aStatus, (*reflowState), aMetrics);
 +}
++
++//void
++//nsContainmentFrame::Reflow(nsPresContext*           aPresContext,
++                           //nsHTMLReflowMetrics&     aMetrics,
++                           //const nsHTMLReflowState& aReflowState,
++                           //nsReflowStatus&          aStatus)
++//{
++  //MarkInReflow();
++  //DO_GLOBAL_REFLOW_COUNT("nsContainmentFrame");
++  //DISPLAY_REFLOW(aPresContext, this, aReflowState, aMetrics, aStatus);
++  ////nsHTMLReflowState childReflowState(aReflowState);
++  //// Should we pass aMetrics's flags here?
++  ////nsHTMLReflowMetrics childMetrics(aMetrics.GetWritingMode());
++    ////mMinWidth = child->mMinWidth;
++    ////mMinHeight = child->mMinHeight;
++    ////mPrefWidth = child->mPrefWidth;
++    ////mPrefHeight = child->mPrefHeight;
++
++  ////NS_ASSERTION(aReflowState.ComputedWidth() != NS_UNCONSTRAINEDSIZE,
++               ////"Shouldn't have unconstrained stuff here "
++               ////"Thanks to the rules of reflow");
++  ////NS_ASSERTION(NS_INTRINSICSIZE != aReflowState.ComputedHeight(),
++               ////"Shouldn't have unconstrained stuff here "
++               ////"thanks to ComputeAutoSize");
++
++  //WritingMode wm = aReflowState.GetWritingMode();
++
++  ////LogicalSize finalSize(wm,
++                        ////aReflowState.ComputedISize(),
++                        ////aReflowState.ComputedBSize());
++
++  ////{
++    ////WritingMode wm = aReflowState.GetWritingMode();
++    ////if (finalSize.ISize(wm) == NS_UNCONSTRAINEDSIZE) {
++      ////finalSize.ISize(wm) = 0;
++    ////}
++    ////if (finalSize.BSize(wm) == NS_UNCONSTRAINEDSIZE) {
++      ////finalSize.BSize(wm) = 0;
++    ////}
++    ////finalSize.ISize(wm) += aReflowState.ComputedLogicalBorderPadding().IStartEnd(wm);
++    ////finalSize.BSize(wm) += aReflowState.ComputedLogicalBorderPadding().BStartEnd(wm);
++  ////}
++  //////AddBordersAndPadding(aReflowState, finalSize);
++  ////aMetrics.SetSize(wm, finalSize);
++
++  ////aMetrics.SetOverflowAreasToDesiredBounds();
++
++  //NS_ASSERTION(mFrames.FirstChild() && !mFrames.FirstChild()->GetNextSibling(),
++               //"nsContainmentFrame should have exactly one child");
++
++  //if (mFrames.FirstChild()) {
++    //nsIFrame *child = mFrames.FirstChild();
++    ////nsReflowStatus childStatus;
++    ////// Is this the correct aAvailableSpace?
++    ////nsHTMLReflowState childReflowState(aPresContext, this, aReflowState.rendContext, aMetrics.Size(wm), 0);
++    ////childReflowState.mCBReflowState = &childReflowState;
++    ////nsFloatManager floatManager(aPresContext->PresShell(), wm);
++    ////childReflowState.mFloatManager = &floatManager;
++    ////nsHTMLReflowMetrics childMetrics(aMetrics.GetWritingMode());
++    ////printf("CONTAIN: Reflowing child.\n");
++    ////child->Reflow(aPresContext, childMetrics, childReflowState, childStatus);
++    ////child->Reflow(aPresContext, childMetrics, aReflowState, childStatus);
++    ////child->Reflow(aPresContext, aMetrics, aReflowState, childStatus);
++    //child->Reflow(aPresContext, aMetrics, aReflowState, aStatus);
++    //LogicalPoint pos(wm, 0, 0);
++    //nscoord containerWidth = aReflowState.AvailableSize(wm).Width(wm);
++    //FinishReflowChild(child, aPresContext, aMetrics, &aReflowState, wm, pos, containerWidth, 0);
++  //}
++  ////mRect = child->mRect;
++
++
++  ////aStatus = NS_FRAME_COMPLETE;
++
++  ////NS_FRAME_TRACE(NS_FRAME_TRACE_CALLS,
++                 ////("exit nsLeafFrame::DoReflow: size=%d,%d",
++                  ////aMetrics.ISize(wm), aMetrics.BSize(wm)));
++
++  //NS_FRAME_SET_TRUNCATION(aStatus, aReflowState, aMetrics);
++
++  ////aMetrics.SetOverflowAreasToDesiredBounds();
++
++  ////nsLeafFrame::Reflow(aPresContext, aMetrics, aReflowState, aStatus);
++
++  ////aMetrics.ClearSize();
++  ////aMetrics.mOverflowAreas.UnionWith(childMetrics.mOverflowAreas);
++
++  ////aStatus = NS_FRAME_COMPLETE;
++  ////NS_FRAME_SET_TRUNCATION(aStatus, aReflowState, aMetrics);
++
++  ////NS_ASSERTION(mFrames.FirstChild() && !mFrames.FirstChild()->GetNextSibling(),
++               ////"nsContainmentFrame should have exactly one child");
++
++  ////if (mFrames.FirstChild()) {
++    ////// Is this the correct aAvailableSpace?
++    ////nsHTMLReflowState childReflowState(aPresContext, this, aReflowState.rendContext, aMetrics.Size(wm), 0);
++    ////childReflowState.mCBReflowState = &childReflowState;
++    ////nsFloatManager floatManager(aPresContext->PresShell(), wm);
++    ////childReflowState.mFloatManager = &floatManager;
++    ////nsReflowStatus childStatus;
++    ////nsHTMLReflowMetrics childMetrics(aMetrics.GetWritingMode());
++    ////printf("CONTAIN: Reflowing child.\n");
++    ////nsIFrame *child = mFrames.FirstChild();
++    ////child->Reflow(aPresContext, childMetrics, childReflowState, childStatus);
++    //////child->Reflow(aPresContext, childMetrics, aReflowState, childStatus);
++  ////}
++//}
 +
 +#ifdef DEBUG_FRAME_DUMP
 +nsresult
@@ -361,8 +523,7 @@ diff --git a/layout/reftests/css-contain/layout-zero.html b/layout/reftests/css-
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/css-contain/layout-zero.html
-@@ -0,0 +1,37 @@
-+
+@@ -0,0 +1,36 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
