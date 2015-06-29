@@ -1,5 +1,3 @@
-UnRemoveBoxSizingPaddingBoxTests
-try-linux-minimal
 ContainPaint
 ContainPaintTest
 ContainStyleAttempt2
@@ -10,6 +8,8 @@ ContainStyleBreak
 ContainStyleBreakTest
 ContainLayout
 ContainLayoutTest
+UnRemoveBoxSizingPaddingBoxTests
+try-linux-minimal
 UnfinishedTests
 ContainStyleQuotesAttempt1
 ContainStyleAttempt1

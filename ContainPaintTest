@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  d539ecdc84116edd3359cf994d1369a595886600
+# Parent  8b9d691b8274c75a9a20d28d356b95c8c4f052b4
 Bug 1170781 - Patch 2: Test CSS 'contain: paint'.
 
 diff --git a/layout/reftests/css-contain/paint-clip-ref.html b/layout/reftests/css-contain/paint-clip-ref.html
@@ -394,11 +394,11 @@ diff --git a/layout/reftests/reftest.list b/layout/reftests/reftest.list
  # columns/
  include columns/reftest.list
  
-+#contain
++# contain/
 +include css-contain/reftest.list
 +
  # content/
- include ../../content/test/reftest/reftest.list
+ include ../../dom/tests/reftest/reftest.list
  
  # counters/
  include counters/reftest.list

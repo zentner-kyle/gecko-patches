@@ -1,0 +1,39 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  4c7d33b4b10bec20fdd98363951b52049b6a8593
+
+diff --git a/layout/reftests/css-contain/layout-inline-zero.html b/layout/reftests/css-contain/layout-inline-zero.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/layout-inline-zero.html
+@@ -0,0 +1,30 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    contain: layout;
++    background: red;
++    border: 1em solid green;
++    width: 100px;
++    height: 100px;
++  }
++  .container-ref {
++    background: red;
++    border: 1em solid green;
++  }
++  .inner-ref {
++    position: absolute;
++    left: 1em;
++  }
++  </style>
++</head>
++<body class="reftest-paint">
++  <span class="container">Test span.</span>
++  <!--<span class="container-ref"><span class="inner-ref">Test span.</span></span>-->
++</body>
++</html>
