@@ -236,7 +236,7 @@ diff --git a/layout/generic/nsContainmentFrame.cpp b/layout/generic/nsContainmen
 new file mode 100644
 --- /dev/null
 +++ b/layout/generic/nsContainmentFrame.cpp
-@@ -0,0 +1,297 @@
+@@ -0,0 +1,303 @@
 +/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 +/* This Source Code Form is subject to the terms of the Mozilla Public
 + * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -270,73 +270,79 @@ new file mode 100644
 +  DO_GLOBAL_REFLOW_COUNT("nsNumberControlFrame");
 +  DISPLAY_REFLOW(aPresContext, this, aReflowState, aMetrics, aStatus);
 +
-+  // The width of our content box, which is the available width
-+  // for our anonymous content:
-+  const nscoord contentBoxWidth = aReflowState.ComputedWidth();
-+  nscoord contentBoxHeight = aReflowState.ComputedHeight();
-+
-+  //nsIFrame* child = mOuterWrapper->GetPrimaryFrame();
 +  nsIFrame* child = mFrames.FirstChild();
++  MOZ_ASSERT(child && !mFrames.FirstChild()->GetNextSibling(),
++             "nsContainmentFrame should have exactly one child");
 +
-+    //NS_ASSERTION(child == mFrames.FirstChild(), "huh?");
++  nsHTMLReflowMetrics childDesiredSize(aReflowState);
 +
-+    nsHTMLReflowMetrics wrappersDesiredSize(aReflowState);
++  WritingMode wm = aReflowState.GetWritingMode();
++  nscoord iSize = aReflowState.AvailableISize();
++  //if (child->IsInline()) {
++    //iSize = NS_UNCONSTRAINEDSIZE;
++  //}
++  LogicalSize availSize(wm, iSize, NS_UNCONSTRAINEDSIZE);
 +
-+    WritingMode wm = child->GetWritingMode();
-+    LogicalSize availSize = aReflowState.ComputedSize(wm);
-+    availSize.BSize(wm) = NS_UNCONSTRAINEDSIZE;
++  nsHTMLReflowState childReflowState(aPresContext, aReflowState,
++                                     child, availSize);
 +
-+    nsHTMLReflowState wrapperReflowState(aPresContext, aReflowState,
-+                                         child, availSize);
++  // The child should act as though it has no contents.
++  if (childReflowState.ComputedBSize() == NS_UNCONSTRAINEDSIZE) {
++    childReflowState.SetComputedBSize(0);
++  }
 +
-+    // offsets of wrapper frame
-+    nscoord xoffset = aReflowState.ComputedPhysicalBorderPadding().left +
-+                        wrapperReflowState.ComputedPhysicalMargin().left;
-+    nscoord yoffset = aReflowState.ComputedPhysicalBorderPadding().top +
-+                        wrapperReflowState.ComputedPhysicalMargin().top;
++  // offsets of wrapper frame
++  //NS_ASSERTION(aReflowState.ComputedLogicalBorderPadding().IStart() == 0 &&
++               //aReflowState.ComputedLogicalBorderPadding().BStart() == 0,
++               //"nsContainmentFrame should have zero border and padding");
++  // Ignore child's margin.
 +
-+    nsReflowStatus childStatus;
-+    ReflowChild(child, aPresContext, wrappersDesiredSize,
-+                wrapperReflowState, xoffset, yoffset, 0, childStatus);
-+    MOZ_ASSERT(NS_FRAME_IS_FULLY_COMPLETE(childStatus),
-+               "We gave our child unconstrained height, so it should be complete");
++  nsReflowStatus childStatus;
++  nscoord containerWidth = aReflowState.ComputedWidth();
++  if (containerWidth == NS_UNCONSTRAINEDSIZE) {
++    containerWidth = 0;
++  }
 +
-+    nscoord wrappersMarginBoxHeight = wrappersDesiredSize.Height() +
-+      wrapperReflowState.ComputedPhysicalMargin().TopBottom();
++  // Child is at offset (0, 0), since we are responsible for it's margin, and
++  // we have not border or padding.
++  ReflowChild(child, aPresContext, childDesiredSize,
++              childReflowState, wm, LogicalPoint(wm, 0, 0), containerWidth, 0,
++              childStatus);
++  //MOZ_ASSERT(NS_FRAME_IS_FULLY_COMPLETE(childStatus),
++              //"We gave our child unconstrained height, so it should be complete");
 +
-+    if (contentBoxHeight == NS_INTRINSICSIZE) {
-+      // We are intrinsically sized -- we should shrinkwrap the outer wrapper's
-+      // height:
-+      contentBoxHeight = wrappersMarginBoxHeight;
++  //nscoord wrappersMarginBoxHeight = childDesiredSize.Height() +
++    //childReflowState.ComputedPhysicalMargin().TopBottom();
 +
-+      // Make sure we obey min/max-height in the case when we're doing intrinsic
-+      // sizing (we get it for free when we have a non-intrinsic
-+      // aReflowState.ComputedHeight()).  Note that we do this before
-+      // adjusting for borderpadding, since mComputedMaxHeight and
-+      // mComputedMinHeight are content heights.
-+      contentBoxHeight =
-+        NS_CSS_MINMAX(contentBoxHeight,
-+                      aReflowState.ComputedMinHeight(),
-+                      aReflowState.ComputedMaxHeight());
-+    }
++  //if (contentBoxHeight == NS_INTRINSICSIZE) {
++    //// We are intrinsically sized -- we should shrinkwrap the outer wrapper's
++    //// height:
++    //contentBoxHeight = wrappersMarginBoxHeight;
 +
-+    // Center child vertically
-+    nscoord extraSpace = contentBoxHeight - wrappersMarginBoxHeight;
-+    yoffset += std::max(0, extraSpace / 2);
++    //// Make sure we obey min/max-height in the case when we're doing intrinsic
++    //// sizing (we get it for free when we have a non-intrinsic
++    //// aReflowState.ComputedHeight()).  Note that we do this before
++    //// adjusting for borderpadding, since mComputedMaxHeight and
++    //// mComputedMinHeight are content heights.
++    //contentBoxHeight =
++      //NS_CSS_MINMAX(contentBoxHeight,
++                    //aReflowState.ComputedMinHeight(),
++                    //aReflowState.ComputedMaxHeight());
++  //}
 +
-+    // Place the child
-+    FinishReflowChild(child, aPresContext, wrappersDesiredSize,
-+                      &wrapperReflowState, xoffset, yoffset, 0);
++  //// Center child vertically
++  //nscoord extraSpace = contentBoxHeight - wrappersMarginBoxHeight;
++  //yoffset += std::max(0, extraSpace / 2);
 +
-+    aMetrics.SetBlockStartAscent(
-+       wrappersDesiredSize.BlockStartAscent() +
-+       child->BStart(aReflowState.GetWritingMode(),
-+                                 contentBoxWidth));
++  // Place the child
++  FinishReflowChild(child, aPresContext, childDesiredSize,
++                    &childReflowState, wm, LogicalPoint(wm, 0, 0),
++                    containerWidth, 0);
 +
-+  aMetrics.Width() = contentBoxWidth +
-+                         aReflowState.ComputedPhysicalBorderPadding().LeftRight();
-+  aMetrics.Height() = contentBoxHeight +
-+                          aReflowState.ComputedPhysicalBorderPadding().TopBottom();
++  // FIXME: Should this be set to zero?
++  aMetrics.SetBlockStartAscent(0);
++
++  aMetrics.SetSize(wm, childReflowState.ComputedSize(wm));
 +
 +  aMetrics.SetOverflowAreasToDesiredBounds();
 +
@@ -599,11 +605,54 @@ diff --git a/layout/generic/nsFrameIdList.h b/layout/generic/nsFrameIdList.h
  FRAME_ID(nsFirstLetterFrame)
  FRAME_ID(nsFirstLineFrame)
  FRAME_ID(nsFlexContainerFrame)
+diff --git a/layout/generic/nsLineLayout.cpp b/layout/generic/nsLineLayout.cpp
+--- a/layout/generic/nsLineLayout.cpp
++++ b/layout/generic/nsLineLayout.cpp
+@@ -439,32 +439,39 @@ nsLineLayout::BeginSpan(nsIFrame* aFrame
+   nsFrame::ListTag(stdout, aFrame);
+   printf(": BeginSpan leftEdge=%d rightEdge=%d\n", aIStart, aIEnd);
+ #endif
+ 
+   PerSpanData* psd = NewPerSpanData();
+   // Link up span frame's pfd to point to its child span data
+   PerFrameData* pfd = mCurrentSpan->mLastFrame;
+   NS_ASSERTION(pfd->mFrame == aFrame, "huh?");
++  printf("pdf->mFrame = %p\n", pfd->mFrame);
++  printf("aFrame = %p\n", aFrame);
++  pfd->mFrame->List(stdout);
++  aFrame->List(stdout);
+   pfd->mSpan = psd;
+ 
++  pfd->mFrame = aFrame;
++
+   // Init new span
+   psd->mFrame = pfd;
+   psd->mParent = mCurrentSpan;
+   psd->mReflowState = aSpanReflowState;
+   psd->mIStart = aIStart;
+   psd->mICoord = aIStart;
+   psd->mIEnd = aIEnd;
+   psd->mBaseline = aBaseline;
+ 
+   nsIFrame* frame = aSpanReflowState->frame;
+   psd->mNoWrap = !frame->StyleText()->WhiteSpaceCanWrap(frame) ||
+                  mSuppressLineWrap ||
+                  frame->StyleContext()->ShouldSuppressLineBreak();
+   psd->mWritingMode = aSpanReflowState->GetWritingMode();
++  printf("psd->mNoWrap = %d\n", psd->mNoWrap);
+ 
+   // Switch to new span
+   mCurrentSpan = psd;
+   mSpanDepth++;
+ }
+ 
+ nscoord
+ nsLineLayout::EndSpan(nsIFrame* aFrame)
 diff --git a/layout/reftests/css-contain/layout-zero.html b/layout/reftests/css-contain/layout-zero.html
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/css-contain/layout-zero.html
-@@ -0,0 +1,36 @@
+@@ -0,0 +1,37 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -617,7 +666,8 @@ new file mode 100644
 +    background: red;
 +    border: 1em solid green;
 +    width: 100px;
-+    height: 100px;
++    //height: 100px;
++    //height: 0;
 +  }
 +  </style>
 +</head>
