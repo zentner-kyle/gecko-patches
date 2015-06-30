@@ -2,6 +2,48 @@
 # User Kyle Zentner <kzentner@mozilla.com>
 # Parent  18f29c7f7d7a69f3fba032a99fa582ef81a46225
 
+diff --git a/layout/reftests/css-contain/layout-zero.html b/layout/reftests/css-contain/layout-zero.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/layout-zero.html
+@@ -0,0 +1,37 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    contain: layout;
++    background: red;
++    border: 1em solid green;
++    width: 100px;
++    //height: 100px;
++    //height: 0;
++  }
++  </style>
++</head>
++<body class="reftest-paint">
++  <div class="fun">
++    <div>
++      This is some content before the contained element.
++    </div>
++    <div>
++      This is a parent of the contained element.
++      <div class="container">
++        <div>
++          Lorem ipsum dolor sit amet
++        </div>
++      </div>
++    </div>
++    <div>
++      This is some content after the contained element.
++    </div>
++  </div>
++</body>
++</html>
 diff --git a/layout/reftests/css-contain/layout-inline-zero.html b/layout/reftests/css-contain/layout-inline-zero.html
 new file mode 100644
 --- /dev/null
@@ -41,27 +83,3 @@ new file mode 100644
 +  <!--<div class="container-ref"><span class="inner-ref">Test span.</span></div>-->
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/layout-zero.html b/layout/reftests/css-contain/layout-zero.html
---- a/layout/reftests/css-contain/layout-zero.html
-+++ b/layout/reftests/css-contain/layout-zero.html
-@@ -20,18 +20,19 @@
-   <div class="fun">
-     <div>
-       This is some content before the contained element.
-     </div>
-     <div>
-       This is a parent of the contained element.
-       <div class="container">
-         <div>
--    Lorem ipsum dolor sit amet, cu per agam quaerendum reprehendunt, scripta vivendo perfecto vis eu. Sea fastidii principes an. Sed in duis senserit, et cum impedit voluptaria, in nam sumo affert recteque. Sanctus suavitate voluptatibus te ius. Eos id insolens gloriatur repudiandae, vim in adhuc principes reprimique, vis ad omnium pericula reprimique.
-+    Lorem ipsum dolor sit amet
-         </div>
-+    <!--Lorem ipsum dolor sit amet, cu per agam quaerendum reprehendunt, scripta vivendo perfecto vis eu. Sea fastidii principes an. Sed in duis senserit, et cum impedit voluptaria, in nam sumo affert recteque. Sanctus suavitate voluptatibus te ius. Eos id insolens gloriatur repudiandae, vim in adhuc principes reprimique, vis ad omnium pericula reprimique.-->
-       </div>
-     </div>
-     <div>
-       This is some content after the contained element.
-     </div>
-   </div>
- </body>
- </html>
