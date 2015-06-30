@@ -286,7 +286,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      // Gets the appropriate counter list, creating it if necessary.
      // Guaranteed to return non-null. (Uses an infallible hashtable API.)
      nsCounterList* CounterListFor(const nsSubstring& aCounterName);
-@@ -274,9 +289,32 @@ private:
+@@ -274,9 +289,26 @@ private:
      // for |AddCounterResetsAndIncrements| only
      bool AddResetOrIncrement(nsIFrame *aFrame, int32_t aIndex,
                                 const nsStyleCounterData *aCounterData,
@@ -302,18 +302,12 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 +// were abandoned.
 +class nsCounterScopePush
 +{
-+private:
-+  bool mActive;
-+  nsCounterManager *mManager;
-+  nsIFrame *mSavedValue;
 +public:
 +  explicit nsCounterScopePush(nsCounterManager *aManager, nsIFrame *aFrame,
 +      bool use)
-+    : mActive(use)
-+    , mManager(aManager)
 +  {
-+      if (mActive) {
-+          mManager->AddRoots(aFrame);
++      if (use) {
++          aManager->AddRoots(aFrame);
 +      }
 +  }
 +};
