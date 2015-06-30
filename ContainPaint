@@ -1,12 +1,12 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  9f58ed1f905b699dcb5af5f744970d92aba2be4e
+# Parent  291614a686f1402b08db75699a8aa4c487d0f17f
 Bug 1170781 - Patch 1: Implement CSS 'contain: paint'.
 
 diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 --- a/layout/generic/nsBlockFrame.cpp
 +++ b/layout/generic/nsBlockFrame.cpp
-@@ -6643,18 +6643,21 @@ nsBlockFrame::Init(nsIContent*       aCo
+@@ -6642,18 +6642,21 @@ nsBlockFrame::Init(nsIContent*       aCo
      AddStateBits(NS_BLOCK_NEEDS_BIDI_RESOLUTION);
    }
  
@@ -21,7 +21,7 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 +  // establish a fromatting context.
 +  if ((GetParent() && StyleVisibility()->mWritingMode !=
 +                     GetParent()->StyleVisibility()->mWritingMode) ||
-+      StyleDisplay()->mContain & NS_STYLE_CONTAIN_PAINT) {
++      StyleDisplay()->IsPaintContaining()) {
      AddStateBits(NS_BLOCK_FLOAT_MGR | NS_BLOCK_MARGIN_ROOT);
    }
  
@@ -44,7 +44,7 @@ diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
      return;
 +  const nsStyleDisplay* ourDisp = StyleDisplay();
 +  Maybe<DisplayListClipState::AutoSaveRestore> clip;
-+  if (ourDisp->mContain & NS_STYLE_CONTAIN_PAINT) {
++  if (ourDisp->IsPaintContaining()) {
 +    clip.emplace(aBuilder);
 +    nsRect contentRect = GetContentRectRelativeToSelf() +
 +      aBuilder->ToReferenceFrame(this);
@@ -78,6 +78,59 @@ diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
  
    // Child is composited if it's transformed, partially transparent, or has
    // SVG effects or a blend mode..
+diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
+--- a/layout/style/nsRuleNode.cpp
++++ b/layout/style/nsRuleNode.cpp
+@@ -5707,17 +5707,24 @@ nsRuleNode::ComputeDisplayData(void* aSt
+       EnsureBlockDisplay(display->mDisplay);
+ 
+       // Note that it's OK to cache this struct in the ruletree
+       // because it's fine as-is for any style context that points to
+       // it directly, and any use of it as aStartStruct (e.g. if a
+       // more specific rule sets "float: none") will use
+       // mOriginalDisplay, which we have carefully not changed.
+     }
+-
++    if (display->IsPaintContaining()) {
++      // This is supposed to cause contain: paint and contain: layout elements
++      // to become formatting contexts. However, exactly what formatting
++      // context means has not been specificed yet.
++      // Most likely, the intended behavior is similar to EnsureBlockDisplay.
++      // XXX This will convert 'inline' to 'block' (instead of 'inline-block'). Is that right?
++      EnsureBlockDisplay(display->mDisplay);
++    }
+   }
+ 
+   /* Convert the nsCSSValueList into an nsTArray<nsTransformFunction *>. */
+   const nsCSSValue* transformValue = aRuleData->ValueForTransform();
+   switch (transformValue->GetUnit()) {
+   case eCSSUnit_Null:
+     break;
+ 
+diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
+--- a/layout/style/nsStyleStruct.h
++++ b/layout/style/nsStyleStruct.h
+@@ -2244,16 +2244,20 @@ struct nsStyleDisplay {
+ 
+   bool IsScrollableOverflow() const {
+     // mOverflowX and mOverflowY always match when one of them is
+     // NS_STYLE_OVERFLOW_VISIBLE or NS_STYLE_OVERFLOW_CLIP.
+     return mOverflowX != NS_STYLE_OVERFLOW_VISIBLE &&
+            mOverflowX != NS_STYLE_OVERFLOW_CLIP;
+   }
+ 
++  bool IsPaintContaining() const {
++    return mContain & NS_STYLE_CONTAIN_PAINT;
++  }
++
+   /* Returns whether the element has the -moz-transform property
+    * or a related property. */
+   bool HasTransformStyle() const {
+     return mSpecifiedTransform != nullptr ||
+            mTransformStyle == NS_STYLE_TRANSFORM_STYLE_PRESERVE_3D ||
+            (mWillChangeBitField & NS_STYLE_WILL_CHANGE_TRANSFORM);
+   }
+ 
 diff --git a/layout/style/nsStyleStructInlines.h b/layout/style/nsStyleStructInlines.h
 --- a/layout/style/nsStyleStructInlines.h
 +++ b/layout/style/nsStyleStructInlines.h
@@ -94,7 +147,7 @@ diff --git a/layout/style/nsStyleStructInlines.h b/layout/style/nsStyleStructInl
 +  return ((HasTransform(aContextFrame) || HasPerspectiveStyle() ||
            !aContextFrame->StyleSVGReset()->mFilters.IsEmpty()) &&
 -      !aContextFrame->IsSVGText();
-+      !aContextFrame->IsSVGText()) || mContain & NS_STYLE_CONTAIN_PAINT;
++      !aContextFrame->IsSVGText()) || IsPaintContaining();
  }
  
  bool

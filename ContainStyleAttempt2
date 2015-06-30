@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  c8c5c7c9f13e2dfb991d251c3cb685d81ba93614
+# Parent  1935bf9063087b8aef3e88d7e8e73f5e4a9eff1b
 Bug 1172087 - Implement counter behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -356,7 +356,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -2229,16 +2229,20 @@ struct nsStyleDisplay {
+@@ -2244,16 +2244,20 @@ struct nsStyleDisplay {
  
    bool IsScrollableOverflow() const {
      // mOverflowX and mOverflowY always match when one of them is
@@ -369,11 +369,11 @@ diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 +    return NS_STYLE_CONTAIN_STYLE & mContain;
 +  }
 +
+   bool IsPaintContaining() const {
+     return mContain & NS_STYLE_CONTAIN_PAINT;
+   }
+ 
    /* Returns whether the element has the -moz-transform property
     * or a related property. */
    bool HasTransformStyle() const {
      return mSpecifiedTransform != nullptr ||
-            mTransformStyle == NS_STYLE_TRANSFORM_STYLE_PRESERVE_3D ||
-            (mWillChangeBitField & NS_STYLE_WILL_CHANGE_TRANSFORM);
-   }
- 
