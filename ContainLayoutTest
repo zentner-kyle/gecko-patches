@@ -1,6 +1,7 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
 # Parent  678c1c7080760cc868acb823b72c646c7256ba85
+Bug 1178895 - Patch 2: Test CSS 'contain: layout'.
 
 diff --git a/layout/reftests/css-contain/layout-inline-zero-ref.html b/layout/reftests/css-contain/layout-inline-zero-ref.html
 new file mode 100644
@@ -55,6 +56,47 @@ new file mode 100644
 +</head>
 +<body class="reftest-paint">
 +  <span class="container">Test span.</span>
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/layout-zero-ref.html b/layout/reftests/css-contain/layout-zero-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/layout-zero-ref.html
+@@ -0,0 +1,36 @@
++
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    background: red;
++    border: 1em solid green;
++    width: 100px;
++    height: 0;
++  }
++  </style>
++</head>
++<body class="reftest-paint">
++  <div class="fun">
++    <div>
++      This is some content before the contained element.
++    </div>
++    <div>
++      This is a parent of the contained element.
++      <div class="container">
++        <div>
++          Lorem ipsum dolor sit amet
++        </div>
++      </div>
++    </div>
++    <div>
++      This is some content after the contained element.
++    </div>
++  </div>
 +</body>
 +</html>
 diff --git a/layout/reftests/css-contain/layout-zero.html b/layout/reftests/css-contain/layout-zero.html

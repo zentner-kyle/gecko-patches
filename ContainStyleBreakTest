@@ -1,7 +1,7 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
 # Parent  1e089e25b8ea155e0f45dcdef5f26e94d270a6aa
-Bug 1172087 - Test page break behavior for "contain: style"
+Bug 1172087 - Patch 6: Test page break behavior for "contain: style"
 
 diff --git a/layout/reftests/css-contain/reftest.list b/layout/reftests/css-contain/reftest.list
 --- a/layout/reftests/css-contain/reftest.list
