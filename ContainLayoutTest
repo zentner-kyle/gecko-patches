@@ -1,12 +1,67 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  18f29c7f7d7a69f3fba032a99fa582ef81a46225
+# Parent  678c1c7080760cc868acb823b72c646c7256ba85
 
+diff --git a/layout/reftests/css-contain/layout-inline-zero-ref.html b/layout/reftests/css-contain/layout-inline-zero-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/layout-inline-zero-ref.html
+@@ -0,0 +1,26 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container-ref {
++    display: block;
++    background: red;
++    border: 1em solid green;
++    width: auto;
++    height: 0;
++  }
++  .inner-ref {
++    position: absolute;
++    left: 1em;
++  }
++  </style>
++</head>
++<body class="reftest-paint">
++  <span class="container-ref"><span class="inner-ref">Test span.</span></span>
++  <!--<div class="container-ref"><span class="inner-ref">Test span.</span></div>-->
++</body>
++</html>
+diff --git a/layout/reftests/css-contain/layout-inline-zero.html b/layout/reftests/css-contain/layout-inline-zero.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/css-contain/layout-inline-zero.html
+@@ -0,0 +1,19 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    contain: layout;
++    background: red;
++    border: 1em solid green;
++  }
++  </style>
++</head>
++<body class="reftest-paint">
++  <span class="container">Test span.</span>
++</body>
++</html>
 diff --git a/layout/reftests/css-contain/layout-zero.html b/layout/reftests/css-contain/layout-zero.html
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/css-contain/layout-zero.html
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,35 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -20,8 +75,6 @@ new file mode 100644
 +    background: red;
 +    border: 1em solid green;
 +    width: 100px;
-+    //height: 100px;
-+    //height: 0;
 +  }
 +  </style>
 +</head>
@@ -44,42 +97,17 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/layout-inline-zero.html b/layout/reftests/css-contain/layout-inline-zero.html
-new file mode 100644
---- /dev/null
-+++ b/layout/reftests/css-contain/layout-inline-zero.html
-@@ -0,0 +1,34 @@
-+<!DOCTYPE HTML>
-+<html>
-+<head>
-+  <meta charset="utf-8">
-+  <style>
-+  body {
-+    margin: 0;
-+  }
-+  .container {
-+    contain: layout;
-+    background: red;
-+    border: 1em solid green;
-+    //width: 6em;
-+    //height: 2em;
-+  }
-+  .container-ref {
-+    display: block;
-+    background: red;
-+    border: 1em solid green;
-+    width: 0;
-+    height: 0;
-+  }
-+  .inner-ref {
-+    position: absolute;
-+    left: 1em;
-+  }
-+  </style>
-+</head>
-+<body class="reftest-paint">
-+  <span class="container">Test span.</span>
-+  <!--<span class="container-ref"><span class="inner-ref">Test span.</span></span>-->
-+  <!--<div class="container-ref"><span class="inner-ref">Test span.</span></div>-->
-+</body>
-+</html>
+diff --git a/layout/reftests/css-contain/reftest.list b/layout/reftests/css-contain/reftest.list
+--- a/layout/reftests/css-contain/reftest.list
++++ b/layout/reftests/css-contain/reftest.list
+@@ -4,8 +4,10 @@ default-preferences pref(layout.css.cont
+ == paint-containing-block-absolute.html paint-containing-block-absolute-ref.html
+ == paint-containing-block-fixed.html paint-containing-block-fixed-ref.html
+ == paint-formatting-context-float.html paint-formatting-context-float-ref.html
+ == paint-formatting-context-margin.html paint-formatting-context-margin-ref.html
+ == style-counter-increment.html style-counter-increment-ref.html
+ == style-quote.html style-quote-ref.html
+ == style-break.html style-break-ref.html
+ == style-counter-insert.html style-counter-insert-ref.html
++== layout-zero.html layout-zero-ref.html
++== layout-inline-zero.html layout-inline-zero-ref.html
