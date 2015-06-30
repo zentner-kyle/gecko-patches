@@ -1,6 +1,7 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  aca1404277c999e0f2ed11c681dd47c985c5af1d
+# Parent  3541f6a3c013b4ab1835cd430102e6bf6aa24329
+Bug 1178895 - Patch 1: Implement CSS 'contain: layout'.
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
 --- a/layout/base/nsCSSFrameConstructor.cpp
@@ -608,7 +609,7 @@ diff --git a/layout/generic/nsFrameIdList.h b/layout/generic/nsFrameIdList.h
 diff --git a/layout/generic/nsLineLayout.cpp b/layout/generic/nsLineLayout.cpp
 --- a/layout/generic/nsLineLayout.cpp
 +++ b/layout/generic/nsLineLayout.cpp
-@@ -439,32 +439,39 @@ nsLineLayout::BeginSpan(nsIFrame* aFrame
+@@ -440,32 +440,39 @@ nsLineLayout::BeginSpan(nsIFrame* aFrame
    nsFrame::ListTag(stdout, aFrame);
    printf(": BeginSpan leftEdge=%d rightEdge=%d\n", aIStart, aIEnd);
  #endif
@@ -714,7 +715,7 @@ diff --git a/layout/style/nsCSSAnonBoxList.h b/layout/style/nsCSSAnonBoxList.h
 diff --git a/layout/style/nsStyleSet.cpp b/layout/style/nsStyleSet.cpp
 --- a/layout/style/nsStyleSet.cpp
 +++ b/layout/style/nsStyleSet.cpp
-@@ -800,16 +800,34 @@ nsStyleSet::GetContext(nsStyleContext* a
+@@ -878,16 +878,34 @@ nsStyleSet::GetContext(nsStyleContext* a
  {
    NS_PRECONDITION((!aPseudoTag &&
                     aPseudoType ==
@@ -752,24 +753,24 @@ diff --git a/layout/style/nsStyleSet.cpp b/layout/style/nsStyleSet.cpp
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -2233,16 +2233,20 @@ struct nsStyleDisplay {
+@@ -2244,16 +2244,20 @@ struct nsStyleDisplay {
+ 
+   bool IsScrollableOverflow() const {
+     // mOverflowX and mOverflowY always match when one of them is
+     // NS_STYLE_OVERFLOW_VISIBLE or NS_STYLE_OVERFLOW_CLIP.
      return mOverflowX != NS_STYLE_OVERFLOW_VISIBLE &&
             mOverflowX != NS_STYLE_OVERFLOW_CLIP;
-   }
- 
-   bool IsStyleContaining() const {
-     return NS_STYLE_CONTAIN_STYLE & mContain;
    }
  
 +  bool IsLayoutContaining() const {
 +    return NS_STYLE_CONTAIN_LAYOUT & mContain;
 +  }
 +
-   /* Returns whether the element has the -moz-transform property
-    * or a related property. */
-   bool HasTransformStyle() const {
-     return mSpecifiedTransform != nullptr ||
-            mTransformStyle == NS_STYLE_TRANSFORM_STYLE_PRESERVE_3D ||
-            (mWillChangeBitField & NS_STYLE_WILL_CHANGE_TRANSFORM);
+   bool IsStyleContaining() const {
+     return NS_STYLE_CONTAIN_STYLE & mContain;
+   }
+ 
+   bool IsPaintContaining() const {
+     return mContain & NS_STYLE_CONTAIN_PAINT;
    }
  
