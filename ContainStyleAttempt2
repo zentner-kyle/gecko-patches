@@ -105,71 +105,49 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  
      aNode->mScopeStart = nullptr;
      aNode->mScopePrev  = nullptr;
-@@ -204,20 +220,34 @@ nsCounterList::RecalcAll()
-                 useNode->GetText(text);
-                 useNode->mText->SetData(text);
-             }
-         }
-     } while ((node = Next(node)) != First());
+@@ -257,16 +273,42 @@ nsCounterManager::AddResetOrIncrement(ns
+     // Don't call Calc() if the list is already dirty -- it'll be recalculated
+     // anyway, and trying to calculate with a dirty list doesn't work.
+     if (MOZ_LIKELY(!counterList->IsDirty())) {
+         node->Calc(counterList);
+     }
+     return false;
  }
  
- nsCounterManager::nsCounterManager()
--    : mNames()
-+    : mPhantomRoot(nullptr)
-+    , mNames()
- {
- }
- 
-+nsCounterNode *
-+nsCounterList::GetLastNodeOfFrameWithType(nsIFrame *aFrame,
-+                                          nsCounterNode::Type aType)
-+{
-+    nsCounterNode *node = First();
-+    do {
-+      if (node->mType == aType && node->mPseudoFrame == aFrame) {
-+        return node;
-+      }
-+    } while ((node = Prev(node)) != First());
-+    return nullptr;
++struct AddRootArgs {
++    nsIFrame *mFrame;
++    bool mDirty;
++};
++
++static PLDHashOperator
++AddRoot(const nsAString& aKey, nsCounterList* aList, void* vargs) {
++    struct AddRootArgs *args = static_cast<AddRootArgs*>(vargs);
++    // XXX Is it safe to always use 0 as the index?
++    nsCounterChangeNode *node =
++        new nsCounterChangeNode(args->mFrame, nsCounterNode::ROOT, 0, 0);
++    aList->Insert(node);
++    if (!aList->IsLast(node)) {
++        aList->SetDirty();
++        args->mDirty |= true;
++    }
++    return PL_DHASH_NEXT;
 +}
 +
- bool
- nsCounterManager::AddCounterResetsAndIncrements(nsIFrame *aFrame)
- {
-     const nsStyleContent *styleContent = aFrame->StyleContent();
-     if (!styleContent->CounterIncrementCount() &&
-         !styleContent->CounterResetCount())
-         return false;
- 
-@@ -241,16 +271,28 @@ nsCounterManager::AddResetOrIncrement(ns
-                                       const nsStyleCounterData *aCounterData,
-                                       nsCounterNode::Type aType)
- {
-     nsCounterChangeNode *node =
-         new nsCounterChangeNode(aFrame, aType, aCounterData->mValue, aIndex);
- 
-     nsCounterList *counterList = CounterListFor(aCounterData->mCounter);
- 
-+    if (mPhantomRoot) {
-+        nsCounterNode *rootNode =
-+          counterList->GetLastNodeOfFrameWithType(mPhantomRoot,
-+                                                  nsCounterChangeNode::ROOT);
-+        if (!rootNode) {
-+            rootNode =
-+              new nsCounterChangeNode(mPhantomRoot, nsCounterChangeNode::ROOT,
-+                                      aCounterData->mValue, aIndex);
-+            counterList->Insert(rootNode);
-+        }
-+    }
++bool
++nsCounterManager::AddRoots(nsIFrame *aFrame) {
++    struct AddRootArgs args = { aFrame, false };
++    mNames.EnumerateRead(AddRoot, static_cast<void*>(&args));
++    return args.mDirty;
++}
 +
-     counterList->Insert(node);
-     if (!counterList->IsLast(node)) {
-         // Tell the caller it's responsible for recalculating the entire
-         // list.
-         counterList->SetDirty();
-         return true;
-     }
- 
+ nsCounterList*
+ nsCounterManager::CounterListFor(const nsSubstring& aCounterName)
+ {
+     // XXX Why doesn't nsTHashtable provide an API that allows us to use
+     // get/put in one hashtable lookup?
+     nsCounterList *counterList;
+     if (!mNames.Get(aCounterName, &counterList)) {
+         counterList = new nsCounterList();
 @@ -352,17 +394,17 @@ static PLDHashOperator
  DumpList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
  {
@@ -263,7 +241,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      if (mType == USE)
          UseNode()->Calc(aList);
      else
-@@ -193,38 +197,49 @@ public:
+@@ -193,16 +197,23 @@ public:
      static nsCounterNode* Next(nsCounterNode* aNode) {
          return static_cast<nsCounterNode*>(nsGenConList::Next(aNode));
      }
@@ -287,15 +265,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
  
      // Recalculate |mScopeStart|, |mScopePrev|, and |mValueAfter| for
      // all nodes and update text in text content nodes.
-     void RecalcAll();
- 
-     bool IsDirty() { return mDirty; }
-     void SetDirty() { mDirty = true; }
- 
-+    nsCounterNode *GetLastNodeOfFrameWithType(nsIFrame *aFrame,
-+        nsCounterNode::Type aType);
-+
- private:
+@@ -215,16 +226,20 @@ private:
      bool mDirty;
  };
  
@@ -305,6 +275,9 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
   */
  class nsCounterManager {
 +    friend class nsCounterScopePush;
++    // Add ROOT elements 'owned' by aFrame to every counter.
++    bool AddRoots(nsIFrame *aFrame);
++
  public:
      nsCounterManager();
      // Returns true if dirty
@@ -313,20 +286,20 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      // Gets the appropriate counter list, creating it if necessary.
      // Guaranteed to return non-null. (Uses an infallible hashtable API.)
      nsCounterList* CounterListFor(const nsSubstring& aCounterName);
-@@ -270,13 +285,39 @@ public:
-         return newValue;
-     }
- 
- private:
+@@ -274,9 +289,32 @@ private:
      // for |AddCounterResetsAndIncrements| only
      bool AddResetOrIncrement(nsIFrame *aFrame, int32_t aIndex,
                                 const nsStyleCounterData *aCounterData,
                                 nsCounterNode::Type aType);
-+    nsIFrame *mPhantomRoot;
  
      nsClassHashtable<nsStringHashKey, nsCounterList> mNames;
  };
  
++// This class exists to help implement 'contain: style'.
++// It currenctly can be replaced by a function call on the nsCounterManager.
++// However, it should be possible to create ROOT nodes lazily using this
++// design. Unfortunately, my attempts to do so missed some corner cases and
++// were abandoned.
 +class nsCounterScopePush
 +{
 +private:
@@ -340,14 +313,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 +    , mManager(aManager)
 +  {
 +      if (mActive) {
-+          mSavedValue = mManager->mPhantomRoot;
-+          mManager->mPhantomRoot = aFrame;
-+      }
-+  }
-+  ~nsCounterScopePush()
-+  {
-+      if (mActive) {
-+          mManager->mPhantomRoot = mSavedValue;
++          mManager->AddRoots(aFrame);
 +      }
 +  }
 +};
