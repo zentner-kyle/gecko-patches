@@ -1,12 +1,12 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  ee4fb5a1c4184e9c8d76b1a3b57fdd18264bc4b5
+# Parent  2087fc3e45c4868417a803d0f9e2caf46424b8fa
 Bug 1170781 - Patch 2: Test CSS 'contain: paint'.
 
-diff --git a/layout/reftests/w3c-css/submitted/contain/paint-clip-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-clip-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-clip-001-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-clip-001-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/paint-clip-ref.html
++++ b/layout/reftests/w3c-css/submitted/contain/paint-clip-001-ref.html
 @@ -0,0 +1,23 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -31,11 +31,11 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/paint-clip.html b/layout/reftests/w3c-css/submitted/contain/paint-clip.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-clip-001.html b/layout/reftests/w3c-css/submitted/contain/paint-clip-001.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/paint-clip.html
-@@ -0,0 +1,69 @@
++++ b/layout/reftests/w3c-css/submitted/contain/paint-clip-001.html
+@@ -0,0 +1,72 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -99,16 +99,19 @@ new file mode 100644
 +    <div class="b">
 +      <div class="c"> </div>
 +      <div class="a"> </div>
++      <!--These two absolutely positioned elements are checking that all sides are-->
++      <!--clipped.  They also test that clipping is done correctly on absolutely-->
++      <!--positioned elements.-->
 +      <div class="background"> </div>
 +      <div class="foreground"> </div>
 +    </div>
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute-001-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute-001-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute-ref.html
++++ b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute-001-ref.html
 @@ -0,0 +1,24 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -134,10 +137,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute.html b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute-001.html b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute-001.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute.html
++++ b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute-001.html
 @@ -0,0 +1,38 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -177,10 +180,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed-001-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed-001-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed-ref.html
++++ b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed-001-ref.html
 @@ -0,0 +1,24 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -206,10 +209,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed.html b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed-001.html b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed-001.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed.html
++++ b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed-001.html
 @@ -0,0 +1,38 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -249,10 +252,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float-001-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float-001-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float-ref.html
++++ b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float-001-ref.html
 @@ -0,0 +1,31 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -285,10 +288,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float.html b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float-001.html b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float-001.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float.html
++++ b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float-001.html
 @@ -0,0 +1,41 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -331,10 +334,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin-001-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin-001-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin-ref.html
++++ b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin-001-ref.html
 @@ -0,0 +1,34 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -370,10 +373,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin.html b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin-001.html b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin-001.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin.html
++++ b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin-001.html
 @@ -0,0 +1,39 @@
 +<!DOCTYPE HTML>
 +<html>

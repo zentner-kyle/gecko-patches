@@ -102,7 +102,7 @@ diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
    }
  
 +  bool IsContainPaint() const {
-+    return mContain & NS_STYLE_CONTAIN_PAINT;
++    return NS_STYLE_CONTAIN_PAINT & mContain;
 +  }
 +
    /* Returns whether the element has the -moz-transform property
