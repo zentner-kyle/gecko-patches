@@ -18,10 +18,10 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 -  if (GetParent() && StyleVisibility()->mWritingMode !=
 -                     GetParent()->StyleVisibility()->mWritingMode) {
 +  // If the box has contain: paint (or contain: strict), then it should also
-+  // establish a fromatting context.
++  // establish a formatting context.
 +  if ((GetParent() && StyleVisibility()->mWritingMode !=
 +                     GetParent()->StyleVisibility()->mWritingMode) ||
-+      StyleDisplay()->IsPaintContaining()) {
++      StyleDisplay()->IsContainPaint()) {
      AddStateBits(NS_BLOCK_FLOAT_MGR | NS_BLOCK_MARGIN_ROOT);
    }
  
@@ -33,8 +33,7 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
 --- a/layout/generic/nsFrame.cpp
 +++ b/layout/generic/nsFrame.cpp
-@@ -2382,36 +2382,54 @@ nsIFrame::BuildDisplayListForChild(nsDis
-     // If you change this, also change IsPseudoStackingContextFromStyle()
+@@ -2383,16 +2383,25 @@ nsIFrame::BuildDisplayListForChild(nsDis
      pseudoStackingContext = true;
    }
    NS_ASSERTION(!isStackingContext || pseudoStackingContext,
@@ -42,59 +41,28 @@ diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
  
    nsDisplayListBuilder::AutoBuildingDisplayList
      buildingForChild(aBuilder, child, dirty, pseudoStackingContext);
--  DisplayListClipState::AutoClipMultiple clipState(aBuilder);
+   DisplayListClipState::AutoClipMultiple clipState(aBuilder);
 +
-+  Maybe<DisplayListClipState::AutoClipMultiple> clipState;
-+  Maybe<DisplayListClipState::AutoSaveRestore> containClipState;
-+  DisplayListClipState::AutoSaveRestore *usedClipState = nullptr;
-+  if (ourDisp->IsPaintContaining()) {
-+    // If we're 'contain: paint', clip *all* of our descendants.
-+    containClipState.emplace(aBuilder);
++  if (ourDisp->IsContainPaint()) {
 +    nsRect contentRect = GetContentRectRelativeToSelf() +
 +      aBuilder->ToReferenceFrame(this);
 +    nscoord radii[8];
 +    GetContentBoxBorderRadii(radii);
-+    containClipState->ClipContentDescendants(contentRect, radii);
-+    usedClipState = &containClipState;
-+  } else {
-+    // Otherwise, just clip the block descendants.
-+    clipState.emplace(aBuilder);
-+    usedClipState = &clipState;
++    clipState->ClipContentDescendants(contentRect, radii);
 +  }
 +
    CheckForApzAwareEventHandlers(aBuilder, child);
  
    if (savedOutOfFlowData) {
--    clipState.SetClipForContainingBlockDescendants(
-+    usedClipState->SetClipForContainingBlockDescendants(
+     clipState.SetClipForContainingBlockDescendants(
        &savedOutOfFlowData->mContainingBlockClip);
    }
  
    // Setup clipping for the parent's overflow:-moz-hidden-unscrollable,
-   // or overflow:hidden on elements that don't support scrolling (and therefore
-   // don't create nsHTML/XULScrollFrame). This clipping needs to not clip
-   // anything directly rendered by the parent, only the rendering of its
-   // children.
-   // Don't use overflowClip to restrict the dirty rect, since some of the
-   // descendants may not be clipped by it. Even if we end up with unnecessary
-   // display items, they'll be pruned during ComputeVisibility.
-   nsIFrame* parent = child->GetParent();
-   const nsStyleDisplay* parentDisp =
-     parent == this ? ourDisp : parent->StyleDisplay();
--  ApplyOverflowClipping(aBuilder, parent, parentDisp, clipState);
-+  ApplyOverflowClipping(aBuilder, parent, parentDisp, usedClipState);
- 
-   nsDisplayList list;
-   nsDisplayList extraPositionedDescendants;
-   if (isStackingContext) {
-     if (disp->mMixBlendMode != NS_STYLE_BLEND_NORMAL) {
-       aBuilder->SetContainsBlendMode(disp->mMixBlendMode);
-     }
-     // True stacking context.
 diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 --- a/layout/style/nsRuleNode.cpp
 +++ b/layout/style/nsRuleNode.cpp
-@@ -5707,17 +5707,24 @@ nsRuleNode::ComputeDisplayData(void* aSt
+@@ -5707,17 +5707,25 @@ nsRuleNode::ComputeDisplayData(void* aSt
        EnsureBlockDisplay(display->mDisplay);
  
        // Note that it's OK to cache this struct in the ruletree
@@ -104,12 +72,13 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
        // mOriginalDisplay, which we have carefully not changed.
      }
 -
-+    if (display->IsPaintContaining()) {
++    if (display->IsContainPaint()) {
 +      // This is supposed to cause contain: paint and contain: layout elements
-+      // to become formatting contexts. However, exactly what formatting
-+      // context means has not been specificed yet.
-+      // Most likely, the intended behavior is similar to EnsureBlockDisplay.
-+      // XXX This will convert 'inline' to 'block' (instead of 'inline-block'). Is that right?
++      // to become formatting contexts. However, exactly how the element is
++      // supposed to become a formatting context has not been specified.  Most
++      // likely, the intended behavior is similar to EnsureBlockDisplay,
++      // except with 'inline' converts to 'inline block' instead of 'block'.
++      // XXX This behavior is probably wrong in some cases; see bug 1179349.
 +      EnsureBlockDisplay(display->mDisplay);
 +    }
    }
@@ -132,7 +101,7 @@ diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
             mOverflowX != NS_STYLE_OVERFLOW_CLIP;
    }
  
-+  bool IsPaintContaining() const {
++  bool IsContainPaint() const {
 +    return mContain & NS_STYLE_CONTAIN_PAINT;
 +  }
 +
@@ -160,7 +129,7 @@ diff --git a/layout/style/nsStyleStructInlines.h b/layout/style/nsStyleStructInl
 +  return ((HasTransform(aContextFrame) || HasPerspectiveStyle() ||
            !aContextFrame->StyleSVGReset()->mFilters.IsEmpty()) &&
 -      !aContextFrame->IsSVGText();
-+      !aContextFrame->IsSVGText()) || IsPaintContaining();
++      !aContextFrame->IsSVGText()) || IsContainPaint();
  }
  
  bool
