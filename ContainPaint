@@ -33,51 +33,64 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
 --- a/layout/generic/nsFrame.cpp
 +++ b/layout/generic/nsFrame.cpp
-@@ -2241,16 +2241,26 @@ nsIFrame::BuildDisplayListForChild(nsDis
-   // If painting is restricted to just the background of the top level frame,
-   // then we have nothing to do here.
-   if (aBuilder->IsBackgroundOnly())
-     return;
+@@ -2382,36 +2382,54 @@ nsIFrame::BuildDisplayListForChild(nsDis
+     // If you change this, also change IsPseudoStackingContextFromStyle()
+     pseudoStackingContext = true;
+   }
+   NS_ASSERTION(!isStackingContext || pseudoStackingContext,
+                "Stacking contexts must also be pseudo-stacking-contexts");
  
-   nsIFrame* child = aChild;
-   if (child->GetStateBits() & NS_FRAME_TOO_DEEP_IN_FRAME_TREE)
-     return;
-+  const nsStyleDisplay* ourDisp = StyleDisplay();
-+  Maybe<DisplayListClipState::AutoSaveRestore> clip;
+   nsDisplayListBuilder::AutoBuildingDisplayList
+     buildingForChild(aBuilder, child, dirty, pseudoStackingContext);
+-  DisplayListClipState::AutoClipMultiple clipState(aBuilder);
++
++  Maybe<DisplayListClipState::AutoClipMultiple> clipState;
++  Maybe<DisplayListClipState::AutoSaveRestore> containClipState;
++  DisplayListClipState::AutoSaveRestore *usedClipState = nullptr;
 +  if (ourDisp->IsPaintContaining()) {
-+    clip.emplace(aBuilder);
++    // If we're 'contain: paint', clip *all* of our descendants.
++    containClipState.emplace(aBuilder);
 +    nsRect contentRect = GetContentRectRelativeToSelf() +
 +      aBuilder->ToReferenceFrame(this);
 +    nscoord radii[8];
 +    GetContentBoxBorderRadii(radii);
-+    clip->ClipContentDescendants(contentRect, radii);
++    containClipState->ClipContentDescendants(contentRect, radii);
++    usedClipState = &containClipState;
++  } else {
++    // Otherwise, just clip the block descendants.
++    clipState.emplace(aBuilder);
++    usedClipState = &clipState;
 +  }
-   
-   bool isSVG = (child->GetStateBits() & NS_FRAME_SVG_LAYOUT);
++
+   CheckForApzAwareEventHandlers(aBuilder, child);
  
-   // true if this is a real or pseudo stacking context
-   bool pseudoStackingContext =
-     (aFlags & DISPLAY_CHILD_FORCE_PSEUDO_STACKING_CONTEXT) != 0;
-   if (!isSVG &&
-       (aFlags & DISPLAY_CHILD_INLINE) &&
-@@ -2340,17 +2350,16 @@ nsIFrame::BuildDisplayListForChild(nsDis
-       // situations where we're going to ignore a scrollframe's clipping;
-       // we wouldn't want to clip the dirty area to the scrollframe's
-       // bounds in that case.
-     }
+   if (savedOutOfFlowData) {
+-    clipState.SetClipForContainingBlockDescendants(
++    usedClipState->SetClipForContainingBlockDescendants(
+       &savedOutOfFlowData->mContainingBlockClip);
    }
  
-   // XXX need to have inline-block and inline-table set pseudoStackingContext
-   
--  const nsStyleDisplay* ourDisp = StyleDisplay();
-   // REVIEW: Taken from nsBoxFrame::Paint
-   // Don't paint our children if the theme object is a leaf.
-   if (IsThemed(ourDisp) &&
-       !PresContext()->GetTheme()->WidgetIsContainer(ourDisp->mAppearance))
-     return;
+   // Setup clipping for the parent's overflow:-moz-hidden-unscrollable,
+   // or overflow:hidden on elements that don't support scrolling (and therefore
+   // don't create nsHTML/XULScrollFrame). This clipping needs to not clip
+   // anything directly rendered by the parent, only the rendering of its
+   // children.
+   // Don't use overflowClip to restrict the dirty rect, since some of the
+   // descendants may not be clipped by it. Even if we end up with unnecessary
+   // display items, they'll be pruned during ComputeVisibility.
+   nsIFrame* parent = child->GetParent();
+   const nsStyleDisplay* parentDisp =
+     parent == this ? ourDisp : parent->StyleDisplay();
+-  ApplyOverflowClipping(aBuilder, parent, parentDisp, clipState);
++  ApplyOverflowClipping(aBuilder, parent, parentDisp, usedClipState);
  
-   // Child is composited if it's transformed, partially transparent, or has
-   // SVG effects or a blend mode..
+   nsDisplayList list;
+   nsDisplayList extraPositionedDescendants;
+   if (isStackingContext) {
+     if (disp->mMixBlendMode != NS_STYLE_BLEND_NORMAL) {
+       aBuilder->SetContainsBlendMode(disp->mMixBlendMode);
+     }
+     // True stacking context.
 diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 --- a/layout/style/nsRuleNode.cpp
 +++ b/layout/style/nsRuleNode.cpp
