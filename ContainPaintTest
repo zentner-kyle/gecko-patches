@@ -1,17 +1,19 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  8b9d691b8274c75a9a20d28d356b95c8c4f052b4
+# Parent  ee4fb5a1c4184e9c8d76b1a3b57fdd18264bc4b5
 Bug 1170781 - Patch 2: Test CSS 'contain: paint'.
 
-diff --git a/layout/reftests/css-contain/paint-clip-ref.html b/layout/reftests/css-contain/paint-clip-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-clip-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-clip-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/paint-clip-ref.html
-@@ -0,0 +1,24 @@
++++ b/layout/reftests/w3c-css/submitted/contain/paint-clip-ref.html
+@@ -0,0 +1,23 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Reftest Reference: 'contain: paint' with various overflowing block descendants.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -20,10 +22,7 @@ new file mode 100644
 +      width: 150px;
 +      height: 150px;
 +      background: green;
-+      padding-width: 0;
-+      position: absolute;
-+      top: 25px;
-+      left: 25px;
++      margin: 25px;
 +  }
 +  </style>
 +</head>
@@ -32,15 +31,19 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/paint-clip.html b/layout/reftests/css-contain/paint-clip.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-clip.html b/layout/reftests/w3c-css/submitted/contain/paint-clip.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/paint-clip.html
-@@ -0,0 +1,53 @@
++++ b/layout/reftests/w3c-css/submitted/contain/paint-clip.html
+@@ -0,0 +1,69 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Test: 'contain: paint' with various overflowing block descendants.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://dev.w3.org/csswg/css-containment/#containment-paint">
++  <link rel="match" href="paint-clip-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -52,7 +55,6 @@ new file mode 100644
 +    background: green;
 +    margin: 25px;
 +    padding: 25px;
-+    padding-width: 0;
 +  }
 +  .a {
 +    width: 100px;
@@ -69,14 +71,26 @@ new file mode 100644
 +    height: 100px;
 +    background: green;
 +  }
++  .large-red-square {
++  }
 +  .background {
 +    position: absolute;
-+    top: -50px;
-+    left: -50px;
-+    width: 225px;
-+    height: 300px;
++    top: 0;
++    left: 0;
++    width: 200px;
++    height: 200px;
 +    background: red;
 +    z-index: -1;
++  }
++  .foreground {
++    position: absolute;
++    top: 0;
++    left: 0;
++    background: rgba(0, 0, 0, 0);
++    width: 150px;
++    height: 150px;
++    border: 25px solid red;
++    z-index: 1;
 +  }
 +  </style>
 +</head>
@@ -86,19 +100,23 @@ new file mode 100644
 +      <div class="c"> </div>
 +      <div class="a"> </div>
 +      <div class="background"> </div>
++      <div class="foreground"> </div>
 +    </div>
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/paint-containing-block-absolute-ref.html b/layout/reftests/css-contain/paint-containing-block-absolute-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/paint-containing-block-absolute-ref.html
-@@ -0,0 +1,23 @@
++++ b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute-ref.html
+@@ -0,0 +1,24 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Reftest Reference: 'contain: paint' element should contain absolute position elements.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://dev.w3.org/csswg/css-containment/#containment-paint">
 +  <style>
 +  body {
 +    margin: 0;
@@ -107,9 +125,7 @@ new file mode 100644
 +      width: 100px;
 +      height: 100px;
 +      background: green;
-+      position: absolute;
-+      top: 50px;
-+      left: 50px;
++      margin: 50px;
 +  }
 +  </style>
 +</head>
@@ -118,15 +134,19 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/paint-containing-block-absolute.html b/layout/reftests/css-contain/paint-containing-block-absolute.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute.html b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/paint-containing-block-absolute.html
-@@ -0,0 +1,34 @@
++++ b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-absolute.html
+@@ -0,0 +1,38 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Test: 'contain: paint' element should contain absolute position elements.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://dev.w3.org/csswg/css-containment/#containment-paint">
++  <link rel="match" href="paint-containing-block-absolute-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -157,23 +177,27 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/paint-containing-block-fixed-ref.html b/layout/reftests/css-contain/paint-containing-block-fixed-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/paint-containing-block-fixed-ref.html
-@@ -0,0 +1,20 @@
++++ b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed-ref.html
+@@ -0,0 +1,24 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Reftest Reference: 'contain: paint' element should contain fixed position elements.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://dev.w3.org/csswg/css-containment/#containment-paint">
 +  <style>
++  body {
++    margin: 0;
++  }
 +  #a {
 +      width: 100px;
 +      height: 100px;
 +      background: green;
-+      position: absolute;
-+      top: 50px;
-+      left: 50px;
++      margin: 50px;
 +  }
 +  </style>
 +</head>
@@ -182,15 +206,19 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/paint-containing-block-fixed.html b/layout/reftests/css-contain/paint-containing-block-fixed.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed.html b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/paint-containing-block-fixed.html
-@@ -0,0 +1,34 @@
++++ b/layout/reftests/w3c-css/submitted/contain/paint-containing-block-fixed.html
+@@ -0,0 +1,38 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Test: 'contain: paint' element should contain fixed position elements.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://dev.w3.org/csswg/css-containment/#containment-paint">
++  <link rel="match" href="paint-containing-block-fixed-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -204,11 +232,11 @@ new file mode 100644
 +  }
 +  #b {
 +      position: fixed;
++      top: 0;
++      left: 0;
 +      width: 100px;
 +      height: 100px;
 +      background: green;
-+      top: 0;
-+      left: 0;
 +  }
 +  </style>
 +</head>
@@ -221,15 +249,18 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/paint-formatting-context-float-ref.html b/layout/reftests/css-contain/paint-formatting-context-float-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/paint-formatting-context-float-ref.html
-@@ -0,0 +1,28 @@
++++ b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float-ref.html
+@@ -0,0 +1,31 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Reftest Reference: 'contain: paint' should contain floats as a formatting context.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://dev.w3.org/csswg/css-containment/#containment-paint">
 +  <style>
 +  body {
 +    margin: 0;
@@ -254,15 +285,19 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/paint-formatting-context-float.html b/layout/reftests/css-contain/paint-formatting-context-float.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float.html b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/paint-formatting-context-float.html
-@@ -0,0 +1,37 @@
++++ b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-float.html
+@@ -0,0 +1,41 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Test: 'contain: paint' should contain floats as a formatting context.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://dev.w3.org/csswg/css-containment/#containment-paint">
++  <link rel="match" href="paint-formatting-context-float-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -296,15 +331,18 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/paint-formatting-context-margin-ref.html b/layout/reftests/css-contain/paint-formatting-context-margin-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin-ref.html b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/paint-formatting-context-margin-ref.html
-@@ -0,0 +1,29 @@
++++ b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin-ref.html
+@@ -0,0 +1,34 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Reftest Test: 'contain: paint' with a vertical margin child. Margin collapse should not occur.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://dev.w3.org/csswg/css-containment/#containment-paint">
 +  <style>
 +  body {
 +    margin: 0;
@@ -316,29 +354,35 @@ new file mode 100644
 +      height: 50px;
 +  }
 +  #b {
-+      position: relative;
 +      width: 50px;
 +      height: 40px;
 +      background: green;
-+      top: 10px;
++  }
++  #b-padding {
++      height: 10px;
 +  }
 +  </style>
 +</head>
 +<body>
 +  <div id="a">
++    <div id="b-padding"></div>
 +    <div id="b"> </div>
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/paint-formatting-context-margin.html b/layout/reftests/css-contain/paint-formatting-context-margin.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin.html b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/paint-formatting-context-margin.html
-@@ -0,0 +1,35 @@
++++ b/layout/reftests/w3c-css/submitted/contain/paint-formatting-context-margin.html
+@@ -0,0 +1,39 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Test: 'contain: paint' with a vertical margin child. Margin collapse should not occur.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://dev.w3.org/csswg/css-containment/#containment-paint">
++  <link rel="match" href="paint-formatting-context-margin-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -370,10 +414,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/reftest.list b/layout/reftests/css-contain/reftest.list
+diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/reftest.list
++++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
 @@ -0,0 +1,7 @@
 +default-preferences pref(layout.css.contain.enabled,true)
 +
@@ -382,26 +426,26 @@ new file mode 100644
 +== paint-containing-block-fixed.html paint-containing-block-fixed-ref.html
 +== paint-formatting-context-float.html paint-formatting-context-float-ref.html
 +== paint-formatting-context-margin.html paint-formatting-context-margin-ref.html
-diff --git a/layout/reftests/reftest.list b/layout/reftests/reftest.list
---- a/layout/reftests/reftest.list
-+++ b/layout/reftests/reftest.list
-@@ -137,16 +137,19 @@ include css-variables/reftest.list
- # layout/style/test/test_visited_reftests instead of using the reftest
- # harness.
+diff --git a/layout/reftests/w3c-css/submitted/reftest.list b/layout/reftests/w3c-css/submitted/reftest.list
+--- a/layout/reftests/w3c-css/submitted/reftest.list
++++ b/layout/reftests/w3c-css/submitted/reftest.list
+@@ -14,16 +14,19 @@ include css21/reftest.list
+ # include animations/reftest.list
  
- include cssom/reftest.list
+ # Backgrounds and Borders Level 3
+ # include background3/reftest.list
  
- # columns/
- include columns/reftest.list
+ # Conditional Rules Level 3
+ include conditional3/reftest.list
  
-+# contain/
-+include css-contain/reftest.list
++# Containment
++include contain/reftest.list
 +
- # content/
- include ../../dom/tests/reftest/reftest.list
+ # Flexible Box Layout Module
+ include flexbox/reftest.list
  
- # counters/
- include counters/reftest.list
+ # Fonts Level 3
+ include fonts3/reftest.list
  
- # counter-style/
- include counter-style/reftest.list
+ # Image Values and Replaced Content Level 3
+ include images3/reftest.list

@@ -48,7 +48,7 @@ diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
 +      aBuilder->ToReferenceFrame(this);
 +    nscoord radii[8];
 +    GetContentBoxBorderRadii(radii);
-+    clipState->ClipContentDescendants(contentRect, radii);
++    clipState.ClipContentDescendants(contentRect, radii);
 +  }
 +
    CheckForApzAwareEventHandlers(aBuilder, child);
