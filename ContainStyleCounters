@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  1935bf9063087b8aef3e88d7e8e73f5e4a9eff1b
+# Parent  4ebf3ac885868e45d8fe985d1aaa2a1674706bdc
 Bug 1172087 - Patch 1: Implement counter behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -15,8 +15,8 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    if (!aPossiblyLeafFrame) {
      aPossiblyLeafFrame = aFrame;
    }
-+  nsCounterScopePush saveCounters(&mCounterManager, aFrame, 
-+                                  aFrame->StyleDisplay()->IsStyleContaining());
++  nsCounterScopePush saveCounters(&mCounterManager, aFrame,
++                                  aFrame->StyleDisplay()->IsContainStyle());
  
    // XXXbz ideally, this would do all the pushing of various
    // containing blocks as needed, so callers don't have to do it...
@@ -55,7 +55,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  nsCounterUseNode::GetText(nsString& aResult)
  {
      aResult.Truncate();
-@@ -147,35 +151,47 @@ nsCounterList::SetScope(nsCounterNode *a
+@@ -147,17 +151,19 @@ nsCounterList::SetScope(nsCounterNode *a
  
      for (nsCounterNode *prev = Prev(aNode), *start;
           prev; prev = start->mScopePrev) {
@@ -76,9 +76,8 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
                       "null check on startContent should be sufficient to "
                       "null check nodeContent as well, since if nodeContent "
                       "is for the root, startContent (which is before it) "
-                      "must be too");
+@@ -165,17 +171,26 @@ nsCounterList::SetScope(nsCounterNode *a
  
-+
               // A reset's outer scope can't be a scope created by a sibling.
          if (!(aNode->mType == nsCounterNode::RESET &&
                nodeContent == startContent) &&
@@ -105,7 +104,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  
      aNode->mScopeStart = nullptr;
      aNode->mScopePrev  = nullptr;
-@@ -257,16 +273,42 @@ nsCounterManager::AddResetOrIncrement(ns
+@@ -257,16 +272,42 @@ nsCounterManager::AddResetOrIncrement(ns
      // Don't call Calc() if the list is already dirty -- it'll be recalculated
      // anyway, and trying to calculate with a dirty list doesn't work.
      if (MOZ_LIKELY(!counterList->IsDirty())) {
@@ -115,13 +114,13 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  }
  
 +struct AddRootArgs {
-+    nsIFrame *mFrame;
++    nsIFrame* mFrame;
 +    bool mDirty;
 +};
 +
 +static PLDHashOperator
 +AddRoot(const nsAString& aKey, nsCounterList* aList, void* vargs) {
-+    struct AddRootArgs *args = static_cast<AddRootArgs*>(vargs);
++    struct AddRootArgs* args = static_cast<AddRootArgs*>(vargs);
 +    // XXX Is it safe to always use 0 as the index?
 +    nsCounterChangeNode *node =
 +        new nsCounterChangeNode(args->mFrame, nsCounterNode::ROOT, 0, 0);
@@ -148,7 +147,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
      nsCounterList *counterList;
      if (!mNames.Get(aCounterName, &counterList)) {
          counterList = new nsCounterList();
-@@ -352,17 +394,17 @@ static PLDHashOperator
+@@ -352,17 +393,17 @@ static PLDHashOperator
  DumpList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
  {
      printf("Counter named \"%s\":\n", NS_ConvertUTF16toUTF8(aKey).get());
@@ -286,7 +285,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      // Gets the appropriate counter list, creating it if necessary.
      // Guaranteed to return non-null. (Uses an infallible hashtable API.)
      nsCounterList* CounterListFor(const nsSubstring& aCounterName);
-@@ -274,9 +289,26 @@ private:
+@@ -274,9 +289,25 @@ private:
      // for |AddCounterResetsAndIncrements| only
      bool AddResetOrIncrement(nsIFrame *aFrame, int32_t aIndex,
                                 const nsStyleCounterData *aCounterData,
@@ -303,8 +302,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 +class nsCounterScopePush
 +{
 +public:
-+  explicit nsCounterScopePush(nsCounterManager *aManager, nsIFrame *aFrame,
-+      bool use)
++  nsCounterScopePush(nsCounterManager* aManager, nsIFrame* aFrame, bool use)
 +  {
 +      if (use) {
 +          aManager->AddRoots(aFrame);
@@ -325,12 +323,12 @@ diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
             mOverflowX != NS_STYLE_OVERFLOW_CLIP;
    }
  
-+  bool IsStyleContaining() const {
++  bool IsContainStyle() const {
 +    return NS_STYLE_CONTAIN_STYLE & mContain;
 +  }
 +
-   bool IsPaintContaining() const {
-     return mContain & NS_STYLE_CONTAIN_PAINT;
+   bool IsContainPaint() const {
+     return NS_STYLE_CONTAIN_PAINT & mContain;
    }
  
    /* Returns whether the element has the -moz-transform property

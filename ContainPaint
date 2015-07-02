@@ -116,7 +116,7 @@ diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 diff --git a/layout/style/nsStyleStructInlines.h b/layout/style/nsStyleStructInlines.h
 --- a/layout/style/nsStyleStructInlines.h
 +++ b/layout/style/nsStyleStructInlines.h
-@@ -133,19 +133,19 @@ nsStyleDisplay::HasTransform(const nsIFr
+@@ -133,19 +133,20 @@ nsStyleDisplay::HasTransform(const nsIFr
  {
    NS_ASSERTION(aContextFrame->StyleDisplay() == this, "unexpected aContextFrame");
    return HasTransformStyle() && aContextFrame->IsFrameOfType(nsIFrame::eSupportsCSSTransforms);
@@ -126,10 +126,12 @@ diff --git a/layout/style/nsStyleStructInlines.h b/layout/style/nsStyleStructInl
  nsStyleDisplay::IsFixedPosContainingBlock(const nsIFrame* aContextFrame) const
  {
 -  return (HasTransform(aContextFrame) || HasPerspectiveStyle() ||
-+  return ((HasTransform(aContextFrame) || HasPerspectiveStyle() ||
-           !aContextFrame->StyleSVGReset()->mFilters.IsEmpty()) &&
+-          !aContextFrame->StyleSVGReset()->mFilters.IsEmpty()) &&
 -      !aContextFrame->IsSVGText();
-+      !aContextFrame->IsSVGText()) || IsContainPaint();
++  return IsContainPaint() ||
++    ((HasTransform(aContextFrame) || HasPerspectiveStyle() ||
++      !aContextFrame->StyleSVGReset()->mFilters.IsEmpty()) &&
++     !aContextFrame->IsSVGText());
  }
  
  bool
