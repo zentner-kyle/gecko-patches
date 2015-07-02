@@ -8,6 +8,7 @@ ContainStyleBreak
 ContainStyleBreakTest
 ContainLayout
 ContainLayoutTest
+try-all
 UnRemoveBoxSizingPaddingBoxTests
 try-linux-minimal
 UnfinishedTests
@@ -21,7 +22,6 @@ set-dynamic-reflow-root
 use-dynamic-reflow-root
 RemoveBoxSizingPaddingBox
 dirty-reflow-root
-try-all
 FixedSizedFrames2ReflowRoots
 try-mochitest-1-all
 try-reftest-all

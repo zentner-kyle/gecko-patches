@@ -33,7 +33,7 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
 --- a/layout/generic/nsFrame.cpp
 +++ b/layout/generic/nsFrame.cpp
-@@ -2383,16 +2383,25 @@ nsIFrame::BuildDisplayListForChild(nsDis
+@@ -2383,16 +2383,28 @@ nsIFrame::BuildDisplayListForChild(nsDis
      pseudoStackingContext = true;
    }
    NS_ASSERTION(!isStackingContext || pseudoStackingContext,
@@ -43,12 +43,15 @@ diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
      buildingForChild(aBuilder, child, dirty, pseudoStackingContext);
    DisplayListClipState::AutoClipMultiple clipState(aBuilder);
 +
++  Maybe<DisplayListClipState::AutoSaveRestore> containClipState;
 +  if (ourDisp->IsContainPaint()) {
++    // If we're 'contain: paint', clip *all* of our descendants.
++    containClipState.emplace(aBuilder);
 +    nsRect contentRect = GetContentRectRelativeToSelf() +
 +      aBuilder->ToReferenceFrame(this);
 +    nscoord radii[8];
 +    GetContentBoxBorderRadii(radii);
-+    clipState.ClipContentDescendants(contentRect, radii);
++    containClipState->ClipContentDescendants(contentRect, radii);
 +  }
 +
    CheckForApzAwareEventHandlers(aBuilder, child);
