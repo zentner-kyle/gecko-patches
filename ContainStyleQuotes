@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  97901f46569b1fe46313b0c85f94d48a2a9c1ec6
+# Parent  704855ebd20a7c74941b1cab846452495e67930f
 Bug 1172087 - Patch 3: Implement quote behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -33,9 +33,9 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    if (!aPossiblyLeafFrame) {
      aPossiblyLeafFrame = aFrame;
    }
-   nsCounterScopePush saveCounters(&mCounterManager, aFrame, 
-                                   aFrame->StyleDisplay()->IsStyleContaining());
-+  if (aFrame->StyleDisplay()->IsStyleContaining()) {
+   nsCounterScopePush saveCounters(&mCounterManager, aFrame,
+                                   aFrame->StyleDisplay()->IsContainStyle());
++  if (aFrame->StyleDisplay()->IsContainStyle()) {
 +    // A negative content index is needed to indicate that the quote depth is
 +    // being changed by this node. Any negative value will do, so -1 is used.
 +    (new nsQuoteNode(eStyleContentType_ScopeStart, -1))
@@ -224,7 +224,7 @@ diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -2356,16 +2356,18 @@ enum nsStyleContentType {
+@@ -2377,16 +2377,18 @@ enum nsStyleContentType {
    eStyleContentType_Attr          = 20,
    eStyleContentType_Counter       = 30,
    eStyleContentType_Counters      = 31,

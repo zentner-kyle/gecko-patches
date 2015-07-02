@@ -21,7 +21,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/style-counter-increment-0
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/style-counter-increment-001-ref.html
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,61 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -44,10 +44,6 @@ new file mode 100644
 +    counter-reset: i;
 +    margin: 2rem;
 +  }
-+  .set {
-+    width: 0px;
-+    height: 0px;
-+  }
 +  </style>
 +</head>
 +<body>
@@ -60,13 +56,13 @@ new file mode 100644
 +        <div class="inc"> </div>
 +        <div class="inc"> </div>
 +      </div>
-+      <div class="set" style="counter-reset: i 11;"> </div>
++      <div style="counter-reset: i 11;"> </div>
 +      <div class="container">
 +        <div class="inc"> </div>
 +        <div class="inc"> </div>
 +        <div class="inc"> </div>
 +      </div>
-+      <div class="set" style="counter-reset: i 11;"> </div>
++      <div style="counter-reset: i 11;"> </div>
 +      <div class="inc"> </div>
 +    </div>
 +    <div class="list">
@@ -75,11 +71,11 @@ new file mode 100644
 +        Counter reset to 20 on container.
 +        <div class="inc"> </div>
 +        Counter reset to 2 here.
-+        <div class="set" style="counter-reset: i 2;"> </div>
++        <div style="counter-reset: i 2;"> </div>
 +        <div class="inc"> </div>
 +        <div class="inc"> </div>
 +      </div>
-+      <div class="set" style="counter-reset: i 20;"> </div>
++      <div style="counter-reset: i 20;"> </div>
 +      <div class="inc"> </div>
 +      <div class="inc"> </div>
 +      <div class="inc"> </div>
@@ -91,7 +87,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/style-counter-increment-0
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/style-counter-increment-001.html
-@@ -0,0 +1,66 @@
+@@ -0,0 +1,62 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -115,10 +111,6 @@ new file mode 100644
 +  .container {
 +    margin: 2rem;
 +    contain: style;
-+  }
-+  .set {
-+    width: 0px;
-+    height: 0px;
 +  }
 +  </style>
 +</head>
@@ -146,7 +138,7 @@ new file mode 100644
 +          Counter reset to 20 on container.
 +          <div class="inc"> </div>
 +          Counter reset to 2 here.
-+          <div class="set" style="counter-reset: i 2;"> </div>
++          <div style="counter-reset: i 2;"> </div>
 +          <div class="inc"> </div>
 +          <div class="inc"> </div>
 +        </div>
@@ -162,7 +154,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/style-counter-insert-001-
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/style-counter-insert-001-ref.html
-@@ -0,0 +1,45 @@
+@@ -0,0 +1,41 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -185,10 +177,6 @@ new file mode 100644
 +    margin: 2rem;
 +    contain: style;
 +  }
-+  .set {
-+    width: 0px;
-+    height: 0px;
-+  }
 +  </style>
 +</head>
 +<body>
@@ -202,7 +190,7 @@ new file mode 100644
 +  <div class="list">
 +    <div id="c2" class="container">
 +      <div class="inc"> </div>
-+      <div class="set" style="counter-reset: i 2;"> </div>
++      <div style="counter-reset: i 2;"> </div>
 +    </div>
 +    <div class="inc"> </div>
 +  </div>
@@ -212,7 +200,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/style-counter-insert-001.
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/style-counter-insert-001.html
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,49 @@
 +<!DOCTYPE HTML>
 +<html class="reftest-wait">
 +<head>
@@ -238,16 +226,12 @@ new file mode 100644
 +    margin: 2rem;
 +    contain: style;
 +  }
-+  .set {
-+    width: 0px;
-+    height: 0px;
-+  }
 +  </style>
 +  <script>
 +    function doTest() {
 +      document.getElementById('c1').innerHTML = '<div class="inc"> </div>';
 +      document.getElementById('c2').innerHTML = '<div class="inc"> </div>' +
-+                                                '<div class="set" style="counter-reset: i 2;"> </div>';
++                                                '<div class=style="counter-reset: i 2;"> </div>';
 +      document.documentElement.classList.remove("reftest-wait");
 +    }
 +  </script>

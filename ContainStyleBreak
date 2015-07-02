@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  b0d07d3ce4ec61005c21ffee614b1f0bbb1d7e69
+# Parent  1adaf8804bddc98e3a2550e071e9a7b0e52c22a9
 Bug 1172087 - Patch 5: Implement page break behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -86,10 +86,10 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    if (!aPossiblyLeafFrame) {
      aPossiblyLeafFrame = aFrame;
    }
-   nsCounterScopePush saveCounters(&mCounterManager, aFrame, 
-                                   aFrame->StyleDisplay()->IsStyleContaining());
+   nsCounterScopePush saveCounters(&mCounterManager, aFrame,
+                                   aFrame->StyleDisplay()->IsContainStyle());
 +  AutoRestore<bool> savedStyleContainment(aState.mStyleContained);
-   if (aFrame->StyleDisplay()->IsStyleContaining()) {
+   if (aFrame->StyleDisplay()->IsContainStyle()) {
 +    aState.mStyleContained = true;
      // A negative content index is needed to indicate that the quote depth is
      // being changed by this node. Any negative value will do, so -1 is used.
