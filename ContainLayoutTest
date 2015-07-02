@@ -1,17 +1,19 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  678c1c7080760cc868acb823b72c646c7256ba85
+# Parent  83047d7782f69bebe41aa5c5a667de3225b54f42
 Bug 1178895 - Patch 2: Test CSS 'contain: layout'.
 
-diff --git a/layout/reftests/css-contain/layout-inline-zero-ref.html b/layout/reftests/css-contain/layout-inline-zero-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/layout-inline-zero-001-ref.html b/layout/reftests/w3c-css/submitted/contain/layout-inline-zero-001-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/layout-inline-zero-ref.html
-@@ -0,0 +1,26 @@
++++ b/layout/reftests/w3c-css/submitted/contain/layout-inline-zero-001-ref.html
+@@ -0,0 +1,28 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -34,15 +36,20 @@ new file mode 100644
 +  <!--<div class="container-ref"><span class="inner-ref">Test span.</span></div>-->
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/layout-inline-zero.html b/layout/reftests/css-contain/layout-inline-zero.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/layout-inline-zero-001.html b/layout/reftests/w3c-css/submitted/contain/layout-inline-zero-001.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/layout-inline-zero.html
-@@ -0,0 +1,19 @@
++++ b/layout/reftests/w3c-css/submitted/contain/layout-inline-zero-001.html
+@@ -0,0 +1,24 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on inline element should cause the element
++    to become a block with zero height.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="layout-inline-zero-001-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -58,16 +65,18 @@ new file mode 100644
 +  <span class="container">Test span.</span>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/layout-zero-ref.html b/layout/reftests/css-contain/layout-zero-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/layout-zero-001-ref.html b/layout/reftests/w3c-css/submitted/contain/layout-zero-001-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/layout-zero-ref.html
-@@ -0,0 +1,36 @@
++++ b/layout/reftests/w3c-css/submitted/contain/layout-zero-001-ref.html
+@@ -0,0 +1,38 @@
 +
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -99,15 +108,20 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/layout-zero.html b/layout/reftests/css-contain/layout-zero.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/layout-zero-001.html b/layout/reftests/w3c-css/submitted/contain/layout-zero-001.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/css-contain/layout-zero.html
-@@ -0,0 +1,35 @@
++++ b/layout/reftests/w3c-css/submitted/contain/layout-zero-001.html
+@@ -0,0 +1,40 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on auto sized block should cause the block
++    to be zero sized.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="layout-zero-001-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -139,17 +153,17 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/css-contain/reftest.list b/layout/reftests/css-contain/reftest.list
---- a/layout/reftests/css-contain/reftest.list
-+++ b/layout/reftests/css-contain/reftest.list
-@@ -4,8 +4,10 @@ default-preferences pref(layout.css.cont
- == paint-containing-block-absolute.html paint-containing-block-absolute-ref.html
- == paint-containing-block-fixed.html paint-containing-block-fixed-ref.html
- == paint-formatting-context-float.html paint-formatting-context-float-ref.html
- == paint-formatting-context-margin.html paint-formatting-context-margin-ref.html
- == style-counter-increment.html style-counter-increment-ref.html
- == style-quote.html style-quote-ref.html
- == style-break.html style-break-ref.html
- == style-counter-insert.html style-counter-insert-ref.html
-+== layout-zero.html layout-zero-ref.html
-+== layout-inline-zero.html layout-inline-zero-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
+--- a/layout/reftests/w3c-css/submitted/contain/reftest.list
++++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
+@@ -5,8 +5,10 @@ default-preferences pref(layout.css.cont
+ == paint-containing-block-absolute-001.html paint-containing-block-absolute-001-ref.html
+ == paint-containing-block-fixed-001.html paint-containing-block-fixed-001-ref.html
+ == paint-formatting-context-float-001.html paint-formatting-context-float-001-ref.html
+ == paint-formatting-context-margin-001.html paint-formatting-context-margin-001-ref.html
+ == style-counter-increment-001.html style-counter-increment-001-ref.html
+ == style-counter-insert-001.html style-counter-insert-001-ref.html
+ == style-quote-001.html style-quote-001-ref.html
+ == style-break-001.html style-break-001-ref.html
++== layout-zero-001.html layout-zero-001-ref.html
++== layout-inline-zero-001.html layout-inline-zero-001-ref.html
