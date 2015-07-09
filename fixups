@@ -1,0 +1,98 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  cf745b67169361455bc20456da8f2b1f48e6b0f9
+
+diff --git a/layout/generic/nsLineLayout.cpp b/layout/generic/nsLineLayout.cpp
+--- a/layout/generic/nsLineLayout.cpp
++++ b/layout/generic/nsLineLayout.cpp
+@@ -739,16 +739,17 @@ HasPercentageUnitSide(const nsStyleSides
+       return true;
+   }
+   return false;
+ }
+ 
+ static bool
+ IsPercentageAware(const nsIFrame* aFrame)
+ {
++  // XXX kzentner: Can 'contain: layout' elements still be percentage aware?
+   NS_ASSERTION(aFrame, "null frame is not allowed");
+ 
+   nsIAtom *fType = aFrame->GetType();
+   if (fType == nsGkAtoms::textFrame) {
+     // None of these things can ever be true for text frames.
+     return false;
+   }
+ 
+diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
+--- a/layout/style/nsRuleNode.cpp
++++ b/layout/style/nsRuleNode.cpp
+@@ -5707,18 +5707,19 @@ nsRuleNode::ComputeDisplayData(void* aSt
+       EnsureBlockDisplay(display->mDisplay);
+ 
+       // Note that it's OK to cache this struct in the ruletree
+       // because it's fine as-is for any style context that points to
+       // it directly, and any use of it as aStartStruct (e.g. if a
+       // more specific rule sets "float: none") will use
+       // mOriginalDisplay, which we have carefully not changed.
+     }
+-    if ((display->IsContainPaint() || display->IsContainLayout()) &&
+-        aRuleData->ValueForDisplay()->GetUnit() != eCSSUnit_Null) {
++    //if ((display->IsContainPaint() || display->IsContainLayout()) &&
++        //aRuleData->ValueForDisplay()->GetUnit() != eCSSUnit_Null) {
++    if (display->IsContainPaint() || display->IsContainLayout()) {
+       // This is supposed to cause contain: paint and contain: layout elements
+       // to become formatting contexts. However, exactly how the element is
+       // supposed to become a formatting context has not been specified.  Most
+       // likely, the intended behavior is similar to EnsureBlockDisplay,
+       // except with 'inline' converts to 'inline block' instead of 'block'.
+       // XXX This behavior is probably wrong in some cases; see bug 1179349.
+       EnsureBlockDisplay(display->mDisplay);
+     }
+diff --git a/layout/style/test/property_database.js b/layout/style/test/property_database.js
+--- a/layout/style/test/property_database.js
++++ b/layout/style/test/property_database.js
+@@ -2435,17 +2435,17 @@ var gCSSProperties = {
+     invalid_values: []
+   },
+   "display": {
+     domProp: "display",
+     inherited: false,
+     type: CSS_TYPE_LONGHAND,
+     initial_values: [ "inline" ],
+     /* XXX none will really mess with other properties */
+-    prerequisites: { "float": "none", "position": "static" },
++    prerequisites: { "float": "none", "position": "static", "contain": "none" },
+     other_values: [
+       "block",
+       "flex",
+       "inline-flex",
+       "list-item",
+       "inline-block",
+       "table",
+       "inline-table",
+diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame.cpp
+--- a/layout/tables/nsTableCellFrame.cpp
++++ b/layout/tables/nsTableCellFrame.cpp
+@@ -998,18 +998,20 @@ nsTableCellFrame::Reflow(nsPresContext* 
+   // available bsize
+   LogicalSize cellSize(wm);
+   cellSize.BSize(wm) = kidSize.BSize(wm);
+ 
+   if (NS_UNCONSTRAINEDSIZE != cellSize.BSize(wm)) {
+     cellSize.BSize(wm) += borderPadding.BStartEnd(wm);
+   }
+ 
+-  // next determine the cell's isize
+-  cellSize.ISize(wm) = kidSize.ISize(wm);      // at this point, we've factored in the cell's style attributes
++  if (!StyleDisplay()->IsContainLayout()) {
++    // next determine the cell's isize
++    cellSize.ISize(wm) = kidSize.ISize(wm);      // at this point, we've factored in the cell's style attributes
++  }
+ 
+   // factor in border and padding
+   if (NS_UNCONSTRAINEDSIZE != cellSize.ISize(wm)) {
+     cellSize.ISize(wm) += borderPadding.IStartEnd(wm);
+   }
+ 
+   // set the cell's desired size and max element size
+   aDesiredSize.SetSize(wm, cellSize);

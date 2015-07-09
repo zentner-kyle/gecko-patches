@@ -1,25 +1,12 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  4a5b650c1477ab6fe2b21c8f8ee7162399173eed
+# Parent  39703511440559aa0cdec54f2f57b4a3224ae1bf
 Bug 1172087 - Patch 4: Test quote behavior for "contain: style"
 
-diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
---- a/layout/reftests/w3c-css/submitted/contain/reftest.list
-+++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -3,8 +3,9 @@ default-preferences pref(layout.css.cont
- == paint-clip-001.html paint-clip-001-ref.html
- == paint-clip-002.html paint-clip-002-ref.html
- == paint-containing-block-absolute-001.html paint-containing-block-absolute-001-ref.html
- == paint-containing-block-fixed-001.html paint-containing-block-fixed-001-ref.html
- == paint-formatting-context-float-001.html paint-formatting-context-float-001-ref.html
- == paint-formatting-context-margin-001.html paint-formatting-context-margin-001-ref.html
- == style-counter-increment-001.html style-counter-increment-001-ref.html
- == style-counter-insert-001.html style-counter-insert-001-ref.html
-+== style-quote-001.html style-quote-001-ref.html
-diff --git a/layout/reftests/w3c-css/submitted/contain/style-quote-001-ref.html b/layout/reftests/w3c-css/submitted/contain/style-quote-001-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-quote-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-quote-001-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/style-quote-001-ref.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-quote-001-ref.html
 @@ -0,0 +1,50 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -71,10 +58,10 @@ new file mode 100644
 +  </p>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/style-quote-001.html b/layout/reftests/w3c-css/submitted/contain/style-quote-001.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-quote-001.html b/layout/reftests/w3c-css/submitted/contain/contain-style-quote-001.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/style-quote-001.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-quote-001.html
 @@ -0,0 +1,45 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -121,3 +108,16 @@ new file mode 100644
 +  </p>
 +</body>
 +</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
+--- a/layout/reftests/w3c-css/submitted/contain/reftest.list
++++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
+@@ -3,8 +3,9 @@ default-preferences pref(layout.css.cont
+ == contain-paint-clip-001.html contain-paint-clip-001-ref.html
+ == contain-paint-clip-002.html contain-paint-clip-002-ref.html
+ == contain-paint-containing-block-absolute-001.html contain-paint-containing-block-absolute-001-ref.html
+ == contain-paint-containing-block-fixed-001.html contain-paint-containing-block-fixed-001-ref.html
+ == contain-paint-formatting-context-float-001.html contain-paint-formatting-context-float-001-ref.html
+ == contain-paint-formatting-context-margin-001.html contain-paint-formatting-context-margin-001-ref.html
+ == contain-style-counter-increment-001.html contain-style-counter-increment-001-ref.html
+ == contain-style-counter-insert-001.html contain-style-counter-insert-001-ref.html
++== contain-style-quote-001.html contain-style-quote-001-ref.html

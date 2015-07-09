@@ -6,11 +6,13 @@ ContainStyleQuotes
 ContainStyleQuotesTest
 ContainStyleBreak
 ContainStyleBreakTest
-ContainLayout
+ContainLayoutAttempt2
 ContainLayoutTest
 try-all
-UnRemoveBoxSizingPaddingBoxTests
+fixups
+ContainLayout
 try-linux-minimal
+UnRemoveBoxSizingPaddingBoxTests
 UnfinishedTests
 ContainStyleQuotesAttempt1
 ContainStyleAttempt1

@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  4ebf3ac885868e45d8fe985d1aaa2a1674706bdc
+# Parent  46d049d184f4bc26cd21e87e2e60ba65824fab94
 Bug 1172087 - Patch 1: Implement counter behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -314,13 +314,13 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -2244,16 +2244,20 @@ struct nsStyleDisplay {
- 
+@@ -2245,16 +2245,20 @@ struct nsStyleDisplay {
    bool IsScrollableOverflow() const {
      // mOverflowX and mOverflowY always match when one of them is
      // NS_STYLE_OVERFLOW_VISIBLE or NS_STYLE_OVERFLOW_CLIP.
      return mOverflowX != NS_STYLE_OVERFLOW_VISIBLE &&
-            mOverflowX != NS_STYLE_OVERFLOW_CLIP;
+            mOverflowX != NS_STYLE_OVERFLOW_CLIP &&
+            !IsContainPaint();
    }
  
 +  bool IsContainStyle() const {

@@ -1,26 +1,12 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  3508f71387775e7aec5807422a7f70dabc5e80c0
+# Parent  dc1ba798d6cd68ae7660ea353bd01a44d038c980
 Bug 1172087 - Patch 2: Test counter behavior for "contain: style"
 
-diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
---- a/layout/reftests/w3c-css/submitted/contain/reftest.list
-+++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -1,8 +1,10 @@
- default-preferences pref(layout.css.contain.enabled,true)
- 
- == paint-clip-001.html paint-clip-001-ref.html
- == paint-clip-002.html paint-clip-002-ref.html
- == paint-containing-block-absolute-001.html paint-containing-block-absolute-001-ref.html
- == paint-containing-block-fixed-001.html paint-containing-block-fixed-001-ref.html
- == paint-formatting-context-float-001.html paint-formatting-context-float-001-ref.html
- == paint-formatting-context-margin-001.html paint-formatting-context-margin-001-ref.html
-+== style-counter-increment-001.html style-counter-increment-001-ref.html
-+== style-counter-insert-001.html style-counter-insert-001-ref.html
-diff --git a/layout/reftests/w3c-css/submitted/contain/style-counter-increment-001-ref.html b/layout/reftests/w3c-css/submitted/contain/style-counter-increment-001-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/style-counter-increment-001-ref.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html
 @@ -0,0 +1,61 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -83,10 +69,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/style-counter-increment-001.html b/layout/reftests/w3c-css/submitted/contain/style-counter-increment-001.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/style-counter-increment-001.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001.html
 @@ -0,0 +1,62 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -150,10 +136,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/style-counter-insert-001-ref.html b/layout/reftests/w3c-css/submitted/contain/style-counter-insert-001-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-insert-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-insert-001-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/style-counter-insert-001-ref.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-insert-001-ref.html
 @@ -0,0 +1,41 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -196,10 +182,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/style-counter-insert-001.html b/layout/reftests/w3c-css/submitted/contain/style-counter-insert-001.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-insert-001.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-insert-001.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/style-counter-insert-001.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-insert-001.html
 @@ -0,0 +1,49 @@
 +<!DOCTYPE HTML>
 +<html class="reftest-wait">
@@ -250,3 +236,17 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
+--- a/layout/reftests/w3c-css/submitted/contain/reftest.list
++++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
+@@ -1,8 +1,10 @@
+ default-preferences pref(layout.css.contain.enabled,true)
+ 
+ == contain-paint-clip-001.html contain-paint-clip-001-ref.html
+ == contain-paint-clip-002.html contain-paint-clip-002-ref.html
+ == contain-paint-containing-block-absolute-001.html contain-paint-containing-block-absolute-001-ref.html
+ == contain-paint-containing-block-fixed-001.html contain-paint-containing-block-fixed-001-ref.html
+ == contain-paint-formatting-context-float-001.html contain-paint-formatting-context-float-001-ref.html
+ == contain-paint-formatting-context-margin-001.html contain-paint-formatting-context-margin-001-ref.html
++== contain-style-counter-increment-001.html contain-style-counter-increment-001-ref.html
++== contain-style-counter-insert-001.html contain-style-counter-insert-001-ref.html

@@ -1,5 +1,5 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
 # Parent  a82c8a3eff90c3ef8d0a17455c55fe2f2a24de31
-try: -b do -p all -u all -t none
+try: -b d -p all -u all -t none
 

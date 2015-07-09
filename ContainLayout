@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  200fa3e70404f52bda010bfdf51cd20b2556c5c9
+# Parent  bbea1121fed7b975101f19c0692379d3df7882c4
 Bug 1178895 - Patch 1: Implement CSS 'contain: layout'.
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -449,8 +449,9 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
        // more specific rule sets "float: none") will use
        // mOriginalDisplay, which we have carefully not changed.
      }
--    if (display->IsContainPaint()) {
-+    if (display->IsContainPaint() || display->IsContainLayout()) {
+-    if (display->IsContainPaint() &&
++    if ((display->IsContainPaint() || display->IsContainLayout()) &&
+         aRuleData->ValueForDisplay()->GetUnit() != eCSSUnit_Null) {
        // This is supposed to cause contain: paint and contain: layout elements
        // to become formatting contexts. However, exactly how the element is
        // supposed to become a formatting context has not been specified.  Most
@@ -458,17 +459,16 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
        // except with 'inline' converts to 'inline block' instead of 'block'.
        // XXX This behavior is probably wrong in some cases; see bug 1179349.
        EnsureBlockDisplay(display->mDisplay);
-     }
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -2244,16 +2244,20 @@ struct nsStyleDisplay {
- 
+@@ -2245,16 +2245,20 @@ struct nsStyleDisplay {
    bool IsScrollableOverflow() const {
      // mOverflowX and mOverflowY always match when one of them is
      // NS_STYLE_OVERFLOW_VISIBLE or NS_STYLE_OVERFLOW_CLIP.
      return mOverflowX != NS_STYLE_OVERFLOW_VISIBLE &&
-            mOverflowX != NS_STYLE_OVERFLOW_CLIP;
+            mOverflowX != NS_STYLE_OVERFLOW_CLIP &&
+            !IsContainPaint();
    }
  
 +  bool IsContainLayout() const {
