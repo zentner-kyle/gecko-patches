@@ -6,33 +6,158 @@ Bug 1172087 - Patch 2: Test counter behavior for "contain: style"
 diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 --- a/layout/base/nsCounterManager.cpp
 +++ b/layout/base/nsCounterManager.cpp
-@@ -171,17 +171,25 @@ nsCounterList::SetScope(nsCounterNode *a
+@@ -120,16 +120,25 @@ nsCounterUseNode::GetText(nsString& aRes
+         aResult.Append(text);
+         if (i == 0)
+             break;
+         NS_ASSERTION(mAllCounters, "yikes, separator is uninitialized");
+         aResult.Append(separator);
+     }
+ }
  
-              // A reset's outer scope can't be a scope created by a sibling.
-         if (!(aNode->mType == nsCounterNode::RESET &&
-               nodeContent == startContent) &&
-               // everything is inside the root (except the case above,
-               // a second reset on the root)
-             (!startContent ||
-              nsContentUtils::ContentIsDescendantOf(nodeContent,
++static nsIContent *
++GetNodeNonPseudoContent(nsCounterNode *aNode) {
++    //if (aNode->mType == nsCounterNode::USE) {
++        return aNode->mPseudoFrame->GetContent()->GetParent();
++    //} else {
++        //return aNode->mPseudoFrame->GetContent();
++    //}
++}
++
+ void
+ nsCounterList::SetScope(nsCounterNode *aNode)
+ {
+     // This function is responsible for setting |mScopeStart| and
+     // |mScopePrev| (whose purpose is described in nsCounterManager.h).
+     // We do this by starting from the node immediately preceding
+     // |aNode| in content tree order, which is reasonably likely to be
+     // the previous element in our scope (or, for a reset, the previous
+@@ -142,50 +151,110 @@ nsCounterList::SetScope(nsCounterNode *a
+         aNode->mScopeStart = nullptr;
+         aNode->mScopePrev = nullptr;
+         return;
+     }
+ 
+     // Get the content node for aNode's rendering object's *parent*,
+     // since scope includes siblings, so we want a descendant check on
+     // parents.
+-    nsIContent *nodeContent = aNode->mPseudoFrame->GetContent()->GetParent();
++    nsIContent *nodeContent = GetNodeNonPseudoContent(aNode);
+ 
+-    for (nsCounterNode *prev = Prev(aNode), *start;
++    nsCounterNode *start;
++    for (nsCounterNode *prev = Prev(aNode);
+          prev; prev = start->mScopePrev) {
+         // If |prev| starts a scope (because it's a real or implied
+         // reset), we want it as the scope start rather than the start
+         // of its enclosing scope.  Otherwise, there's no enclosing
+         // scope, so the next thing in prev's scope shares its scope
+         // start.
+         start = (prev->mType == nsCounterNode::RESET ||
+                  prev->mType == nsCounterNode::ROOT  ||
+                  !prev->mScopeStart)
+-                  ? prev : prev->mScopeStart;
++                 ? prev : prev->mScopeStart;
++
++        // At this point, start is *before* prev.
+ 
+         // |startContent| is analogous to |nodeContent| (see above).
+-        nsIContent *startContent = start->mPseudoFrame->GetContent()->GetParent();
++        nsIContent *startContent = GetNodeNonPseudoContent(start);
+         NS_ASSERTION(nodeContent || !startContent,
+                      "null check on startContent should be sufficient to "
+                      "null check nodeContent as well, since if nodeContent "
+                      "is for the root, startContent (which is before it) "
+                      "must be too");
+ 
+-             // A reset's outer scope can't be a scope created by a sibling.
+-        if (!(aNode->mType == nsCounterNode::RESET &&
+-              nodeContent == startContent) &&
+-              // everything is inside the root (except the case above,
+-              // a second reset on the root)
+-            (!startContent ||
+-             nsContentUtils::ContentIsDescendantOf(nodeContent,
 -                                                   startContent))) {
-+                                                   startContent)) &&
-+            // If we found a ROOT node, we need to make sure we are actually a
-+            // child of that node.
-+            ((start->mType == nsCounterNode::ROOT && start->mPseudoFrame == prev->mPseudoFrame) ||
-+             (start->mType != nsCounterNode::ROOT ||
-+              (startContent &&
-+               nodeContent->GetParent() &&
-+               nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent(),
-+                                                     startContent))))) {
-             aNode->mScopeStart = start;
-             aNode->mScopePrev  = prev;
-             return;
+-            aNode->mScopeStart = start;
+-            aNode->mScopePrev  = prev;
+-            return;
++        bool nodeIsAtStart = start->mPseudoFrame == aNode->mPseudoFrame;
++
++        // aNode is a RESET, so its scope doesn't really matter.
++        if (aNode->mType == nsCounterNode::RESET &&
++            nodeContent == startContent) {
++            // We're a reset, so our scope doesn't really matter.
++            // However, we've already spent time looking some distance back in
++            // the tree. We may as well keep looking back until we find a
++            // non-sibling, since the next node will need to. I guess.
++            // XXX kzentner Investigate why this is *actually* done.
++
++            // XXX The following comment was describing this branch of the
++            // logic before reorganization:
++
++            // A reset's outer scope can't be a scope created by a sibling.
++
++            // However, the spec doesn't define "outer scope."
++            continue;
          }
++        // If this scope starts with a RESET (or nothing), then aNode's frame
++        // must either be a sibling of start's frame, or aNode's frame must be
++        // a descendant of start's frame.
++        //if (start->mType == nsCounterNode::RESET &&
++            //startContent &&
++            //!(nodeContent->GetParent() == startContent->GetParent() &&
++              //nsContentUtils::ContentIsDescendantOf(nodeContent,
++                                                    //startContent))) {
++        if (start->mType == nsCounterNode::RESET &&
++            startContent &&
++            !nsContentUtils::ContentIsDescendantOf(nodeContent,
++                                                   startContent)) {
++            continue;
++        }
++
++        // If this scope starts with a ROOT, then aNode must have the same
++        // frame as start, or aNode's frame must be a descendant of start's
++        // frame.
++        if ((start->mType == nsCounterNode::ROOT && !nodeIsAtStart) &&
++            (startContent == nodeContent ||
++             (startContent &&
++              !nsContentUtils::ContentIsDescendantOf(nodeContent,
++                                                     startContent)))) {
++              //(nodeContent->GetParent() ||
++              //!nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent(),
++                                                     //startContent))))) {
++            //(!nodeContent->GetParent() ||
++              //!nsContentUtils::ContentIsDescendantOf(nodeContent,
++                                                     //startContent)))) {
++            continue;
++        }
++        aNode->mScopeStart = start;
++        aNode->mScopePrev  = prev;
++        return;
++        //if (startContent &&
++            //!nsC
++
++                //(!startContent ||
++             //nsContentUtils::ContentIsDescendantOf(nodeContent,
++                                                   //startContent)) &&
++            //((start->mType == nsCounterNode::ROOT && start->mPseudoFrame == prev->mPseudoFrame) ||
++             //(start->mType != nsCounterNode::ROOT ||
++              //(startContent &&
++               //nodeContent->GetParent() &&
++               //nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent(),
++                                                     //startContent))))) {
++            //aNode->mScopeStart = start;
++            //aNode->mScopePrev  = prev;
++            //return;
++        //}
      }
  
      aNode->mScopeStart = nullptr;
      aNode->mScopePrev  = nullptr;
+ }
+ 
+ void
+ nsCounterList::RecalcAll()
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html
 new file mode 100644
 --- /dev/null
