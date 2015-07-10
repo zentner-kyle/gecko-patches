@@ -1,8 +1,38 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  dc1ba798d6cd68ae7660ea353bd01a44d038c980
+# Parent  34a68c3b0d50d733ad6df06e3847952c12d95519
 Bug 1172087 - Patch 2: Test counter behavior for "contain: style"
 
+diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
+--- a/layout/base/nsCounterManager.cpp
++++ b/layout/base/nsCounterManager.cpp
+@@ -171,17 +171,25 @@ nsCounterList::SetScope(nsCounterNode *a
+ 
+              // A reset's outer scope can't be a scope created by a sibling.
+         if (!(aNode->mType == nsCounterNode::RESET &&
+               nodeContent == startContent) &&
+               // everything is inside the root (except the case above,
+               // a second reset on the root)
+             (!startContent ||
+              nsContentUtils::ContentIsDescendantOf(nodeContent,
+-                                                   startContent))) {
++                                                   startContent)) &&
++            // If we found a ROOT node, we need to make sure we are actually a
++            // child of that node.
++            ((start->mType == nsCounterNode::ROOT && start->mPseudoFrame == prev->mPseudoFrame) ||
++             (start->mType != nsCounterNode::ROOT ||
++              (startContent &&
++               nodeContent->GetParent() &&
++               nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent(),
++                                                     startContent))))) {
+             aNode->mScopeStart = start;
+             aNode->mScopePrev  = prev;
+             return;
+         }
+     }
+ 
+     aNode->mScopeStart = nullptr;
+     aNode->mScopePrev  = nullptr;
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html
 new file mode 100644
 --- /dev/null
