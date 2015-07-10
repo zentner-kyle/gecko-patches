@@ -30,68 +30,40 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
        (NS_FRAME_FONT_INFLATION_CONTAINER | NS_BLOCK_FLOAT_MGR)) {
      AddStateBits(NS_FRAME_FONT_INFLATION_FLOW_ROOT);
    }
-diff --git a/layout/generic/nsFrame.cpp b/layout/generic/nsFrame.cpp
---- a/layout/generic/nsFrame.cpp
-+++ b/layout/generic/nsFrame.cpp
-@@ -2383,16 +2383,28 @@ nsIFrame::BuildDisplayListForChild(nsDis
-     pseudoStackingContext = true;
-   }
-   NS_ASSERTION(!isStackingContext || pseudoStackingContext,
-                "Stacking contexts must also be pseudo-stacking-contexts");
- 
-   nsDisplayListBuilder::AutoBuildingDisplayList
-     buildingForChild(aBuilder, child, dirty, pseudoStackingContext);
-   DisplayListClipState::AutoClipMultiple clipState(aBuilder);
-+
-+  Maybe<DisplayListClipState::AutoSaveRestore> containClipState;
-+  if (ourDisp->IsContainPaint()) {
-+    // If we're 'contain: paint', clip *all* of our descendants.
-+    containClipState.emplace(aBuilder);
-+    nsRect contentRect = GetContentRectRelativeToSelf() +
-+      aBuilder->ToReferenceFrame(this);
-+    nscoord radii[8];
-+    GetContentBoxBorderRadii(radii);
-+    containClipState->ClipContentDescendants(contentRect, radii);
-+  }
-+
-   CheckForApzAwareEventHandlers(aBuilder, child);
- 
-   if (savedOutOfFlowData) {
-     clipState.SetClipForContainingBlockDescendants(
-       &savedOutOfFlowData->mContainingBlockClip);
-   }
- 
-   // Setup clipping for the parent's overflow:-moz-hidden-unscrollable,
-diff --git a/layout/generic/nsFrame.h b/layout/generic/nsFrame.h
---- a/layout/generic/nsFrame.h
-+++ b/layout/generic/nsFrame.h
-@@ -579,18 +579,19 @@ public:
-   /**
-    * Returns true if aFrame should apply overflow clipping.
-    */
-   static bool ShouldApplyOverflowClipping(const nsIFrame* aFrame,
-                                           const nsStyleDisplay* aDisp)
-   {
-     // clip overflow:-moz-hidden-unscrollable, except for nsListControlFrame,
-     // which is an nsHTMLScrollFrame.
--    if (MOZ_UNLIKELY(aDisp->mOverflowX == NS_STYLE_OVERFLOW_CLIP &&
--                     aFrame->GetType() != nsGkAtoms::listControlFrame)) {
-+    if (MOZ_UNLIKELY(aDisp->IsContainPaint() ||
-+                     (aDisp->mOverflowX == NS_STYLE_OVERFLOW_CLIP &&
-+                      aFrame->GetType() != nsGkAtoms::listControlFrame))) {
-       return true;
-     }
- 
-     // and overflow:hidden that we should interpret as -moz-hidden-unscrollable
-     if (aDisp->mOverflowX == NS_STYLE_OVERFLOW_HIDDEN &&
-         aDisp->mOverflowY == NS_STYLE_OVERFLOW_HIDDEN) {
-       // REVIEW: these are the frame types that set up clipping.
-       nsIAtom* type = aFrame->GetType();
 diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 --- a/layout/style/nsRuleNode.cpp
 +++ b/layout/style/nsRuleNode.cpp
-@@ -5707,17 +5707,25 @@ nsRuleNode::ComputeDisplayData(void* aSt
-       EnsureBlockDisplay(display->mDisplay);
+@@ -5540,16 +5540,29 @@ nsRuleNode::ComputeDisplayData(void* aSt
+ 
+   // overflow-y: enum, inherit, initial
+   SetDiscrete(*aRuleData->ValueForOverflowY(),
+               display->mOverflowY, conditions,
+               SETDSC_ENUMERATED | SETDSC_UNSET_INITIAL,
+               parentDisplay->mOverflowY,
+               NS_STYLE_OVERFLOW_VISIBLE, 0, 0, 0, 0);
+ 
++  // When 'contain: paint', update overflow from 'visible' to 'clip'
++  if (display->IsContainPaint()) {
++    if (display->mOverflowX == NS_STYLE_OVERFLOW_VISIBLE ||
++        display->mOverflowY == NS_STYLE_OVERFLOW_VISIBLE) {
++      // XXX This actually sets overflow to -moz-hidden-unscrollable.
++      display->mOverflowX = NS_STYLE_OVERFLOW_CLIP;
++      display->mOverflowY = NS_STYLE_OVERFLOW_CLIP;
++      // This uncacheability (and the one below) could be fixed by adding
++      // mOriginalOverflowX and mOriginalOverflowY fields, if necessary.
++      conditions.SetUncacheable();
++    }
++  }
++
+   // CSS3 overflow-x and overflow-y require some fixup as well in some
+   // cases.  NS_STYLE_OVERFLOW_VISIBLE and NS_STYLE_OVERFLOW_CLIP are
+   // meaningful only when used in both dimensions.
+   if (display->mOverflowX != display->mOverflowY &&
+       (display->mOverflowX == NS_STYLE_OVERFLOW_VISIBLE ||
+        display->mOverflowX == NS_STYLE_OVERFLOW_CLIP ||
+        display->mOverflowY == NS_STYLE_OVERFLOW_VISIBLE ||
+        display->mOverflowY == NS_STYLE_OVERFLOW_CLIP)) {
+@@ -5708,16 +5721,25 @@ nsRuleNode::ComputeDisplayData(void* aSt
  
        // Note that it's OK to cache this struct in the ruletree
        // because it's fine as-is for any style context that points to
@@ -99,7 +71,7 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
        // more specific rule sets "float: none") will use
        // mOriginalDisplay, which we have carefully not changed.
      }
--
+ 
 +    if (display->IsContainPaint()) {
 +      // This is supposed to cause contain: paint and contain: layout elements
 +      // to become formatting contexts. However, exactly how the element is
@@ -120,30 +92,27 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -2241,17 +2241,22 @@ struct nsStyleDisplay {
-   bool IsOutOfFlowStyle() const {
-     return (IsAbsolutelyPositionedStyle() || IsFloatingStyle());
-   }
+@@ -2244,16 +2244,20 @@ struct nsStyleDisplay {
  
    bool IsScrollableOverflow() const {
      // mOverflowX and mOverflowY always match when one of them is
      // NS_STYLE_OVERFLOW_VISIBLE or NS_STYLE_OVERFLOW_CLIP.
      return mOverflowX != NS_STYLE_OVERFLOW_VISIBLE &&
--           mOverflowX != NS_STYLE_OVERFLOW_CLIP;
-+           mOverflowX != NS_STYLE_OVERFLOW_CLIP &&
-+           !IsContainPaint();
-+  }
-+
-+  bool IsContainPaint() const {
-+    return NS_STYLE_CONTAIN_PAINT & mContain;
+            mOverflowX != NS_STYLE_OVERFLOW_CLIP;
    }
  
++  bool IsContainPaint() const {
++    return NS_STYLE_CONTAIN_PAINT & mContain;
++  }
++
    /* Returns whether the element has the -moz-transform property
     * or a related property. */
    bool HasTransformStyle() const {
      return mSpecifiedTransform != nullptr ||
             mTransformStyle == NS_STYLE_TRANSFORM_STYLE_PRESERVE_3D ||
             (mWillChangeBitField & NS_STYLE_WILL_CHANGE_TRANSFORM);
+   }
+ 
 diff --git a/layout/style/nsStyleStructInlines.h b/layout/style/nsStyleStructInlines.h
 --- a/layout/style/nsStyleStructInlines.h
 +++ b/layout/style/nsStyleStructInlines.h

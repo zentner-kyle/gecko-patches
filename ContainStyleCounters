@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  46d049d184f4bc26cd21e87e2e60ba65824fab94
+# Parent  bc942fc16319d6f591c25b3f3ae1e7d99dacf0ca
 Bug 1172087 - Patch 1: Implement counter behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -157,7 +157,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
          int32_t i = 0;
          do {
 -            const char *types[] = { "RESET", "INCREMENT", "USE" };
-+            const char *types[] = { "RESET", "INCREMENT", "USE", "ROOT" };
++            const char *types[] = { "ROOT", "RESET", "INCREMENT", "USE" };
              printf("  Node #%d @%p frame=%p index=%d type=%s valAfter=%d\n"
                     "       scope-start=%p scope-prev=%p",
                     i++, (void*)node, (void*)node->mPseudoFrame,
@@ -202,9 +202,9 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 -                                        ? (INT32_MIN) 
 -                                        : (INT32_MIN / 2)),
 +                        aPropIndex +
-+                        (aChangeType == RESET     ? (INT32_MIN) :
-+                         aChangeType == INCREMENT ? (2 * (INT32_MIN / 3))
-+                      /* aChangeType == ROOT */   : (INT32_MIN / 3)),
++                        (aChangeType == ROOT     ? (INT32_MIN) :
++                         aChangeType == RESET ? (2 * (INT32_MIN / 3))
++                      /* aChangeType == INCREMENT */   : (INT32_MIN / 3)),
                          aChangeType)
          , mChangeValue(aChangeValue)
      {
@@ -314,13 +314,13 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -2245,16 +2245,20 @@ struct nsStyleDisplay {
+@@ -2244,16 +2244,20 @@ struct nsStyleDisplay {
+ 
    bool IsScrollableOverflow() const {
      // mOverflowX and mOverflowY always match when one of them is
      // NS_STYLE_OVERFLOW_VISIBLE or NS_STYLE_OVERFLOW_CLIP.
      return mOverflowX != NS_STYLE_OVERFLOW_VISIBLE &&
-            mOverflowX != NS_STYLE_OVERFLOW_CLIP &&
-            !IsContainPaint();
+            mOverflowX != NS_STYLE_OVERFLOW_CLIP;
    }
  
 +  bool IsContainStyle() const {
