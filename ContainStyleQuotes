@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  704855ebd20a7c74941b1cab846452495e67930f
+# Parent  409a06d1d7f403acf48ab7414d3af8ebca53c27b
 Bug 1172087 - Patch 3: Implement quote behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -26,15 +26,36 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  /*
   * aParentFrame - the frame that should be the parent of the generated
   *   content.  This is the frame for the corresponding content node,
-@@ -10336,16 +10339,23 @@ nsCSSFrameConstructor::ProcessChildren(n
+@@ -4763,16 +4766,18 @@ nsCSSFrameConstructor::InitAndRestoreFra
+   aNewFrame->Init(aContent, aParentFrame, nullptr);
+   aNewFrame->AddStateBits(aState.mAdditionalStateBits);
+ 
+   if (aState.mFrameState) {
+     // Restore frame state for just the newly created frame.
+     RestoreFrameStateFor(aNewFrame, aState.mFrameState);
+   }
+ 
++  nsCounterScopePush saveCounters(&mCounterManager, aNewFrame,
++                                  aNewFrame->StyleDisplay()->IsContainStyle());
+   if (aAllowCounters &&
+       mCounterManager.AddCounterResetsAndIncrements(aNewFrame)) {
+     CountersDirty();
+   }
+ }
+ 
+ already_AddRefed<nsStyleContext>
+ nsCSSFrameConstructor::ResolveStyleContext(nsIFrame*         aParentFrame,
+@@ -10334,18 +10339,23 @@ nsCSSFrameConstructor::ProcessChildren(n
+   AutoRestore<uint16_t> savedDepth(mCurrentDepth);
+   if (mCurrentDepth != UINT16_MAX) {
      ++mCurrentDepth;
    }
  
    if (!aPossiblyLeafFrame) {
      aPossiblyLeafFrame = aFrame;
    }
-   nsCounterScopePush saveCounters(&mCounterManager, aFrame,
-                                   aFrame->StyleDisplay()->IsContainStyle());
+-  nsCounterScopePush saveCounters(&mCounterManager, aFrame,
+-                                  aFrame->StyleDisplay()->IsContainStyle());
 +  if (aFrame->StyleDisplay()->IsContainStyle()) {
 +    // A negative content index is needed to indicate that the quote depth is
 +    // being changed by this node. Any negative value will do, so -1 is used.
@@ -50,6 +71,83 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    if (aAllowBlockStyles) {
      ShouldHaveSpecialBlockStyle(aContent, aStyleContext, &haveFirstLetterStyle,
                                  &haveFirstLineStyle);
+diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
+--- a/layout/base/nsCounterManager.cpp
++++ b/layout/base/nsCounterManager.cpp
+@@ -152,17 +152,17 @@ nsCounterList::SetScope(nsCounterNode *a
+     for (nsCounterNode *prev = Prev(aNode), *start;
+          prev; prev = start->mScopePrev) {
+         // If |prev| starts a scope (because it's a real or implied
+         // reset), we want it as the scope start rather than the start
+         // of its enclosing scope.  Otherwise, there's no enclosing
+         // scope, so the next thing in prev's scope shares its scope
+         // start.
+         start = (prev->mType == nsCounterNode::RESET ||
+-                 prev->mType == nsCounterNode::ROOT ||
++                 prev->mType == nsCounterNode::ROOT  ||
+                  !prev->mScopeStart)
+                   ? prev : prev->mScopeStart;
+ 
+         // |startContent| is analogous to |nodeContent| (see above).
+         nsIContent *startContent = start->mPseudoFrame->GetContent()->GetParent();
+         NS_ASSERTION(nodeContent || !startContent,
+                      "null check on startContent should be sufficient to "
+                      "null check nodeContent as well, since if nodeContent "
+@@ -171,26 +171,17 @@ nsCounterList::SetScope(nsCounterNode *a
+ 
+              // A reset's outer scope can't be a scope created by a sibling.
+         if (!(aNode->mType == nsCounterNode::RESET &&
+               nodeContent == startContent) &&
+               // everything is inside the root (except the case above,
+               // a second reset on the root)
+             (!startContent ||
+              nsContentUtils::ContentIsDescendantOf(nodeContent,
+-                                                   startContent)) &&
+-            // If we found a ROOT node, we need to make sure we are actually a
+-            // child of that node.
+-            (start->mType != nsCounterNode::ROOT ||
+-             (startContent &&
+-              nodeContent->GetParent() &&
+-              nodeContent->GetParent()->GetParent() &&
+-              nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent()
+-                                                               ->GetParent(),
+-                                                    startContent)))) {
++                                                   startContent))) {
+             aNode->mScopeStart = start;
+             aNode->mScopePrev  = prev;
+             return;
+         }
+     }
+ 
+     aNode->mScopeStart = nullptr;
+     aNode->mScopePrev  = nullptr;
+diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
+--- a/layout/base/nsCounterManager.h
++++ b/layout/base/nsCounterManager.h
+@@ -294,20 +294,18 @@ private:
+     nsClassHashtable<nsStringHashKey, nsCounterList> mNames;
+ };
+ 
+ // This class exists to help implement 'contain: style'.
+ // It currenctly can be replaced by a function call on the nsCounterManager.
+ // However, it should be possible to create ROOT nodes lazily using this
+ // design. Unfortunately, my attempts to do so missed some corner cases and
+ // were abandoned.
+-class nsCounterScopePush
+-{
++class nsCounterScopePush {
+ public:
+-  nsCounterScopePush(nsCounterManager* aManager, nsIFrame* aFrame, bool use)
+-  {
+-      if (use) {
++  nsCounterScopePush(nsCounterManager* aManager, nsIFrame* aFrame, bool aUse) {
++      if (aUse) {
+           aManager->AddRoots(aFrame);
+       }
+   }
+ };
+ 
+ #endif /* nsCounterManager_h_ */
 diff --git a/layout/base/nsQuoteList.cpp b/layout/base/nsQuoteList.cpp
 --- a/layout/base/nsQuoteList.cpp
 +++ b/layout/base/nsQuoteList.cpp
@@ -224,7 +322,7 @@ diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -2377,16 +2377,18 @@ enum nsStyleContentType {
+@@ -2382,16 +2382,18 @@ enum nsStyleContentType {
    eStyleContentType_Attr          = 20,
    eStyleContentType_Counter       = 30,
    eStyleContentType_Counters      = 31,

@@ -1,30 +1,30 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  bc942fc16319d6f591c25b3f3ae1e7d99dacf0ca
+# Parent  326d7596bbe550cde71378a7b87b2d906c0cf276
 Bug 1172087 - Patch 1: Implement counter behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
 --- a/layout/base/nsCSSFrameConstructor.cpp
 +++ b/layout/base/nsCSSFrameConstructor.cpp
-@@ -10334,16 +10334,18 @@ nsCSSFrameConstructor::ProcessChildren(n
-   AutoRestore<uint16_t> savedDepth(mCurrentDepth);
-   if (mCurrentDepth != UINT16_MAX) {
-     ++mCurrentDepth;
+@@ -4763,16 +4763,18 @@ nsCSSFrameConstructor::InitAndRestoreFra
+   aNewFrame->Init(aContent, aParentFrame, nullptr);
+   aNewFrame->AddStateBits(aState.mAdditionalStateBits);
+ 
+   if (aState.mFrameState) {
+     // Restore frame state for just the newly created frame.
+     RestoreFrameStateFor(aNewFrame, aState.mFrameState);
    }
  
-   if (!aPossiblyLeafFrame) {
-     aPossiblyLeafFrame = aFrame;
++  nsCounterScopePush saveCounters(&mCounterManager, aNewFrame,
++                                  aNewFrame->StyleDisplay()->IsContainStyle());
+   if (aAllowCounters &&
+       mCounterManager.AddCounterResetsAndIncrements(aNewFrame)) {
+     CountersDirty();
    }
-+  nsCounterScopePush saveCounters(&mCounterManager, aFrame,
-+                                  aFrame->StyleDisplay()->IsContainStyle());
+ }
  
-   // XXXbz ideally, this would do all the pushing of various
-   // containing blocks as needed, so callers don't have to do it...
- 
-   bool haveFirstLetterStyle = false, haveFirstLineStyle = false;
-   if (aAllowBlockStyles) {
-     ShouldHaveSpecialBlockStyle(aContent, aStyleContext, &haveFirstLetterStyle,
-                                 &haveFirstLineStyle);
+ already_AddRefed<nsStyleContext>
+ nsCSSFrameConstructor::ResolveStyleContext(nsIFrame*         aParentFrame,
 diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 --- a/layout/base/nsCounterManager.cpp
 +++ b/layout/base/nsCounterManager.cpp
@@ -66,7 +66,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
          // start.
 -        start = (prev->mType == nsCounterNode::RESET || !prev->mScopeStart)
 +        start = (prev->mType == nsCounterNode::RESET ||
-+                 prev->mType == nsCounterNode::ROOT ||
++                 prev->mType == nsCounterNode::ROOT  ||
 +                 !prev->mScopeStart)
                    ? prev : prev->mScopeStart;
  
@@ -76,35 +76,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
                       "null check on startContent should be sufficient to "
                       "null check nodeContent as well, since if nodeContent "
                       "is for the root, startContent (which is before it) "
-@@ -165,17 +171,26 @@ nsCounterList::SetScope(nsCounterNode *a
- 
-              // A reset's outer scope can't be a scope created by a sibling.
-         if (!(aNode->mType == nsCounterNode::RESET &&
-               nodeContent == startContent) &&
-               // everything is inside the root (except the case above,
-               // a second reset on the root)
-             (!startContent ||
-              nsContentUtils::ContentIsDescendantOf(nodeContent,
--                                                   startContent))) {
-+                                                   startContent)) &&
-+            // If we found a ROOT node, we need to make sure we are actually a
-+            // child of that node.
-+            (start->mType != nsCounterNode::ROOT ||
-+             (startContent &&
-+              nodeContent->GetParent() &&
-+              nodeContent->GetParent()->GetParent() &&
-+              nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent()
-+                                                               ->GetParent(),
-+                                                    startContent)))) {
-             aNode->mScopeStart = start;
-             aNode->mScopePrev  = prev;
-             return;
-         }
-     }
- 
-     aNode->mScopeStart = nullptr;
-     aNode->mScopePrev  = nullptr;
-@@ -257,16 +272,42 @@ nsCounterManager::AddResetOrIncrement(ns
+@@ -257,16 +263,42 @@ nsCounterManager::AddResetOrIncrement(ns
      // Don't call Calc() if the list is already dirty -- it'll be recalculated
      // anyway, and trying to calculate with a dirty list doesn't work.
      if (MOZ_LIKELY(!counterList->IsDirty())) {
@@ -147,7 +119,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
      nsCounterList *counterList;
      if (!mNames.Get(aCounterName, &counterList)) {
          counterList = new nsCounterList();
-@@ -352,17 +393,17 @@ static PLDHashOperator
+@@ -352,17 +384,17 @@ static PLDHashOperator
  DumpList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
  {
      printf("Counter named \"%s\":\n", NS_ConvertUTF16toUTF8(aKey).get());
@@ -169,18 +141,20 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 --- a/layout/base/nsCounterManager.h
 +++ b/layout/base/nsCounterManager.h
-@@ -19,17 +19,18 @@
+@@ -17,19 +17,20 @@
+ #include "CounterStyleManager.h"
+ 
  class nsCounterList;
  struct nsCounterUseNode;
  struct nsCounterChangeNode;
  
  struct nsCounterNode : public nsGenConNode {
      enum Type {
++        ROOT,      // a "layout" or "strict"  in 'contain'
          RESET,     // a "counter number" pair in 'counter-reset'
          INCREMENT, // a "counter number" pair in 'counter-increment'
 -        USE        // counter() or counters() in 'content'
 +        USE,       // counter() or counters() in 'content'
-+        ROOT,      // a "layout" or "strict"  in 'contain'
      };
  
      Type mType;
@@ -202,9 +176,9 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 -                                        ? (INT32_MIN) 
 -                                        : (INT32_MIN / 2)),
 +                        aPropIndex +
-+                        (aChangeType == ROOT     ? (INT32_MIN) :
-+                         aChangeType == RESET ? (2 * (INT32_MIN / 3))
-+                      /* aChangeType == INCREMENT */   : (INT32_MIN / 3)),
++                        (aChangeType == ROOT         ? (INT32_MIN) :
++                         aChangeType == RESET        ? (2 * (INT32_MIN / 3))
++                      /* aChangeType == INCREMENT */ : (INT32_MIN / 3)),
                          aChangeType)
          , mChangeValue(aChangeValue)
      {
@@ -285,7 +259,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      // Gets the appropriate counter list, creating it if necessary.
      // Guaranteed to return non-null. (Uses an infallible hashtable API.)
      nsCounterList* CounterListFor(const nsSubstring& aCounterName);
-@@ -274,9 +289,25 @@ private:
+@@ -274,9 +289,23 @@ private:
      // for |AddCounterResetsAndIncrements| only
      bool AddResetOrIncrement(nsIFrame *aFrame, int32_t aIndex,
                                 const nsStyleCounterData *aCounterData,
@@ -299,12 +273,10 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 +// However, it should be possible to create ROOT nodes lazily using this
 +// design. Unfortunately, my attempts to do so missed some corner cases and
 +// were abandoned.
-+class nsCounterScopePush
-+{
++class nsCounterScopePush {
 +public:
-+  nsCounterScopePush(nsCounterManager* aManager, nsIFrame* aFrame, bool use)
-+  {
-+      if (use) {
++  nsCounterScopePush(nsCounterManager* aManager, nsIFrame* aFrame, bool aUse) {
++      if (aUse) {
 +          aManager->AddRoots(aFrame);
 +      }
 +  }
