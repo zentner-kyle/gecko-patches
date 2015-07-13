@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  34a68c3b0d50d733ad6df06e3847952c12d95519
+# Parent  5ba0021ac21ef7f78cb3851b80d8766b51598f1c
 Bug 1172087 - Patch 2: Test counter behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -43,70 +43,56 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 --- a/layout/base/nsCounterManager.cpp
 +++ b/layout/base/nsCounterManager.cpp
-@@ -120,76 +120,123 @@ nsCounterUseNode::GetText(nsString& aRes
-         aResult.Append(text);
-         if (i == 0)
-             break;
-         NS_ASSERTION(mAllCounters, "yikes, separator is uninitialized");
-         aResult.Append(separator);
-     }
- }
- 
-+static void
-+DumpListInner(nsCounterList* aList);
-+
- void
- nsCounterList::SetScope(nsCounterNode *aNode)
- {
-+    printf("CONTAIN: Before scope insert:\n\n");
-+    DumpListInner(this);
-+    printf("\n");
-     // This function is responsible for setting |mScopeStart| and
-     // |mScopePrev| (whose purpose is described in nsCounterManager.h).
-     // We do this by starting from the node immediately preceding
-     // |aNode| in content tree order, which is reasonably likely to be
-     // the previous element in our scope (or, for a reset, the previous
-     // element in the containing scope, which is what we want).  If
-     // we're not in the same scope that it is, then it's too deep in the
-     // frame tree, so we walk up parent scopes until we find something
+@@ -139,53 +139,89 @@ nsCounterList::SetScope(nsCounterNode *a
      // appropriate.
  
      if (aNode == First()) {
          aNode->mScopeStart = nullptr;
          aNode->mScopePrev = nullptr;
-+        printf("CONTAIN: First node -> no scope.\n");
          return;
      }
  
-     // Get the content node for aNode's rendering object's *parent*,
-     // since scope includes siblings, so we want a descendant check on
-     // parents.
+-    // Get the content node for aNode's rendering object's *parent*,
+-    // since scope includes siblings, so we want a descendant check on
+-    // parents.
++    // Get the content node for |aNode|'s rendering object's *parent*.
++    // Since reset-counter scopes include siblings, can perform a descendant
++    // check on parents.
      nsIContent *nodeContent = aNode->mPseudoFrame->GetContent()->GetParent();
  
 -    for (nsCounterNode *prev = Prev(aNode), *start;
 +    nsCounterNode *start;
 +    for (nsCounterNode *prev = Prev(aNode);
           prev; prev = start->mScopePrev) {
-         // If |prev| starts a scope (because it's a real or implied
-         // reset), we want it as the scope start rather than the start
-         // of its enclosing scope.  Otherwise, there's no enclosing
-         // scope, so the next thing in prev's scope shares its scope
-         // start.
+-        // If |prev| starts a scope (because it's a real or implied
+-        // reset), we want it as the scope start rather than the start
+-        // of its enclosing scope.  Otherwise, there's no enclosing
+-        // scope, so the next thing in prev's scope shares its scope
+-        // start.
++        // If |prev| starts a scope, we want it as the scope start rather than
++        // the start of its enclosing scope.  Otherwise, there's no enclosing
++        // scope, so we can exit early.
          start = (prev->mType == nsCounterNode::RESET ||
-                  prev->mType == nsCounterNode::ROOT  ||
-                  !prev->mScopeStart)
+-                 prev->mType == nsCounterNode::ROOT  ||
+-                 !prev->mScopeStart)
 -                  ? prev : prev->mScopeStart;
++                 prev->mType == nsCounterNode::ROOT)
 +                 ? prev : prev->mScopeStart;
-+
-+        // At this point, start is *before* prev.
++        if (!start) {
++            aNode->mScopeStart = nullptr;
++            aNode->mScopePrev = prev;
++            return;
++        }
  
          // |startContent| is analogous to |nodeContent| (see above).
          nsIContent *startContent = start->mPseudoFrame->GetContent()->GetParent();
          NS_ASSERTION(nodeContent || !startContent,
                       "null check on startContent should be sufficient to "
                       "null check nodeContent as well, since if nodeContent "
-                      "is for the root, startContent (which is before it) "
-                      "must be too");
+-                     "is for the root, startContent (which is before it) "
+-                     "must be too");
++                     "advanced above the document root, startContent (which "
++                     "is before it) must have too");
  
 -             // A reset's outer scope can't be a scope created by a sibling.
 -        if (!(aNode->mType == nsCounterNode::RESET &&
@@ -121,22 +107,23 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 -            return;
 +        bool isRootScoped = false;
 +
-+        // Each possible start node (either a ROOT or RESET), could be scoped
-+        // as a ROOT.
-+        // This occurs when there is a RESET for the same frame as a ROOT.
++        // If |start| is a ROOT node, or a RESET on a frame that also has a ROOT
++        // node, we need to enforce that |aNode|'s frame is a descendant of
++        // |start|'s frame.
 +        if (start->mType == nsCounterNode::ROOT ||
 +            (start->mType == nsCounterNode::RESET &&
 +             Prev(start) && Prev(start)->mType == nsCounterNode::ROOT &&
 +             start->mPseudoFrame == Prev(start)->mPseudoFrame)) {
-+            // start is either a ROOT or a RESET for a frame which has a ROOT.
++            // |start| is either a ROOT or a RESET for a frame which has a ROOT.
 +            isRootScoped = true;
          }
 +
 +        if (isRootScoped) {
-+            // If this start is scoped as a root, then aNode must have the same
-+            // frame as start, or aNode's frame must be a descendant of start's
-+            // frame.
++            // In order for |start| to begin scope in this case, |aNode| must have
++            // the same frame as |start|, or |aNode|'s frame must be a descendant
++            // of |start|'s frame.
 +
++            // If either of these cases does not hold, keep looking.
 +            if (start->mPseudoFrame != aNode->mPseudoFrame &&
 +                !nsContentUtils::ContentIsDescendantOf(
 +                    aNode->mPseudoFrame->GetContent(),
@@ -146,11 +133,12 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +        } else {
 +            NS_ASSERTION(start->mType == nsCounterNode::RESET,
 +                        "Only RESET nodes should have reset scoping");
-+            // Check that aNode's frame's parent is a descendant of start's
++            // Check that |aNode|'s frame's parent is a descendant of |start|'s
 +            // frame's parent.
-+            // This implies that aNode's frame is itself a sibling of start's
-+            // frame, or aNode's frame is the descendant of one of the siblings
-+            // of start's frame.
++            // This implies that |aNode|'s frame is itself a sibling of |start|'s
++            // frame, or |aNode|'s frame is the descendant of one of the siblings
++            // of |start|'s frame, which is the condition for being scoped to
++            // |start|, if |start| is a normal RESET node.
 +            if (startContent &&
 +                !nsContentUtils::ContentIsDescendantOf(nodeContent,
 +                                                        startContent)) {
@@ -161,26 +149,16 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +        aNode->mScopeStart = start;
 +        aNode->mScopePrev  = prev;
 +
-+        printf("CONTAIN: After scope insert:\n\n");
-+        DumpListInner(this);
-+        printf("\n");
 +        return;
      }
  
      aNode->mScopeStart = nullptr;
      aNode->mScopePrev  = nullptr;
-+    printf("CONTAIN: Implicit root found:\n\n");
-+    DumpListInner(this);
-+    printf("\n");
  }
  
  void
  nsCounterList::RecalcAll()
- {
-     mDirty = false;
- 
-     nsCounterNode *node = First();
-@@ -211,16 +258,17 @@ nsCounterList::RecalcAll()
+@@ -211,16 +247,17 @@ nsCounterList::RecalcAll()
                  useNode->mText->SetData(text);
              }
          }
@@ -198,7 +176,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  {
      const nsStyleContent *styleContent = aFrame->StyleContent();
      if (!styleContent->CounterIncrementCount() &&
-@@ -268,45 +316,51 @@ nsCounterManager::AddResetOrIncrement(ns
+@@ -268,45 +305,51 @@ nsCounterManager::AddResetOrIncrement(ns
      return false;
  }
  
@@ -259,7 +237,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  static PLDHashOperator
  RecalcDirtyLists(const nsAString& aKey, nsCounterList* aList, void* aClosure)
  {
-@@ -355,40 +409,43 @@ struct DestroyNodesData {
+@@ -355,40 +398,43 @@ struct DestroyNodesData {
          , mDestroyedAny(false)
      {
      }
@@ -312,7 +290,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
              const char *types[] = { "ROOT", "RESET", "INCREMENT", "USE" };
              printf("  Node #%d @%p frame=%p index=%d type=%s valAfter=%d\n"
                     "       scope-start=%p scope-prev=%p",
-@@ -398,19 +455,28 @@ DumpList(const nsAString& aKey, nsCounte
+@@ -398,19 +444,28 @@ DumpList(const nsAString& aKey, nsCounte
              if (node->mType == nsCounterNode::USE) {
                  nsAutoString text;
                  node->UseNode()->GetText(text);
@@ -518,7 +496,7 @@ new file mode 100644
 +    </div>
 +    <div class="list">
 +      Counter reset to 10
-+      <div class="container">
++      <div class="container" style="counter-reset: i 20">
 +        Counter reset to 20 on container.
 +        <div class="inc"> </div>
 +        Counter reset to 2 here.
@@ -526,7 +504,7 @@ new file mode 100644
 +        <div class="inc"> </div>
 +        <div class="inc"> </div>
 +      </div>
-+      <div style="counter-reset: i 20;"> </div>
++      <div style="counter-reset: i 10;"> </div>
 +      <div class="inc"> </div>
 +      <div class="inc"> </div>
 +      <div class="inc"> </div>
@@ -704,7 +682,7 @@ new file mode 100644
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -1,8 +1,10 @@
+@@ -1,8 +1,16 @@
  default-preferences pref(layout.css.contain.enabled,true)
  
  == contain-paint-clip-001.html contain-paint-clip-001-ref.html
@@ -715,3 +693,9 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/ref
  == contain-paint-formatting-context-margin-001.html contain-paint-formatting-context-margin-001-ref.html
 +== contain-style-counter-increment-001.html contain-style-counter-increment-001-ref.html
 +== contain-style-counter-insert-001.html contain-style-counter-insert-001-ref.html
++== contain-style-counter-scope-001.html contain-style-counter-scope-001-ref.html
++== contain-style-counter-scope-002.html contain-style-counter-scope-001-ref.html
++== contain-style-counter-scope-003.html contain-style-counter-scope-001-ref.html
++== contain-style-counter-scope-004.html contain-style-counter-scope-001-ref.html
++== contain-style-counter-scope-005.html contain-style-counter-scope-001-ref.html
++== contain-style-counter-scope-006.html contain-style-counter-scope-001-ref.html
