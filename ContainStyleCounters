@@ -1,12 +1,48 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  326d7596bbe550cde71378a7b87b2d906c0cf276
+# Parent  91a9c30dbcb9ee101cdfd1117c439860c7cf5ae5
 Bug 1172087 - Patch 1: Implement counter behavior for "contain: style"
+* * *
+Bug 1172087 - Patch 2: Test counter behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
 --- a/layout/base/nsCSSFrameConstructor.cpp
 +++ b/layout/base/nsCSSFrameConstructor.cpp
-@@ -4763,16 +4763,18 @@ nsCSSFrameConstructor::InitAndRestoreFra
+@@ -1635,26 +1635,32 @@ nsCSSFrameConstructor::CreateGeneratedCo
+ 
+   case eStyleContentType_Counter:
+   case eStyleContentType_Counters:
+     {
+       nsCSSValue::Array* counters = data.mContent.mCounters;
+       nsCounterList* counterList = mCounterManager.CounterListFor(
+           nsDependentString(counters->Item(0).GetStringBufferValue()));
+ 
++      mCounterManager.Dump();
+       nsCounterUseNode* node =
+         new nsCounterUseNode(mPresShell->GetPresContext(),
+                              counters, aContentIndex,
+                              type == eStyleContentType_Counters);
+ 
+       nsGenConInitializer* initializer =
+         new nsGenConInitializer(node, counterList,
+                                 &nsCSSFrameConstructor::CountersDirty);
+-      return CreateGenConTextNode(aState, EmptyString(), &node->mText,
++      auto res = CreateGenConTextNode(aState, EmptyString(), &node->mText,
+                                   initializer);
++      printf("CONTAIN: USE node added.\n");
++      mCounterManager.Dump();
++      printf("CONTAIN: USE node added.\n");
++      printf("CONTAIN: USE node added.\n");
++      return res;
+     }
+ 
+   case eStyleContentType_Image:
+     NS_NOTREACHED("handled by if above");
+     return nullptr;
+ 
+   case eStyleContentType_OpenQuote:
+   case eStyleContentType_CloseQuote:
+@@ -4763,16 +4769,18 @@ nsCSSFrameConstructor::InitAndRestoreFra
    aNewFrame->Init(aContent, aParentFrame, nullptr);
    aNewFrame->AddStateBits(aState.mAdditionalStateBits);
  
@@ -55,28 +91,139 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  nsCounterUseNode::GetText(nsString& aResult)
  {
      aResult.Truncate();
-@@ -147,17 +151,19 @@ nsCounterList::SetScope(nsCounterNode *a
+@@ -135,51 +139,89 @@ nsCounterList::SetScope(nsCounterNode *a
+     // appropriate.
  
-     for (nsCounterNode *prev = Prev(aNode), *start;
+     if (aNode == First()) {
+         aNode->mScopeStart = nullptr;
+         aNode->mScopePrev = nullptr;
+         return;
+     }
+ 
+-    // Get the content node for aNode's rendering object's *parent*,
+-    // since scope includes siblings, so we want a descendant check on
+-    // parents.
++    // Get the content node for |aNode|'s rendering object's *parent*.
++    // Since reset-counter scopes include siblings, can perform a descendant
++    // check on parents.
+     nsIContent *nodeContent = aNode->mPseudoFrame->GetContent()->GetParent();
+ 
+-    for (nsCounterNode *prev = Prev(aNode), *start;
++    nsCounterNode *start;
++    for (nsCounterNode *prev = Prev(aNode);
           prev; prev = start->mScopePrev) {
-         // If |prev| starts a scope (because it's a real or implied
-         // reset), we want it as the scope start rather than the start
-         // of its enclosing scope.  Otherwise, there's no enclosing
-         // scope, so the next thing in prev's scope shares its scope
-         // start.
+-        // If |prev| starts a scope (because it's a real or implied
+-        // reset), we want it as the scope start rather than the start
+-        // of its enclosing scope.  Otherwise, there's no enclosing
+-        // scope, so the next thing in prev's scope shares its scope
+-        // start.
 -        start = (prev->mType == nsCounterNode::RESET || !prev->mScopeStart)
+-                  ? prev : prev->mScopeStart;
++        // If |prev| starts a scope, we want it as the scope start rather than
++        // the start of its enclosing scope.  Otherwise, there's no enclosing
++        // scope, so we can exit early.
 +        start = (prev->mType == nsCounterNode::RESET ||
-+                 prev->mType == nsCounterNode::ROOT  ||
-+                 !prev->mScopeStart)
-                   ? prev : prev->mScopeStart;
++                 prev->mType == nsCounterNode::ROOT)
++                 ? prev : prev->mScopeStart;
++        if (!start) {
++            aNode->mScopeStart = nullptr;
++            aNode->mScopePrev = prev;
++            return;
++        }
  
          // |startContent| is analogous to |nodeContent| (see above).
          nsIContent *startContent = start->mPseudoFrame->GetContent()->GetParent();
          NS_ASSERTION(nodeContent || !startContent,
                       "null check on startContent should be sufficient to "
                       "null check nodeContent as well, since if nodeContent "
-                      "is for the root, startContent (which is before it) "
-@@ -257,16 +263,42 @@ nsCounterManager::AddResetOrIncrement(ns
+-                     "is for the root, startContent (which is before it) "
+-                     "must be too");
++                     "advanced above the document root, startContent (which "
++                     "is before it) must have too");
+ 
+-             // A reset's outer scope can't be a scope created by a sibling.
+-        if (!(aNode->mType == nsCounterNode::RESET &&
+-              nodeContent == startContent) &&
+-              // everything is inside the root (except the case above,
+-              // a second reset on the root)
+-            (!startContent ||
+-             nsContentUtils::ContentIsDescendantOf(nodeContent,
+-                                                   startContent))) {
+-            aNode->mScopeStart = start;
+-            aNode->mScopePrev  = prev;
+-            return;
++        bool isRootScoped = false;
++
++        // If |start| is a ROOT node, or a RESET on a frame that also has a ROOT
++        // node, we need to enforce that |aNode|'s frame is a descendant of
++        // |start|'s frame.
++        if (start->mType == nsCounterNode::ROOT ||
++            (start->mType == nsCounterNode::RESET &&
++             Prev(start) && Prev(start)->mType == nsCounterNode::ROOT &&
++             start->mPseudoFrame == Prev(start)->mPseudoFrame)) {
++            // |start| is either a ROOT or a RESET for a frame which has a ROOT.
++            isRootScoped = true;
+         }
++
++        if (isRootScoped) {
++            // In order for |start| to begin scope in this case, |aNode| must have
++            // the same frame as |start|, or |aNode|'s frame must be a descendant
++            // of |start|'s frame.
++
++            // If either of these cases does not hold, keep looking.
++            if (start->mPseudoFrame != aNode->mPseudoFrame &&
++                !nsContentUtils::ContentIsDescendantOf(
++                    aNode->mPseudoFrame->GetContent(),
++                    start->mPseudoFrame->GetContent())) {
++                continue;
++            }
++        } else {
++            NS_ASSERTION(start->mType == nsCounterNode::RESET,
++                        "Only RESET nodes should have reset scoping");
++            // Check that |aNode|'s frame's parent is a descendant of |start|'s
++            // frame's parent.
++            // This implies that |aNode|'s frame is itself a sibling of |start|'s
++            // frame, or |aNode|'s frame is the descendant of one of the siblings
++            // of |start|'s frame, which is the condition for being scoped to
++            // |start|, if |start| is a normal RESET node.
++            if (startContent &&
++                !nsContentUtils::ContentIsDescendantOf(nodeContent,
++                                                        startContent)) {
++                continue;
++            }
++        }
++
++        aNode->mScopeStart = start;
++        aNode->mScopePrev  = prev;
++
++        return;
+     }
+ 
+     aNode->mScopeStart = nullptr;
+     aNode->mScopePrev  = nullptr;
+ }
+ 
+ void
+ nsCounterList::RecalcAll()
+@@ -205,16 +247,17 @@ nsCounterList::RecalcAll()
+                 useNode->mText->SetData(text);
+             }
+         }
+     } while ((node = Next(node)) != First());
+ }
+ 
+ nsCounterManager::nsCounterManager()
+     : mNames()
++    , mPrototypeList()
+ {
+ }
+ 
+ bool
+ nsCounterManager::AddCounterResetsAndIncrements(nsIFrame *aFrame)
+ {
+     const nsStyleContent *styleContent = aFrame->StyleContent();
+     if (!styleContent->CounterIncrementCount() &&
+@@ -257,24 +300,56 @@ nsCounterManager::AddResetOrIncrement(ns
      // Don't call Calc() if the list is already dirty -- it'll be recalculated
      // anyway, and trying to calculate with a dirty list doesn't work.
      if (MOZ_LIKELY(!counterList->IsDirty())) {
@@ -90,17 +237,22 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +    bool mDirty;
 +};
 +
-+static PLDHashOperator
-+AddRoot(const nsAString& aKey, nsCounterList* aList, void* vargs) {
-+    struct AddRootArgs* args = static_cast<AddRootArgs*>(vargs);
++static void
++AddRootInner(nsCounterList* aList, nsIFrame* aFrame, bool& aDirty) {
 +    // XXX Is it safe to always use 0 as the index?
 +    nsCounterChangeNode *node =
-+        new nsCounterChangeNode(args->mFrame, nsCounterNode::ROOT, 0, 0);
++        new nsCounterChangeNode(aFrame, nsCounterNode::ROOT, 0, 0);
 +    aList->Insert(node);
 +    if (!aList->IsLast(node)) {
 +        aList->SetDirty();
-+        args->mDirty |= true;
++        aDirty |= true;
 +    }
++}
++
++static PLDHashOperator
++AddRoot(const nsAString& aKey, nsCounterList* aList, void* vargs) {
++    struct AddRootArgs* args = static_cast<AddRootArgs*>(vargs);
++    AddRootInner(aList, args->mFrame, args->mDirty);
 +    return PL_DHASH_NEXT;
 +}
 +
@@ -108,6 +260,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +nsCounterManager::AddRoots(nsIFrame *aFrame) {
 +    struct AddRootArgs args = { aFrame, false };
 +    mNames.EnumerateRead(AddRoot, static_cast<void*>(&args));
++    AddRootInner(&mPrototypeList, aFrame, args.mDirty);
 +    return args.mDirty;
 +}
 +
@@ -118,11 +271,61 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
      // get/put in one hashtable lookup?
      nsCounterList *counterList;
      if (!mNames.Get(aCounterName, &counterList)) {
-         counterList = new nsCounterList();
-@@ -352,17 +384,17 @@ static PLDHashOperator
- DumpList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
+-        counterList = new nsCounterList();
++        counterList = new nsCounterList(mPrototypeList);
+         mNames.Put(aCounterName, counterList);
+     }
+     return counterList;
+ }
+ 
+ static PLDHashOperator
+ RecalcDirtyLists(const nsAString& aKey, nsCounterList* aList, void* aClosure)
  {
-     printf("Counter named \"%s\":\n", NS_ConvertUTF16toUTF8(aKey).get());
+@@ -323,62 +398,74 @@ struct DestroyNodesData {
+         , mDestroyedAny(false)
+     {
+     }
+ 
+     nsIFrame *mFrame;
+     bool mDestroyedAny;
+ };
+ 
++static void
++DestroyNodesInListInner(nsCounterList* aList, DestroyNodesData* aData) {
++    if (aList->DestroyNodesFor(aData->mFrame)) {
++        aData->mDestroyedAny = true;
++        aList->SetDirty();
++    }
++}
++
+ static PLDHashOperator
+ DestroyNodesInList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
+ {
+-    DestroyNodesData *data = static_cast<DestroyNodesData*>(aClosure);
+-    if (aList->DestroyNodesFor(data->mFrame)) {
+-        data->mDestroyedAny = true;
+-        aList->SetDirty();
+-    }
++    DestroyNodesInListInner(aList, static_cast<DestroyNodesData*>(aClosure));
+     return PL_DHASH_NEXT;
+ }
+ 
+ bool
+ nsCounterManager::DestroyNodesFor(nsIFrame *aFrame)
+ {
+     DestroyNodesData data(aFrame);
+     mNames.EnumerateRead(DestroyNodesInList, &data);
++    DestroyNodesInListInner(&mPrototypeList, &data);
+     return data.mDestroyedAny;
+ }
+ 
+ #ifdef DEBUG
+-static PLDHashOperator
+-DumpList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
+-{
+-    printf("Counter named \"%s\":\n", NS_ConvertUTF16toUTF8(aKey).get());
++static void
++DumpListInner(nsCounterList* aList) {
      nsCounterNode *node = aList->First();
  
      if (node) {
@@ -138,6 +341,31 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
              if (node->mType == nsCounterNode::USE) {
                  nsAutoString text;
                  node->UseNode()->GetText(text);
+                 printf(" text=%s", NS_ConvertUTF16toUTF8(text).get());
+             }
+             printf("\n");
+         } while ((node = aList->Next(node)) != aList->First());
+     }
++}
++
++static PLDHashOperator
++DumpList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
++{
++    printf("Counter named \"%s\":\n", NS_ConvertUTF16toUTF8(aKey).get());
++    DumpListInner(aList);
+     return PL_DHASH_NEXT;
+ }
+ 
+ void
+ nsCounterManager::Dump()
+ {
+     printf("\n\nCounter Manager Lists:\n");
+     mNames.EnumerateRead(DumpList, nullptr);
++    printf("Counter Prototype List:\n");
++    DumpListInner(&mPrototypeList);
+     printf("\n\n");
+ }
+ #endif
 diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 --- a/layout/base/nsCounterManager.h
 +++ b/layout/base/nsCounterManager.h
@@ -163,7 +391,33 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      int32_t mValueAfter;
  
      // mScopeStart points to the node (usually a RESET, but not in the
-@@ -128,24 +129,26 @@ struct nsCounterChangeNode : public nsCo
+@@ -96,16 +97,25 @@ struct nsCounterUseNode : public nsCount
+         , mCounterFunction(aCounterFunction)
+         , mPresContext(aPresContext)
+         , mCounterStyle(nullptr)
+         , mAllCounters(aAllCounters)
+     {
+         NS_ASSERTION(aContentIndex <= INT32_MAX, "out of range");
+     }
+ 
++    nsCounterUseNode(const nsCounterUseNode& aNode)
++        : nsCounterNode(aNode.mContentIndex, USE)
++        , mCounterFunction(aNode.mCounterFunction)
++        , mPresContext(aNode.mPresContext)
++        , mCounterStyle(aNode.mCounterStyle)
++        , mAllCounters(aNode.mAllCounters)
++    {
++    }
++
+     virtual bool InitTextFrame(nsGenConList* aList,
+             nsIFrame* aPseudoFrame, nsIFrame* aTextFrame) override;
+ 
+     mozilla::CounterStyle* GetCounterStyle();
+     void SetCounterStyleDirty()
+     {
+         mCounterStyle = nullptr;
+     }
+@@ -128,59 +138,86 @@ struct nsCounterChangeNode : public nsCo
      // 'counter-increment' or 'counter-reset' property.
      nsCounterChangeNode(nsIFrame* aPseudoFrame,
                          nsCounterNode::Type aChangeType,
@@ -191,10 +445,19 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
          CheckFrameAssertions();
      }
  
++    nsCounterChangeNode(const nsCounterChangeNode& aNode)
++        : nsCounterNode(aNode.mContentIndex, aNode.mType)
++        , mChangeValue(aNode.mChangeValue)
++    {
++        mPseudoFrame = aNode.mPseudoFrame;
++        CheckFrameAssertions();
++    }
++
      // assign the correct |mValueAfter| value to a node that has been inserted
      // Should be called immediately after calling |Insert|.
      void Calc(nsCounterList* aList);
-@@ -154,17 +157,18 @@ struct nsCounterChangeNode : public nsCo
+ };
+ 
  inline nsCounterUseNode* nsCounterNode::UseNode()
  {
      NS_ASSERTION(mType == USE, "wrong type");
@@ -214,7 +477,39 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      if (mType == USE)
          UseNode()->Calc(aList);
      else
-@@ -193,16 +197,23 @@ public:
+         ChangeNode()->Calc(aList);
+ }
+ 
+ class nsCounterList : public nsGenConList {
+ public:
+     nsCounterList() : nsGenConList(),
+                       mDirty(false)
+     {}
++    nsCounterList(const nsCounterList& aList)
++        : nsGenConList()
++        , mDirty(aList.mDirty)
++    {
++        nsCounterList& mutableList = const_cast<nsCounterList&>(aList);
++        nsCounterNode *node = mutableList.First();
++        if (node) {
++            do {
++                if (node->mType == nsCounterNode::USE) {
++                    Insert(new nsCounterUseNode(*node->UseNode()));
++                } else {
++                    Insert(new nsCounterChangeNode(*node->ChangeNode()));
++                }
++            } while ((node = mutableList.Next(node)) != mutableList.First());
++        }
++    }
+ 
+     void Insert(nsCounterNode* aNode) {
+         nsGenConList::Insert(aNode);
+         // Don't SetScope if we're dirty -- we'll reset all the scopes anyway,
+         // and we can't usefully compute scopes right now.
+         if (MOZ_LIKELY(!IsDirty())) {
+             SetScope(aNode);
+         }
+@@ -193,16 +230,23 @@ public:
      static nsCounterNode* Next(nsCounterNode* aNode) {
          return static_cast<nsCounterNode*>(nsGenConList::Next(aNode));
      }
@@ -238,7 +533,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
  
      // Recalculate |mScopeStart|, |mScopePrev|, and |mValueAfter| for
      // all nodes and update text in text content nodes.
-@@ -215,16 +226,20 @@ private:
+@@ -215,16 +259,20 @@ private:
      bool mDirty;
  };
  
@@ -259,15 +554,40 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      // Gets the appropriate counter list, creating it if necessary.
      // Guaranteed to return non-null. (Uses an infallible hashtable API.)
      nsCounterList* CounterListFor(const nsSubstring& aCounterName);
-@@ -274,9 +289,23 @@ private:
+@@ -235,17 +283,20 @@ public:
+     // Set all counter styles dirty
+     void SetAllCounterStylesDirty();
+ 
+     // Destroy nodes for the frame in any lists, and return whether any
+     // nodes were destroyed.
+     bool DestroyNodesFor(nsIFrame *aFrame);
+ 
+     // Clear all data.
+-    void Clear() { mNames.Clear(); }
++    void Clear() {
++        mNames.Clear(); 
++        mPrototypeList.Clear();
++    }
+ 
+ #ifdef DEBUG
+     void Dump();
+ #endif
+ 
+     static int32_t IncrementCounter(int32_t aOldValue, int32_t aIncrement)
+     {
+         // Addition of unsigned values is defined to be arithmetic
+@@ -272,11 +323,26 @@ public:
+ 
+ private:
      // for |AddCounterResetsAndIncrements| only
      bool AddResetOrIncrement(nsIFrame *aFrame, int32_t aIndex,
                                 const nsStyleCounterData *aCounterData,
                                 nsCounterNode::Type aType);
  
      nsClassHashtable<nsStringHashKey, nsCounterList> mNames;
- };
- 
++    nsCounterList mPrototypeList;
++};
++
 +// This class exists to help implement 'contain: style'.
 +// It currenctly can be replaced by a function call on the nsCounterManager.
 +// However, it should be possible to create ROOT nodes lazily using this
@@ -280,9 +600,262 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 +          aManager->AddRoots(aFrame);
 +      }
 +  }
-+};
-+
+ };
+ 
  #endif /* nsCounterManager_h_ */
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html
+@@ -0,0 +1,61 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  .list {
++    counter-reset: i 10;
++  }
++  .inc:before {
++    counter-increment: i;
++    content: "Counter = " counter(i);
++    height: 2rem;
++  }
++  .container {
++    counter-reset: i;
++    margin: 2rem;
++  }
++  </style>
++</head>
++<body>
++  <div class="root">
++    <div class="list">
++      Counter set to 10
++      <div class="inc"> </div>
++      <div class="container">
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++      </div>
++      <div style="counter-reset: i 11;"> </div>
++      <div class="container">
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++      </div>
++      <div style="counter-reset: i 11;"> </div>
++      <div class="inc"> </div>
++    </div>
++    <div class="list">
++      Counter reset to 10
++      <div class="container" style="counter-reset: i 20">
++        Counter reset to 20 on container.
++        <div class="inc"> </div>
++        Counter reset to 2 here.
++        <div style="counter-reset: i 2;"> </div>
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++      </div>
++      <div style="counter-reset: i 10;"> </div>
++      <div class="inc"> </div>
++      <div class="inc"> </div>
++      <div class="inc"> </div>
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001.html
+@@ -0,0 +1,62 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: style' "scopes" counters, "setting" them to 0 and back.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
++  <link rel="match" href="style-counter-increment-001-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .list {
++    counter-reset: i 10;
++  }
++  .inc:before {
++    counter-increment: i;
++    content: "Counter = " counter(i);
++    height: 2rem;
++  }
++  .container {
++    margin: 2rem;
++    contain: style;
++  }
++  </style>
++</head>
++<body>
++  <div class="root">
++    <div class="list">
++      Counter set to 10
++      <div class="inc"> </div>
++      <div class="container">
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++      </div>
++      <div class="container">
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++        <div class="inc"> </div>
++      </div>
++      <div class="inc"> </div>
++    </div>
++    <div class="list">
++      Counter reset to 10
++      <div class="container" style="counter-reset: i 20;">
++        <div>
++          Counter reset to 20 on container.
++          <div class="inc"> </div>
++          Counter reset to 2 here.
++          <div style="counter-reset: i 2;"> </div>
++          <div class="inc"> </div>
++          <div class="inc"> </div>
++        </div>
++      </div>
++      <div class="inc"> </div>
++      <div class="inc"> </div>
++      <div class="inc"> </div>
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-insert-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-insert-001-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-insert-001-ref.html
+@@ -0,0 +1,41 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  .list {
++    counter-reset: i 10;
++  }
++  .inc:before {
++    counter-increment: i;
++    content: "Counter = " counter(i);
++    height: 2rem;
++  }
++  .container {
++    margin: 2rem;
++    contain: style;
++  }
++  </style>
++</head>
++<body>
++  <div class="list">
++    <div class="inc"> </div>
++    <div id="c1" class="container">
++      <div class="inc"> </div>
++    </div>
++    <div class="inc"> </div>
++  </div>
++  <div class="list">
++    <div id="c2" class="container">
++      <div class="inc"> </div>
++      <div style="counter-reset: i 2;"> </div>
++    </div>
++    <div class="inc"> </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-insert-001.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-insert-001.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-insert-001.html
+@@ -0,0 +1,49 @@
++<!DOCTYPE HTML>
++<html class="reftest-wait">
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: style' "scopes" counters, "setting" them to 0 and
++    back, even if the counter use is inserted after load.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
++  <link rel="match" href="style-counter-insert-001-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .list {
++    counter-reset: i 10;
++  }
++  .inc:before {
++    counter-increment: i;
++    content: "Counter = " counter(i);
++    height: 2rem;
++  }
++  .container {
++    margin: 2rem;
++    contain: style;
++  }
++  </style>
++  <script>
++    function doTest() {
++      document.getElementById('c1').innerHTML = '<div class="inc"> </div>';
++      document.getElementById('c2').innerHTML = '<div class="inc"> </div>' +
++                                                '<div class=style="counter-reset: i 2;"> </div>';
++      document.documentElement.classList.remove("reftest-wait");
++    }
++  </script>
++</head>
++<body onload="doTest()">
++  <div class="list">
++    <div class="inc"> </div>
++    <div id="c1" class="container">
++    </div>
++    <div class="inc"> </div>
++  </div>
++  <div class="list">
++    <div id="c2" class="container">
++    </div>
++    <div class="inc"> </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
+--- a/layout/reftests/w3c-css/submitted/contain/reftest.list
++++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
+@@ -1,8 +1,16 @@
+ default-preferences pref(layout.css.contain.enabled,true)
+ 
+ == contain-paint-clip-001.html contain-paint-clip-001-ref.html
+ == contain-paint-clip-002.html contain-paint-clip-002-ref.html
+ == contain-paint-containing-block-absolute-001.html contain-paint-containing-block-absolute-001-ref.html
+ == contain-paint-containing-block-fixed-001.html contain-paint-containing-block-fixed-001-ref.html
+ == contain-paint-formatting-context-float-001.html contain-paint-formatting-context-float-001-ref.html
+ == contain-paint-formatting-context-margin-001.html contain-paint-formatting-context-margin-001-ref.html
++== contain-style-counter-increment-001.html contain-style-counter-increment-001-ref.html
++== contain-style-counter-insert-001.html contain-style-counter-insert-001-ref.html
++== contain-style-counter-scope-001.html contain-style-counter-scope-001-ref.html
++== contain-style-counter-scope-002.html contain-style-counter-scope-001-ref.html
++== contain-style-counter-scope-003.html contain-style-counter-scope-001-ref.html
++== contain-style-counter-scope-004.html contain-style-counter-scope-001-ref.html
++== contain-style-counter-scope-005.html contain-style-counter-scope-001-ref.html
++== contain-style-counter-scope-006.html contain-style-counter-scope-001-ref.html
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
