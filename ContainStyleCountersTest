@@ -43,7 +43,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 --- a/layout/base/nsCounterManager.cpp
 +++ b/layout/base/nsCounterManager.cpp
-@@ -120,76 +120,168 @@ nsCounterUseNode::GetText(nsString& aRes
+@@ -120,76 +120,142 @@ nsCounterUseNode::GetText(nsString& aRes
          aResult.Append(text);
          if (i == 0)
              break;
@@ -125,8 +125,6 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 -            aNode->mScopeStart = start;
 -            aNode->mScopePrev  = prev;
 -            return;
-+        bool nodeIsAtStart = start->mPseudoFrame == aNode->mPseudoFrame;
-+
 +        // aNode is a RESET, so its scope doesn't really matter.
 +        if (aNode->mType == nsCounterNode::RESET &&
 +            nodeContent == startContent) {
@@ -141,79 +139,55 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +
 +            // A reset's outer scope can't be a scope created by a sibling.
 +
-+            // However, the spec doesn't define "outer scope."
++            // However, the spec doesn't define "outer scope," and RESET nodes
++            // clearly ignore the value of their previous node.
 +            continue;
          }
-+        // If this scope starts with a RESET (or nothing), then aNode's frame
-+        // must either be a sibling of start's frame, or aNode's frame must be
-+        // a descendant of start's frame.
-+        //if (start->mType == nsCounterNode::RESET &&
-+            //startContent &&
-+            //!(nodeContent->GetParent() == startContent->GetParent() &&
-+              //nsContentUtils::ContentIsDescendantOf(nodeContent,
-+                                                    //startContent))) {
++
 +        bool isRootScoped = false;
++
++        // Each possible start node (either a ROOT or RESET), could be scoped
++        // as a ROOT.
++        // This occurs when there is a RESET for the same frame as a ROOT.
 +        if (start->mType == nsCounterNode::ROOT ||
 +            (start->mType == nsCounterNode::RESET &&
 +             Prev(start) && Prev(start)->mType == nsCounterNode::ROOT &&
 +             start->mPseudoFrame == Prev(start)->mPseudoFrame)) {
++            // start is either a ROOT or a RESET for a frame which has a ROOT.
 +            isRootScoped = true;
 +        }
 +
-+        // If this scope starts with a ROOT, then aNode must have the same
-+        // frame as start, or aNode's frame must be a descendant of start's
-+        // frame.
-+        if (isRootScoped &&
-+            !nodeIsAtStart &&
-+            (startContent == nodeContent ||
-+              !nsContentUtils::ContentIsDescendantOf(aNode->mPseudoFrame->GetContent(),
-+                                                     start->mPseudoFrame->GetContent()))) {
-+            printf("CONTAIN: start at invalid ROOT.\n");
-+             //(startContent &&
-+              //!nsContentUtils::ContentIsDescendantOf(nodeContent,
-+                                                     //startContent)))) {
-+              //(nodeContent->GetParent() &&
-+              //!nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent(),
-+                                                     //startContent)))) {
-+            //(!nodeContent->GetParent() ||
-+              //!nsContentUtils::ContentIsDescendantOf(nodeContent,
-+                                                     //startContent)))) {
-+            continue;
-+        } else if (/* !isRootScoped  && */ start->mType == nsCounterNode::RESET &&
-+            startContent &&
-+            !nsContentUtils::ContentIsDescendantOf(nodeContent,
-+                                                   startContent)) {
-+            continue;
-+        }
++        if (isRootScoped) {
++          // If this start is scoped as a root, then aNode must have the same
++          // frame as start, or aNode's frame must be a descendant of start's
++          // frame.
 +
-+        //if (start->mType == nsCounterNode::RESET &&
-+            //Prev(start) && Prev(start)->mType == nsCounterNode::ROOT &&
-+            //start->mPseudoFrame == Prev(start)->mPseudoFrame) {
-+            //printf("CONTAIN: Overlapping RESET and ROOT case.\n");
-+            //continue;
-+        //}
++          if (start->mPseudoFrame != aNode->mPseudoFrame &&
++              !nsContentUtils::ContentIsDescendantOf(
++                  aNode->mPseudoFrame->GetContent(),
++                  start->mPseudoFrame->GetContent())) {
++            continue;
++          }
++        } else {
++          NS_ASSERTION(start->mType == nsCounterNode::RESET,
++                       "Only RESET nodes should have reset scoping");
++          // Check that aNode's frame's parent is a descendant of start's
++          // frame's parent.
++          // This implies that aNode's frame is itself a sibling of start's
++          // frame, or aNode's frame is the descendant of one of the siblings
++          // of start's frame.
++          if (startContent &&
++              !nsContentUtils::ContentIsDescendantOf(nodeContent,
++                                                     startContent)) {
++            continue;
++          }
++        }
 +
 +        aNode->mScopeStart = start;
 +        aNode->mScopePrev  = prev;
 +
 +        DumpListInner(this);
 +        return;
-+        //if (startContent &&
-+            //!nsC
-+
-+                //(!startContent ||
-+             //nsContentUtils::ContentIsDescendantOf(nodeContent,
-+                                                   //startContent)) &&
-+            //((start->mType == nsCounterNode::ROOT && start->mPseudoFrame == prev->mPseudoFrame) ||
-+             //(start->mType != nsCounterNode::ROOT ||
-+              //(startContent &&
-+               //nodeContent->GetParent() &&
-+               //nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent(),
-+                                                     //startContent))))) {
-+            //aNode->mScopeStart = start;
-+            //aNode->mScopePrev  = prev;
-+            //return;
-+        //}
      }
  
      aNode->mScopeStart = nullptr;
@@ -227,7 +201,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
      mDirty = false;
  
      nsCounterNode *node = First();
-@@ -222,28 +314,30 @@ nsCounterManager::nsCounterManager()
+@@ -222,28 +288,30 @@ nsCounterManager::nsCounterManager()
  bool
  nsCounterManager::AddCounterResetsAndIncrements(nsIFrame *aFrame)
  {
@@ -258,7 +232,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
                                        const nsStyleCounterData *aCounterData,
                                        nsCounterNode::Type aType)
  {
-@@ -375,20 +469,18 @@ bool
+@@ -375,20 +443,18 @@ bool
  nsCounterManager::DestroyNodesFor(nsIFrame *aFrame)
  {
      DestroyNodesData data(aFrame);
@@ -281,7 +255,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
              const char *types[] = { "ROOT", "RESET", "INCREMENT", "USE" };
              printf("  Node #%d @%p frame=%p index=%d type=%s valAfter=%d\n"
                     "       scope-start=%p scope-prev=%p",
-@@ -398,16 +490,23 @@ DumpList(const nsAString& aKey, nsCounte
+@@ -398,16 +464,23 @@ DumpList(const nsAString& aKey, nsCounte
              if (node->mType == nsCounterNode::USE) {
                  nsAutoString text;
                  node->UseNode()->GetText(text);
