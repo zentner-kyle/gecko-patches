@@ -3,10 +3,47 @@
 # Parent  34a68c3b0d50d733ad6df06e3847952c12d95519
 Bug 1172087 - Patch 2: Test counter behavior for "contain: style"
 
+diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
+--- a/layout/base/nsCSSFrameConstructor.cpp
++++ b/layout/base/nsCSSFrameConstructor.cpp
+@@ -1635,26 +1635,32 @@ nsCSSFrameConstructor::CreateGeneratedCo
+ 
+   case eStyleContentType_Counter:
+   case eStyleContentType_Counters:
+     {
+       nsCSSValue::Array* counters = data.mContent.mCounters;
+       nsCounterList* counterList = mCounterManager.CounterListFor(
+           nsDependentString(counters->Item(0).GetStringBufferValue()));
+ 
++      mCounterManager.Dump();
+       nsCounterUseNode* node =
+         new nsCounterUseNode(mPresShell->GetPresContext(),
+                              counters, aContentIndex,
+                              type == eStyleContentType_Counters);
+ 
+       nsGenConInitializer* initializer =
+         new nsGenConInitializer(node, counterList,
+                                 &nsCSSFrameConstructor::CountersDirty);
+-      return CreateGenConTextNode(aState, EmptyString(), &node->mText,
++      auto res = CreateGenConTextNode(aState, EmptyString(), &node->mText,
+                                   initializer);
++      printf("CONTAIN: USE node added.\n");
++      mCounterManager.Dump();
++      printf("CONTAIN: USE node added.\n");
++      printf("CONTAIN: USE node added.\n");
++      return res;
+     }
+ 
+   case eStyleContentType_Image:
+     NS_NOTREACHED("handled by if above");
+     return nullptr;
+ 
+   case eStyleContentType_OpenQuote:
+   case eStyleContentType_CloseQuote:
 diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 --- a/layout/base/nsCounterManager.cpp
 +++ b/layout/base/nsCounterManager.cpp
-@@ -120,16 +120,25 @@ nsCounterUseNode::GetText(nsString& aRes
+@@ -120,76 +120,168 @@ nsCounterUseNode::GetText(nsString& aRes
          aResult.Append(text);
          if (i == 0)
              break;
@@ -27,14 +64,21 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  void
  nsCounterList::SetScope(nsCounterNode *aNode)
  {
++    DumpListInner(this);
      // This function is responsible for setting |mScopeStart| and
      // |mScopePrev| (whose purpose is described in nsCounterManager.h).
      // We do this by starting from the node immediately preceding
      // |aNode| in content tree order, which is reasonably likely to be
      // the previous element in our scope (or, for a reset, the previous
-@@ -142,50 +151,110 @@ nsCounterList::SetScope(nsCounterNode *a
+     // element in the containing scope, which is what we want).  If
+     // we're not in the same scope that it is, then it's too deep in the
+     // frame tree, so we walk up parent scopes until we find something
+     // appropriate.
+ 
+     if (aNode == First()) {
          aNode->mScopeStart = nullptr;
          aNode->mScopePrev = nullptr;
++        DumpListInner(this);
          return;
      }
  
@@ -108,31 +152,51 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +            //!(nodeContent->GetParent() == startContent->GetParent() &&
 +              //nsContentUtils::ContentIsDescendantOf(nodeContent,
 +                                                    //startContent))) {
-+        if (start->mType == nsCounterNode::RESET &&
++        bool isRootScoped = false;
++        if (start->mType == nsCounterNode::ROOT ||
++            (start->mType == nsCounterNode::RESET &&
++             Prev(start) && Prev(start)->mType == nsCounterNode::ROOT &&
++             start->mPseudoFrame == Prev(start)->mPseudoFrame)) {
++            isRootScoped = true;
++        }
++
++        // If this scope starts with a ROOT, then aNode must have the same
++        // frame as start, or aNode's frame must be a descendant of start's
++        // frame.
++        if (isRootScoped &&
++            !nodeIsAtStart &&
++            (startContent == nodeContent ||
++              !nsContentUtils::ContentIsDescendantOf(aNode->mPseudoFrame->GetContent(),
++                                                     start->mPseudoFrame->GetContent()))) {
++            printf("CONTAIN: start at invalid ROOT.\n");
++             //(startContent &&
++              //!nsContentUtils::ContentIsDescendantOf(nodeContent,
++                                                     //startContent)))) {
++              //(nodeContent->GetParent() &&
++              //!nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent(),
++                                                     //startContent)))) {
++            //(!nodeContent->GetParent() ||
++              //!nsContentUtils::ContentIsDescendantOf(nodeContent,
++                                                     //startContent)))) {
++            continue;
++        } else if (/* !isRootScoped  && */ start->mType == nsCounterNode::RESET &&
 +            startContent &&
 +            !nsContentUtils::ContentIsDescendantOf(nodeContent,
 +                                                   startContent)) {
 +            continue;
 +        }
 +
-+        // If this scope starts with a ROOT, then aNode must have the same
-+        // frame as start, or aNode's frame must be a descendant of start's
-+        // frame.
-+        if ((start->mType == nsCounterNode::ROOT && !nodeIsAtStart) &&
-+            (startContent == nodeContent ||
-+             (startContent &&
-+              !nsContentUtils::ContentIsDescendantOf(nodeContent,
-+                                                     startContent)))) {
-+              //(nodeContent->GetParent() ||
-+              //!nsContentUtils::ContentIsDescendantOf(nodeContent->GetParent(),
-+                                                     //startContent))))) {
-+            //(!nodeContent->GetParent() ||
-+              //!nsContentUtils::ContentIsDescendantOf(nodeContent,
-+                                                     //startContent)))) {
-+            continue;
-+        }
++        //if (start->mType == nsCounterNode::RESET &&
++            //Prev(start) && Prev(start)->mType == nsCounterNode::ROOT &&
++            //start->mPseudoFrame == Prev(start)->mPseudoFrame) {
++            //printf("CONTAIN: Overlapping RESET and ROOT case.\n");
++            //continue;
++        //}
++
 +        aNode->mScopeStart = start;
 +        aNode->mScopePrev  = prev;
++
++        DumpListInner(this);
 +        return;
 +        //if (startContent &&
 +            //!nsC
@@ -154,10 +218,152 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  
      aNode->mScopeStart = nullptr;
      aNode->mScopePrev  = nullptr;
++    DumpListInner(this);
  }
  
  void
  nsCounterList::RecalcAll()
+ {
+     mDirty = false;
+ 
+     nsCounterNode *node = First();
+@@ -222,28 +314,30 @@ nsCounterManager::nsCounterManager()
+ bool
+ nsCounterManager::AddCounterResetsAndIncrements(nsIFrame *aFrame)
+ {
+     const nsStyleContent *styleContent = aFrame->StyleContent();
+     if (!styleContent->CounterIncrementCount() &&
+         !styleContent->CounterResetCount())
+         return false;
+ 
++    Dump();
+     // Add in order, resets first, so all the comparisons will be optimized
+     // for addition at the end of the list.
+     int32_t i, i_end;
+     bool dirty = false;
+     for (i = 0, i_end = styleContent->CounterResetCount(); i != i_end; ++i)
+         dirty |= AddResetOrIncrement(aFrame, i,
+                                      styleContent->GetCounterResetAt(i),
+                                      nsCounterChangeNode::RESET);
+     for (i = 0, i_end = styleContent->CounterIncrementCount(); i != i_end; ++i)
+         dirty |= AddResetOrIncrement(aFrame, i,
+                                      styleContent->GetCounterIncrementAt(i),
+                                      nsCounterChangeNode::INCREMENT);
++    Dump();
+     return dirty;
+ }
+ 
+ bool
+ nsCounterManager::AddResetOrIncrement(nsIFrame *aFrame, int32_t aIndex,
+                                       const nsStyleCounterData *aCounterData,
+                                       nsCounterNode::Type aType)
+ {
+@@ -375,20 +469,18 @@ bool
+ nsCounterManager::DestroyNodesFor(nsIFrame *aFrame)
+ {
+     DestroyNodesData data(aFrame);
+     mNames.EnumerateRead(DestroyNodesInList, &data);
+     return data.mDestroyedAny;
+ }
+ 
+ #ifdef DEBUG
+-static PLDHashOperator
+-DumpList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
+-{
+-    printf("Counter named \"%s\":\n", NS_ConvertUTF16toUTF8(aKey).get());
++void
++DumpListInner(nsCounterList* aList) {
+     nsCounterNode *node = aList->First();
+ 
+     if (node) {
+         int32_t i = 0;
+         do {
+             const char *types[] = { "ROOT", "RESET", "INCREMENT", "USE" };
+             printf("  Node #%d @%p frame=%p index=%d type=%s valAfter=%d\n"
+                    "       scope-start=%p scope-prev=%p",
+@@ -398,16 +490,23 @@ DumpList(const nsAString& aKey, nsCounte
+             if (node->mType == nsCounterNode::USE) {
+                 nsAutoString text;
+                 node->UseNode()->GetText(text);
+                 printf(" text=%s", NS_ConvertUTF16toUTF8(text).get());
+             }
+             printf("\n");
+         } while ((node = aList->Next(node)) != aList->First());
+     }
++}
++
++static PLDHashOperator
++DumpList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
++{
++    printf("Counter named \"%s\":\n", NS_ConvertUTF16toUTF8(aKey).get());
++    DumpListInner(aList);
+     return PL_DHASH_NEXT;
+ }
+ 
+ void
+ nsCounterManager::Dump()
+ {
+     printf("\n\nCounter Manager Lists:\n");
+     mNames.EnumerateRead(DumpList, nullptr);
+diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
+--- a/layout/base/nsCounterManager.h
++++ b/layout/base/nsCounterManager.h
+@@ -15,16 +15,19 @@
+ #include "nsClassHashtable.h"
+ #include "mozilla/Likely.h"
+ #include "CounterStyleManager.h"
+ 
+ class nsCounterList;
+ struct nsCounterUseNode;
+ struct nsCounterChangeNode;
+ 
++void
++DumpListInner(nsCounterList* aList);
++
+ struct nsCounterNode : public nsGenConNode {
+     enum Type {
+         ROOT,      // a "layout" or "strict"  in 'contain'
+         RESET,     // a "counter number" pair in 'counter-reset'
+         INCREMENT, // a "counter number" pair in 'counter-increment'
+         USE,       // counter() or counters() in 'content'
+     };
+ 
+@@ -164,16 +167,17 @@ inline nsCounterChangeNode* nsCounterNod
+ {
+     NS_ASSERTION(mType == INCREMENT || mType == RESET || mType == ROOT,
+                  "wrong type");
+     return static_cast<nsCounterChangeNode*>(this);
+ }
+ 
+ inline void nsCounterNode::Calc(nsCounterList* aList)
+ {
++    DumpListInner(aList);
+     if (mType == USE)
+         UseNode()->Calc(aList);
+     else
+         ChangeNode()->Calc(aList);
+ }
+ 
+ class nsCounterList : public nsGenConList {
+ public:
+@@ -183,16 +187,17 @@ public:
+ 
+     void Insert(nsCounterNode* aNode) {
+         nsGenConList::Insert(aNode);
+         // Don't SetScope if we're dirty -- we'll reset all the scopes anyway,
+         // and we can't usefully compute scopes right now.
+         if (MOZ_LIKELY(!IsDirty())) {
+             SetScope(aNode);
+         }
++        DumpListInner(this);
+     }
+ 
+     nsCounterNode* First() {
+         return static_cast<nsCounterNode*>(mFirstNode);
+     }
+ 
+     static nsCounterNode* Next(nsCounterNode* aNode) {
+         return static_cast<nsCounterNode*>(nsGenConList::Next(aNode));
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html
 new file mode 100644
 --- /dev/null
