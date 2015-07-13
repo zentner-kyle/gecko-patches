@@ -43,12 +43,18 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 --- a/layout/base/nsCounterManager.cpp
 +++ b/layout/base/nsCounterManager.cpp
-@@ -123,73 +123,117 @@ nsCounterUseNode::GetText(nsString& aRes
+@@ -120,76 +120,123 @@ nsCounterUseNode::GetText(nsString& aRes
+         aResult.Append(text);
+         if (i == 0)
+             break;
          NS_ASSERTION(mAllCounters, "yikes, separator is uninitialized");
          aResult.Append(separator);
      }
  }
  
++static void
++DumpListInner(nsCounterList* aList);
++
  void
  nsCounterList::SetScope(nsCounterNode *aNode)
  {
@@ -174,11 +180,120 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
      mDirty = false;
  
      nsCounterNode *node = First();
-@@ -375,20 +419,18 @@ bool
+@@ -211,16 +258,17 @@ nsCounterList::RecalcAll()
+                 useNode->mText->SetData(text);
+             }
+         }
+     } while ((node = Next(node)) != First());
+ }
+ 
+ nsCounterManager::nsCounterManager()
+     : mNames()
++    , mPrototypeList()
+ {
+ }
+ 
+ bool
+ nsCounterManager::AddCounterResetsAndIncrements(nsIFrame *aFrame)
+ {
+     const nsStyleContent *styleContent = aFrame->StyleContent();
+     if (!styleContent->CounterIncrementCount() &&
+@@ -268,45 +316,51 @@ nsCounterManager::AddResetOrIncrement(ns
+     return false;
+ }
+ 
+ struct AddRootArgs {
+     nsIFrame* mFrame;
+     bool mDirty;
+ };
+ 
++static void
++AddRootInner(nsCounterList* aList, nsIFrame* aFrame, bool& aDirty) {
++    // XXX Is it safe to always use 0 as the index?
++    nsCounterChangeNode *node =
++        new nsCounterChangeNode(aFrame, nsCounterNode::ROOT, 0, 0);
++    aList->Insert(node);
++    if (!aList->IsLast(node)) {
++        aList->SetDirty();
++        aDirty |= true;
++    }
++}
++
+ static PLDHashOperator
+ AddRoot(const nsAString& aKey, nsCounterList* aList, void* vargs) {
+     struct AddRootArgs* args = static_cast<AddRootArgs*>(vargs);
+-    // XXX Is it safe to always use 0 as the index?
+-    nsCounterChangeNode *node =
+-        new nsCounterChangeNode(args->mFrame, nsCounterNode::ROOT, 0, 0);
+-    aList->Insert(node);
+-    if (!aList->IsLast(node)) {
+-        aList->SetDirty();
+-        args->mDirty |= true;
+-    }
++    AddRootInner(aList, args->mFrame, args->mDirty);
+     return PL_DHASH_NEXT;
+ }
+ 
+ bool
+ nsCounterManager::AddRoots(nsIFrame *aFrame) {
+     struct AddRootArgs args = { aFrame, false };
+     mNames.EnumerateRead(AddRoot, static_cast<void*>(&args));
++    AddRootInner(&mPrototypeList, aFrame, args.mDirty);
+     return args.mDirty;
+ }
+ 
+ nsCounterList*
+ nsCounterManager::CounterListFor(const nsSubstring& aCounterName)
+ {
+     // XXX Why doesn't nsTHashtable provide an API that allows us to use
+     // get/put in one hashtable lookup?
+     nsCounterList *counterList;
+     if (!mNames.Get(aCounterName, &counterList)) {
+-        counterList = new nsCounterList();
++        counterList = new nsCounterList(mPrototypeList);
+         mNames.Put(aCounterName, counterList);
+     }
+     return counterList;
+ }
+ 
+ static PLDHashOperator
+ RecalcDirtyLists(const nsAString& aKey, nsCounterList* aList, void* aClosure)
+ {
+@@ -355,40 +409,43 @@ struct DestroyNodesData {
+         , mDestroyedAny(false)
+     {
+     }
+ 
+     nsIFrame *mFrame;
+     bool mDestroyedAny;
+ };
+ 
++static void
++DestroyNodesInListInner(nsCounterList* aList, DestroyNodesData* aData) {
++    if (aList->DestroyNodesFor(aData->mFrame)) {
++        aData->mDestroyedAny = true;
++        aList->SetDirty();
++    }
++}
++
+ static PLDHashOperator
+ DestroyNodesInList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
+ {
+-    DestroyNodesData *data = static_cast<DestroyNodesData*>(aClosure);
+-    if (aList->DestroyNodesFor(data->mFrame)) {
+-        data->mDestroyedAny = true;
+-        aList->SetDirty();
+-    }
++    DestroyNodesInListInner(aList, static_cast<DestroyNodesData*>(aClosure));
+     return PL_DHASH_NEXT;
+ }
+ 
+ bool
  nsCounterManager::DestroyNodesFor(nsIFrame *aFrame)
  {
      DestroyNodesData data(aFrame);
      mNames.EnumerateRead(DestroyNodesInList, &data);
++    DestroyNodesInListInner(&mPrototypeList, &data);
      return data.mDestroyedAny;
  }
  
@@ -187,7 +302,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 -DumpList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
 -{
 -    printf("Counter named \"%s\":\n", NS_ConvertUTF16toUTF8(aKey).get());
-+void
++static void
 +DumpListInner(nsCounterList* aList) {
      nsCounterNode *node = aList->First();
  
@@ -197,7 +312,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
              const char *types[] = { "ROOT", "RESET", "INCREMENT", "USE" };
              printf("  Node #%d @%p frame=%p index=%d type=%s valAfter=%d\n"
                     "       scope-start=%p scope-prev=%p",
-@@ -398,16 +440,23 @@ DumpList(const nsAString& aKey, nsCounte
+@@ -398,19 +455,28 @@ DumpList(const nsAString& aKey, nsCounte
              if (node->mType == nsCounterNode::USE) {
                  nsAutoString text;
                  node->UseNode()->GetText(text);
@@ -221,48 +336,90 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  {
      printf("\n\nCounter Manager Lists:\n");
      mNames.EnumerateRead(DumpList, nullptr);
++    printf("Counter Prototype List:\n");
++    DumpListInner(&mPrototypeList);
+     printf("\n\n");
+ }
+ #endif
 diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
 --- a/layout/base/nsCounterManager.h
 +++ b/layout/base/nsCounterManager.h
-@@ -15,16 +15,19 @@
- #include "nsClassHashtable.h"
- #include "mozilla/Likely.h"
- #include "CounterStyleManager.h"
+@@ -97,16 +97,25 @@ struct nsCounterUseNode : public nsCount
+         , mCounterFunction(aCounterFunction)
+         , mPresContext(aPresContext)
+         , mCounterStyle(nullptr)
+         , mAllCounters(aAllCounters)
+     {
+         NS_ASSERTION(aContentIndex <= INT32_MAX, "out of range");
+     }
  
- class nsCounterList;
- struct nsCounterUseNode;
- struct nsCounterChangeNode;
- 
-+void
-+DumpListInner(nsCounterList* aList);
++    nsCounterUseNode(const nsCounterUseNode& aNode)
++        : nsCounterNode(aNode.mContentIndex, USE)
++        , mCounterFunction(aNode.mCounterFunction)
++        , mPresContext(aNode.mPresContext)
++        , mCounterStyle(aNode.mCounterStyle)
++        , mAllCounters(aNode.mAllCounters)
++    {
++    }
 +
- struct nsCounterNode : public nsGenConNode {
-     enum Type {
-         ROOT,      // a "layout" or "strict"  in 'contain'
-         RESET,     // a "counter number" pair in 'counter-reset'
-         INCREMENT, // a "counter number" pair in 'counter-increment'
-         USE,       // counter() or counters() in 'content'
-     };
+     virtual bool InitTextFrame(nsGenConList* aList,
+             nsIFrame* aPseudoFrame, nsIFrame* aTextFrame) override;
  
-@@ -164,16 +167,17 @@ inline nsCounterChangeNode* nsCounterNod
- {
-     NS_ASSERTION(mType == INCREMENT || mType == RESET || mType == ROOT,
-                  "wrong type");
-     return static_cast<nsCounterChangeNode*>(this);
- }
+     mozilla::CounterStyle* GetCounterStyle();
+     void SetCounterStyleDirty()
+     {
+         mCounterStyle = nullptr;
+     }
+@@ -144,16 +153,24 @@ struct nsCounterChangeNode : public nsCo
+         NS_ASSERTION(aPropIndex >= 0, "out of range");
+         NS_ASSERTION(aChangeType == INCREMENT || aChangeType == RESET ||
+                      mType == ROOT,
+                      "bad type");
+         mPseudoFrame = aPseudoFrame;
+         CheckFrameAssertions();
+     }
  
- inline void nsCounterNode::Calc(nsCounterList* aList)
++    nsCounterChangeNode(const nsCounterChangeNode& aNode)
++        : nsCounterNode(aNode.mContentIndex, aNode.mType)
++        , mChangeValue(aNode.mChangeValue)
++    {
++        mPseudoFrame = aNode.mPseudoFrame;
++        CheckFrameAssertions();
++    }
++
+     // assign the correct |mValueAfter| value to a node that has been inserted
+     // Should be called immediately after calling |Insert|.
+     void Calc(nsCounterList* aList);
+ };
+ 
+ inline nsCounterUseNode* nsCounterNode::UseNode()
  {
-+    DumpListInner(aList);
-     if (mType == USE)
-         UseNode()->Calc(aList);
-     else
+     NS_ASSERTION(mType == USE, "wrong type");
+@@ -175,16 +192,32 @@ inline void nsCounterNode::Calc(nsCounte
          ChangeNode()->Calc(aList);
  }
  
  class nsCounterList : public nsGenConList {
  public:
-@@ -183,16 +187,17 @@ public:
+     nsCounterList() : nsGenConList(),
+                       mDirty(false)
+     {}
++    nsCounterList(const nsCounterList& aList)
++        : nsGenConList()
++        , mDirty(aList.mDirty)
++    {
++        nsCounterList& mutableList = const_cast<nsCounterList&>(aList);
++        nsCounterNode *node = mutableList.First();
++        if (node) {
++            do {
++                if (node->mType == nsCounterNode::USE) {
++                    Insert(new nsCounterUseNode(*node->UseNode()));
++                } else {
++                    Insert(new nsCounterChangeNode(*node->ChangeNode()));
++                }
++            } while ((node = mutableList.Next(node)) != mutableList.First());
++        }
++    }
  
      void Insert(nsCounterNode* aNode) {
          nsGenConList::Insert(aNode);
@@ -271,15 +428,46 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
          if (MOZ_LIKELY(!IsDirty())) {
              SetScope(aNode);
          }
-+        DumpListInner(this);
-     }
+@@ -250,17 +283,20 @@ public:
+     // Set all counter styles dirty
+     void SetAllCounterStylesDirty();
  
-     nsCounterNode* First() {
-         return static_cast<nsCounterNode*>(mFirstNode);
-     }
+     // Destroy nodes for the frame in any lists, and return whether any
+     // nodes were destroyed.
+     bool DestroyNodesFor(nsIFrame *aFrame);
  
-     static nsCounterNode* Next(nsCounterNode* aNode) {
-         return static_cast<nsCounterNode*>(nsGenConList::Next(aNode));
+     // Clear all data.
+-    void Clear() { mNames.Clear(); }
++    void Clear() {
++        mNames.Clear(); 
++        mPrototypeList.Clear();
++    }
+ 
+ #ifdef DEBUG
+     void Dump();
+ #endif
+ 
+     static int32_t IncrementCounter(int32_t aOldValue, int32_t aIncrement)
+     {
+         // Addition of unsigned values is defined to be arithmetic
+@@ -287,16 +323,17 @@ public:
+ 
+ private:
+     // for |AddCounterResetsAndIncrements| only
+     bool AddResetOrIncrement(nsIFrame *aFrame, int32_t aIndex,
+                                const nsStyleCounterData *aCounterData,
+                                nsCounterNode::Type aType);
+ 
+     nsClassHashtable<nsStringHashKey, nsCounterList> mNames;
++    nsCounterList mPrototypeList;
+ };
+ 
+ // This class exists to help implement 'contain: style'.
+ // It currenctly can be replaced by a function call on the nsCounterManager.
+ // However, it should be possible to create ROOT nodes lazily using this
+ // design. Unfortunately, my attempts to do so missed some corner cases and
+ // were abandoned.
+ class nsCounterScopePush {
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-increment-001-ref.html
 new file mode 100644
 --- /dev/null
