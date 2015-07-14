@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  f203ec244be9a40ebd7c4b5a73f800a8eff184c0
+# Parent  3ea5f350e846417aebc356001c66a0d88927ba94
 Bug 1170781 - Patch 2: Test CSS 'contain: paint'.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-001-ref.html
@@ -43,7 +43,7 @@ new file mode 100644
 +  <title>CSS Test: 'contain: paint' with various overflowing block descendants.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-paint">
-+  <link rel="match" href="paint-clip-001-ref.html">
++  <link rel="match" href="contain-paint-clip-001-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -150,7 +150,7 @@ new file mode 100644
 +  <title>CSS Test: 'contain: paint' with various overflowing block descendants.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-paint">
-+  <link rel="match" href="paint-clip-002-ref.html">
++  <link rel="match" href="contain-paint-clip-002-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -211,7 +211,7 @@ new file mode 100644
 +  <title>CSS Test: 'contain: paint' element should contain absolute position elements.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-paint">
-+  <link rel="match" href="paint-containing-block-absolute-001-ref.html">
++  <link rel="match" href="contain-paint-containing-block-absolute-001-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -282,7 +282,7 @@ new file mode 100644
 +  <title>CSS Test: 'contain: paint' element should contain fixed position elements.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-paint">
-+  <link rel="match" href="paint-containing-block-fixed-001-ref.html">
++  <link rel="match" href="contain-paint-containing-block-fixed-001-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -360,7 +360,7 @@ new file mode 100644
 +  <title>CSS Test: 'contain: paint' should contain floats as a formatting context.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-paint">
-+  <link rel="match" href="paint-formatting-context-float-001-ref.html">
++  <link rel="match" href="contain-paint-formatting-context-float-001-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -444,7 +444,7 @@ new file mode 100644
 +  <title>CSS Test: 'contain: paint' with a vertical margin child. Margin collapse should not occur.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-paint">
-+  <link rel="match" href="paint-formatting-context-margin-001-ref.html">
++  <link rel="match" href="contain-paint-formatting-context-margin-001-ref.html">
 +  <style>
 +  body {
 +    margin: 0;

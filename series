@@ -1,5 +1,6 @@
 ContainPaint
 ContainPaintTest
+try-linux-minimal
 ContainStyleCounters
 ContainStyleCountersTest
 ContainStyleQuotes
@@ -11,7 +12,6 @@ ContainLayoutTest
 try-all
 fixups
 ContainLayout
-try-linux-minimal
 UnRemoveBoxSizingPaddingBoxTests
 UnfinishedTests
 ContainStyleQuotesAttempt1
