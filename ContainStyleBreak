@@ -6,85 +6,26 @@ Bug 1172087 - Patch 5: Implement page break behavior for "contain: style"
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
 --- a/layout/base/nsCSSFrameConstructor.cpp
 +++ b/layout/base/nsCSSFrameConstructor.cpp
-@@ -766,16 +766,18 @@ public:
-   // during frame construction.  If true, don't make any SetPrimaryFrame()
-   // calls, except for generated content which doesn't have a primary frame
-   // yet.  The mCreatingExtraFrames == true mode is meant to be used for
-   // construction of random "extra" frames for elements via normal frame
-   // construction APIs (e.g. replication of things across pages in paginated
-   // mode).
-   bool                      mCreatingExtraFrames;
- 
-+  bool                      mStyleContained;
-+
-   nsCOMArray<nsIContent>    mGeneratedTextNodesWithInitializer;
- 
-   TreeMatchContext          mTreeMatchContext;
- 
-   // Constructor
-   // Use the passed-in history state.
-   nsFrameConstructorState(nsIPresShell*          aPresShell,
-                           nsContainerFrame*      aFixedContainingBlock,
-@@ -939,16 +941,17 @@ nsFrameConstructorState::nsFrameConstruc
-     mFrameState(aHistoryState),
-     mAdditionalStateBits(nsFrameState(0)),
-     // If the fixed-pos containing block is equal to the abs-pos containing
-     // block, use the abs-pos containing block's abs-pos list for fixed-pos
-     // frames.
-     mFixedPosIsAbsPos(aFixedContainingBlock == aAbsoluteContainingBlock),
-     mHavePendingPopupgroup(false),
-     mCreatingExtraFrames(false),
-+    mStyleContained(false),
-     mTreeMatchContext(true, nsRuleWalker::eRelevantLinkUnvisited,
-                       aPresShell->GetDocument()),
-     mCurrentPendingBindingInsertionPoint(nullptr)
- {
- #ifdef MOZ_XUL
-   nsIRootBox* rootBox = nsIRootBox::GetRootBox(aPresShell);
-   if (rootBox) {
-     mPopupItems.containingBlock = rootBox->GetPopupSetFrame();
-@@ -973,16 +976,17 @@ nsFrameConstructorState::nsFrameConstruc
-     // See PushAbsoluteContaningBlock below
-     mAdditionalStateBits(nsFrameState(0)),
-     // If the fixed-pos containing block is equal to the abs-pos containing
-     // block, use the abs-pos containing block's abs-pos list for fixed-pos
-     // frames.
-     mFixedPosIsAbsPos(aFixedContainingBlock == aAbsoluteContainingBlock),
-     mHavePendingPopupgroup(false),
-     mCreatingExtraFrames(false),
-+    mStyleContained(false),
-     mTreeMatchContext(true, nsRuleWalker::eRelevantLinkUnvisited,
-                       aPresShell->GetDocument()),
-     mCurrentPendingBindingInsertionPoint(nullptr)
- {
- #ifdef MOZ_XUL
-   nsIRootBox* rootBox = nsIRootBox::GetRootBox(aPresShell);
-   if (rootBox) {
-     mPopupItems.containingBlock = rootBox->GetPopupSetFrame();
-@@ -5639,22 +5643,41 @@ nsCSSFrameConstructor::AddFrameConstruct
-        display->mDisplay != NS_STYLE_DISPLAY_TABLE_COLUMN)) {
-     SetAsUndisplayedContent(aState, aItems, aContent, styleContext, isGeneratedContent);
-     return;
-   }
- 
+@@ -5644,17 +5644,37 @@ nsCSSFrameConstructor::AddFrameConstruct
    bool canHavePageBreak =
      (aFlags & ITEM_ALLOW_PAGE_BREAK) &&
      aState.mPresContext->IsPaginated() &&
-+    !aState.mStyleContained &&
      !display->IsAbsolutelyPositionedStyle() &&
      !(bits & FCDATA_IS_TABLE_PART) &&
      !(bits & FCDATA_IS_SVG_TEXT);
  
    if (canHavePageBreak && display->mBreakBefore) {
 -    AddPageBreakItem(aContent, aStyleContext, aItems);
-+    // aState.mStyleContained is only set if this frame is being constructed at
-+    // the same time as a 'contain: style' ancestor. However, we may be
-+    // dynamically constructing frames below a 'contain: style' frame, in which
-+    // case the state flag will not be set. 
++    // We would like canHavePageBreak to factor in the fact that having a
++    // 'contain: style' ancestor prevents us from having a page break.
++    // Unfortunately, the content containing the page break may be inserted
++    // dynamically, so there's no particularly efficient way to track if
++    // there's a 'contain: style' ancestor.
 +
-+    // In order to handle this correctly (but slowly), we scan upwards to see
++    // In order to handle this correctly (but slowly), we scan upward to check
 +    // if there are any 'contain: style' ancestors.
-+    // Note that there is no need to do any of this for non-paginated reflow.
++    // Since this case is only hit during paginated reflow, it shouldn't have
++    // too large of a performance impact.
 +    bool isContained = false;
 +    for (nsIFrame *ancestor = aParentFrame; ancestor;
 +         ancestor = ancestor->GetParent()) {
@@ -104,23 +45,3 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
                   "Should have had pseudo type");
        aState.mFrameManager->SetDisplayContents(aContent, styleContext);
      } else {
-@@ -10339,17 +10362,19 @@ nsCSSFrameConstructor::ProcessChildren(n
-   if (mCurrentDepth != UINT16_MAX) {
-     ++mCurrentDepth;
-   }
- 
-   if (!aPossiblyLeafFrame) {
-     aPossiblyLeafFrame = aFrame;
-   }
- 
-+  AutoRestore<bool> savedStyleContainment(aState.mStyleContained);
-   if (aFrame->StyleDisplay()->IsContainStyle()) {
-+    aState.mStyleContained = true;
-     // A negative content index is needed to indicate that the quote depth is
-     // being changed by this node. Any negative value will do, so -1 is used.
-     (new nsQuoteNode(eStyleContentType_ScopeStart, -1))
-       // Insert the node into the list, with no text frame.
-       ->InitTextFrame(&mQuoteList, aFrame, nullptr);
-   }
- 
-   // XXXbz ideally, this would do all the pushing of various
