@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  799919c4ead312e0df3ef779d071b2a8accc0d85
+# Parent  192abceee4201a0b68ac25c82bc1de09dd6efb71
 Bug 1172087 - Patch 6: Test page break behavior for "contain: style"
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-001-ref.html
@@ -134,13 +134,13 @@ new file mode 100644
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -4,8 +4,9 @@ default-preferences pref(layout.css.cont
+@@ -2,8 +2,9 @@ default-preferences pref(layout.css.cont
+ 
+ == contain-paint-clip-001.html contain-paint-clip-001-ref.html
  == contain-paint-clip-002.html contain-paint-clip-002-ref.html
  == contain-paint-containing-block-absolute-001.html contain-paint-containing-block-absolute-001-ref.html
  == contain-paint-containing-block-fixed-001.html contain-paint-containing-block-fixed-001-ref.html
  == contain-paint-formatting-context-float-001.html contain-paint-formatting-context-float-001-ref.html
  == contain-paint-formatting-context-margin-001.html contain-paint-formatting-context-margin-001-ref.html
- == contain-style-counter-increment-001.html contain-style-counter-increment-001-ref.html
- == contain-style-counter-insert-001.html contain-style-counter-insert-001-ref.html
  == contain-style-quote-001.html contain-style-quote-001-ref.html
 +== contain-style-break-001.html contain-style-break-001-ref.html
