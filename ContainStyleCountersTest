@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  590d1360ac5ca971dfbdd05fdfa32871daa05183
+# Parent  1d2536cc61f9320d666bf62fa2029c5c19c62f50
 Bug 1172087 - Patch 2: Test counter behavior for "contain: style"
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html
@@ -382,18 +382,13 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-sco
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-001-ref.html
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,12 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
-+  <style>
-+    div {
-+      height: 2rem;
-+    }
-+  </style>
 +</head>
 +<body>
 +  <div>2</div>
@@ -404,7 +399,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-sco
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-001.html
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,33 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -422,7 +417,6 @@ new file mode 100644
 +  }
 +  .show:before {
 +    content: counter(i);
-+    height: 2rem;
 +  }
 +  .container {
 +    contain: style;
@@ -443,7 +437,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-sco
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-002.html
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,29 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -461,7 +455,6 @@ new file mode 100644
 +  }
 +  .show:before {
 +    content: counter(i);
-+    height: 2rem;
 +  }
 +  .container {
 +    contain: style;
@@ -478,7 +471,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-sco
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-003.html
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,33 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -493,7 +486,6 @@ new file mode 100644
 +  }
 +  .show:before {
 +    content: counter(i);
-+    height: 2rem;
 +  }
 +  .container {
 +    contain: style;
@@ -517,7 +509,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-sco
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-004.html
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,27 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -532,7 +524,6 @@ new file mode 100644
 +  }
 +  .show:before {
 +    content: counter(i);
-+    height: 2rem;
 +  }
 +  .container {
 +    contain: style;
@@ -550,7 +541,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-sco
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-005.html
-@@ -0,0 +1,35 @@
+@@ -0,0 +1,34 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -568,7 +559,6 @@ new file mode 100644
 +  }
 +  .show:before {
 +    content: counter(i);
-+    height: 2rem;
 +  }
 +  .container {
 +    contain: style;
@@ -590,7 +580,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-sco
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-006.html
-@@ -0,0 +1,33 @@
+@@ -0,0 +1,32 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -608,7 +598,6 @@ new file mode 100644
 +  }
 +  .show:before {
 +    content: counter(i);
-+    height: 2rem;
 +  }
 +  .container {
 +    contain: style;
@@ -628,7 +617,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-sco
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-007.html
-@@ -0,0 +1,51 @@
+@@ -0,0 +1,50 @@
 +<!DOCTYPE HTML>
 +<html class="reftest-wait">
 +<head>
@@ -646,7 +635,6 @@ new file mode 100644
 +  }
 +  .show:before {
 +    content: counter(i);
-+    height: 2rem;
 +  }
 +  .container {
 +    contain: style;
@@ -728,7 +716,7 @@ new file mode 100644
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -1,8 +1,17 @@
+@@ -1,8 +1,19 @@
  default-preferences pref(layout.css.contain.enabled,true)
  
  == contain-paint-clip-001.html contain-paint-clip-001-ref.html
@@ -746,3 +734,5 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/ref
 +== contain-style-counter-scope-005.html contain-style-counter-scope-001-ref.html
 +== contain-style-counter-scope-006.html contain-style-counter-scope-001-ref.html
 +== contain-style-counter-scope-007.html contain-style-counter-scope-001-ref.html
++== contain-style-counter-scope-008.html contain-style-counter-scope-001-ref.html
++== contain-style-counter-scope-009.html contain-style-counter-scope-001-ref.html

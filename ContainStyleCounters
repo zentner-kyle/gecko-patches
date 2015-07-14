@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  857688a3d02b3e05f6f92a6d06355088e86f39ee
+# Parent  f0f73531fe97fa53ebff22640800d18009c9b2b8
 Bug 1172087 - Patch 1: Implement counter behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -189,15 +189,36 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  {
      const nsStyleContent *styleContent = aFrame->StyleContent();
      if (!styleContent->CounterIncrementCount() &&
-@@ -257,24 +303,56 @@ nsCounterManager::AddResetOrIncrement(ns
+@@ -239,43 +285,79 @@ nsCounterManager::AddCounterResetsAndInc
+ bool
+ nsCounterManager::AddResetOrIncrement(nsIFrame *aFrame, int32_t aIndex,
+                                       const nsStyleCounterData *aCounterData,
+                                       nsCounterNode::Type aType)
+ {
+     nsCounterChangeNode *node =
+         new nsCounterChangeNode(aFrame, aType, aCounterData->mValue, aIndex);
+ 
+-    nsCounterList *counterList = CounterListFor(aCounterData->mCounter);
++    bool newListCreated = false;
++    nsCounterList *counterList = CounterListFor(aCounterData->mCounter, &newListCreated);
+ 
+     counterList->Insert(node);
+     if (!counterList->IsLast(node)) {
+         // Tell the caller it's responsible for recalculating the entire
+         // list.
+         counterList->SetDirty();
+         return true;
+     }
+ 
      // Don't call Calc() if the list is already dirty -- it'll be recalculated
      // anyway, and trying to calculate with a dirty list doesn't work.
      if (MOZ_LIKELY(!counterList->IsDirty())) {
          node->Calc(counterList);
      }
-     return false;
- }
- 
+-    return false;
++    return newListCreated;
++}
++
 +struct AddRootArgs {
 +    nsIFrame* mFrame;
 +    bool mDirty;
@@ -228,10 +249,11 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +    mNames.EnumerateRead(AddRoot, static_cast<void*>(&args));
 +    AddRootInner(&mPrototypeList, aFrame, args.mDirty);
 +    return args.mDirty;
-+}
-+
+ }
+ 
  nsCounterList*
- nsCounterManager::CounterListFor(const nsSubstring& aCounterName)
+-nsCounterManager::CounterListFor(const nsSubstring& aCounterName)
++nsCounterManager::CounterListFor(const nsSubstring& aCounterName, bool* aNewListCreated)
  {
      // XXX Why doesn't nsTHashtable provide an API that allows us to use
      // get/put in one hashtable lookup?
@@ -240,6 +262,9 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 -        counterList = new nsCounterList();
 +        counterList = new nsCounterList(mPrototypeList);
          mNames.Put(aCounterName, counterList);
++        if (aNewListCreated) {
++          *aNewListCreated = true;
++        }
      }
      return counterList;
  }
@@ -247,7 +272,8 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  static PLDHashOperator
  RecalcDirtyLists(const nsAString& aKey, nsCounterList* aList, void* aClosure)
  {
-@@ -323,62 +401,74 @@ struct DestroyNodesData {
+     if (aList->IsDirty())
+@@ -323,62 +405,74 @@ struct DestroyNodesData {
          , mDestroyedAny(false)
      {
      }
@@ -499,7 +525,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
  
      // Recalculate |mScopeStart|, |mScopePrev|, and |mValueAfter| for
      // all nodes and update text in text content nodes.
-@@ -215,16 +259,20 @@ private:
+@@ -215,37 +259,44 @@ private:
      bool mDirty;
  };
  
@@ -519,8 +545,12 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
  
      // Gets the appropriate counter list, creating it if necessary.
      // Guaranteed to return non-null. (Uses an infallible hashtable API.)
-     nsCounterList* CounterListFor(const nsSubstring& aCounterName);
-@@ -235,17 +283,20 @@ public:
+-    nsCounterList* CounterListFor(const nsSubstring& aCounterName);
++    nsCounterList* CounterListFor(const nsSubstring& aCounterName, bool* newListCreated = nullptr);
+ 
+     // Clean up data in any dirty counter lists.
+     void RecalcAll();
+ 
      // Set all counter styles dirty
      void SetAllCounterStylesDirty();
  
