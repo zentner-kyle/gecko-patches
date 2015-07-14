@@ -55,7 +55,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  nsCounterUseNode::GetText(nsString& aResult)
  {
      aResult.Truncate();
-@@ -135,51 +139,91 @@ nsCounterList::SetScope(nsCounterNode *a
+@@ -135,51 +139,92 @@ nsCounterList::SetScope(nsCounterNode *a
      // appropriate.
  
      if (aNode == First()) {
@@ -121,21 +121,22 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +
 +        bool isRootScoped = false;
 +
-+        // If |start| is a ROOT node, or a RESET on a frame that also has a ROOT
-+        // node, we need to enforce that |aNode|'s frame is a descendant of
-+        // |start|'s frame.
++        // If |start| is a ROOT node, or a RESET on an element that also has a
++        // ROOT node, we need to enforce that |aNode| is a descendant of
++        // |start|.
 +        if (start->mType == nsCounterNode::ROOT ||
 +            (start->mType == nsCounterNode::RESET &&
 +             Prev(start) && Prev(start)->mType == nsCounterNode::ROOT &&
 +             start->mPseudoFrame == Prev(start)->mPseudoFrame)) {
-+            // |start| is either a ROOT or a RESET for a frame which has a ROOT.
++            // |start| is either a ROOT or a RESET for an element which has a
++            // ROOT.
 +            isRootScoped = true;
 +        }
 +
 +        if (isRootScoped) {
-+            // In order for |start| to begin scope in this case, |aNode| must have
-+            // the same frame as |start|, or |aNode|'s frame must be a descendant
-+            // of |start|'s frame.
++            // In order for |start| to begin scope in this case, |aNode| must
++            // have the same element as |start|, or |aNode| must be a
++            // descendant of |start|.
 +
 +            // If either of these cases does not hold, keep looking.
 +            if (start->mPseudoFrame != aNode->mPseudoFrame &&
@@ -145,12 +146,12 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +                continue;
 +            }
 +        } else {
-+            // Check that |aNode|'s frame's parent is a descendant of |start|'s
-+            // frame's parent.
-+            // This implies that |aNode|'s frame is itself a sibling of |start|'s
-+            // frame, or |aNode|'s frame is the descendant of one of the siblings
-+            // of |start|'s frame, which is the condition for being scoped to
-+            // |start|, if |start| is a normal RESET node.
++            // Check that |aNode|'s parent is a descendant of |start|'s
++            // parent.
++            // This implies that |aNode|'s is itself a sibling of |start|, or
++            // |aNode| is a descendant of one of the siblings of |start|, which
++            // is the condition for being scoped to |start|, if |start| is a
++            // normal RESET node.
 +            if (startContent &&
 +                !nsContentUtils::ContentIsDescendantOf(nodeContent,
 +                                                        startContent)) {
@@ -170,7 +171,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  
  void
  nsCounterList::RecalcAll()
-@@ -205,16 +249,17 @@ nsCounterList::RecalcAll()
+@@ -205,16 +250,17 @@ nsCounterList::RecalcAll()
                  useNode->mText->SetData(text);
              }
          }
@@ -188,7 +189,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  {
      const nsStyleContent *styleContent = aFrame->StyleContent();
      if (!styleContent->CounterIncrementCount() &&
-@@ -257,24 +302,56 @@ nsCounterManager::AddResetOrIncrement(ns
+@@ -257,24 +303,56 @@ nsCounterManager::AddResetOrIncrement(ns
      // Don't call Calc() if the list is already dirty -- it'll be recalculated
      // anyway, and trying to calculate with a dirty list doesn't work.
      if (MOZ_LIKELY(!counterList->IsDirty())) {
@@ -246,7 +247,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  static PLDHashOperator
  RecalcDirtyLists(const nsAString& aKey, nsCounterList* aList, void* aClosure)
  {
-@@ -323,62 +400,74 @@ struct DestroyNodesData {
+@@ -323,62 +401,74 @@ struct DestroyNodesData {
          , mDestroyedAny(false)
      {
      }
