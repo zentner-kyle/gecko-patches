@@ -1,0 +1,434 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  5811c6eb63e37c576ae301751889a5dd13eab4c9
+Bug 1172087 - Patch 2: Test counter behavior for "contain: style"
+
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html
+@@ -0,0 +1,37 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    background: red;
++    border: 1em solid green;
++    width: 100px;
++    height: 0;
++  }
++  </style>
++</head>
++<body class="reftest-paint">
++  <div class="fun">
++    <div>
++      This is some content before the contained element.
++    </div>
++    <div>
++      This is a parent of the contained element.
++      <div class="container">
++        <div>
++          Lorem ipsum dolor sit amet
++        </div>
++      </div>
++    </div>
++    <div>
++      This is some content after the contained element.
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001.html
+@@ -0,0 +1,94 @@
++<!DOCTYPE HTML>
++<html class="reftest-wait">
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on various elements causes them to act as
++    though they are empty</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="layout-zero-001-ref.html">
++  <style>
++  .container {
++    background: green;
++    contain: layout;
++    margin: 15px;
++  }
++  .contained {
++    width: 10px;
++    height: 10px;
++    background: blue;
++  }
++  </style>
++  <script>
++    var point = document.createElement('div')
++    var displays = ["inline", "block", "contents", "list-item",
++    "inline-block", "inline-table", "table", "table-cell", "table-column",
++    "table-column-group", "table-footer-group", "table-header-group",
++    "table-row", "table-row-group", "flex", "inline-flex", "grid",
++    "inline-grid", "ruby", "ruby-base", "ruby-text", "ruby-base-container",
++    "ruby-text-container ", "run-in"];
++    var outerIdx = 0;
++    var innerIdx = 0;
++    function tick() {
++      if (innerIdx === displays.length) {
++        outerIdx += 1;
++        innerIdx = 0;
++      }
++      if (outerIdx === displays.length) {
++        return;
++      }
++      var outerDisplay = displays[outerIdx];
++      var innerDisplay = displays[innerIdx];
++      var outerElem = document.createElement("div");
++      var innerElem = document.createElement("div");
++      outerElem.style.display = outerDisplay;
++      innerElem.style.display = innerDisplay;
++      outerElem.classList.add("container");
++      innerElem.classList.add("contained");
++      innerElem.textContent = "Lorem ipsum dolor sit amet";
++      outerElem.appendChild(innerElem);
++      var holder = document.getElementById("holder");
++      holder.appendChild(outerElem);
++      var realSnapshot = snapshotWindow(window);
++      outerElem.classList.remove("container");
++      innerElem.classList.remove("contained");
++      outerElem.classList.add("fake-container");
++      innerElem.classList.add("fake-contained");
++      outerElem.removeChild(innerElem);
++      outerElem.appendChild(point);
++      var rect = point.getBoundingClientRect();
++      outerElem.removeChild(point);
++      innerElem.style.position = "absolute";
++      innerElem.style.left = rect.x;
++      innerElem.style.top = rect.y;
++      holder.appendChild(innerElem);
++      var fakeSnapshot = snapshotWindow(window);
++      assertSnapshots(realSnapshot, fakeSnapshot, true, null, "contain: layout", "position: absolute");
++      return true;
++    }
++    function doTest() {
++      while (tick()) { }
++    }
++    //function doTest() {
++      //displays.forEach(function (outer) {
++        //displays.forEach(function (inner) {
++          //var outerElem = document.createElement("div");
++          //var innerElem = document.createElement("div");
++          //outerElem.style.display = outer;
++          //innerElem.style.display = inner;
++          //outerElem.classList.add("container");
++          //innerElem.classList.add("contained");
++          //innerElem.textContent = "Lorem ipsum dolor sit amet";
++          //outerElem.appendChild(innerElem);
++          //document.getElementById("holder").appendChild(outerElem);
++        //})
++      //})
++      //document.documentElement.classList.remove("reftest-wait");
++    //}
++  </script>
++</head>
++<body onload="doTest()">
++  <div id="holder">
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-001-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-001-ref.html
+@@ -0,0 +1,14 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <style>
++  </style>
++</head>
++<body>
++  <div>2</div>
++  <div>4</div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-001.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-001.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-001.html
+@@ -0,0 +1,34 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: style' counter-reset scope above container</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
++  <link rel="match" href="contain-style-counter-scope-001-ref.html">
++  <style>
++  .list {
++    counter-reset: i 3;
++  }
++  .inc {
++    counter-increment: i;
++  }
++  .show:before {
++    content: counter(i);
++    height: 2rem;
++  }
++  .container {
++    contain: style;
++  }
++  </style>
++</head>
++<body>
++  <div class="list">
++    <div class="container">
++      <div class="inc"></div>
++      <div class="show inc"> </div>
++    </div>
++    <div class="show inc"> </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-002.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-002.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-002.html
+@@ -0,0 +1,30 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: style' counter-reset on container.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
++  <link rel="match" href="contain-style-counter-scope-001-ref.html">
++  <style>
++  .list {
++    counter-reset: i 3;
++  }
++  .inc {
++    counter-increment: i;
++  }
++  .show:before {
++    content: counter(i);
++    height: 2rem;
++  }
++  .container {
++    contain: style;
++  }
++  </style>
++</head>
++<body>
++  <div class="container inc show" style="counter-reset: i 1;">
++    <div class="list inc show"> </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-003.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-003.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-003.html
+@@ -0,0 +1,34 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: style' "scopes" counters, "setting" them to 0 and back.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
++  <link rel="match" href="contain-style-counter-scope-001-ref.html">
++  <style>
++  .inc {
++    counter-increment: i;
++  }
++  .show:before {
++    content: counter(i);
++    height: 2rem;
++  }
++  .container {
++    contain: style;
++  }
++  </style>
++</head>
++<body>
++  <div class="container">
++    <div>
++      <div>
++        <div class="inc"> </div>
++        <div class="inc show"> </div>
++      </div>
++      <div class='inc'></div>
++      <div class='inc show'></div>
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-004.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-004.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-004.html
+@@ -0,0 +1,28 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: style' below body, after increment</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
++  <link rel="match" href="contain-style-counter-scope-001-ref.html">
++  <style>
++  .inc {
++    counter-increment: i 2;
++  }
++  .show:before {
++    content: counter(i);
++    height: 2rem;
++  }
++  .container {
++    contain: style;
++  }
++  </style>
++</head>
++<body>
++  <div class="inc show"></div>
++  <div class="container inc">
++    <div class="inc show"></div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-005.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-005.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-005.html
+@@ -0,0 +1,35 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: style' counter-reset with container as middle sibling</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
++  <link rel="match" href="contain-style-counter-scope-001-ref.html">
++  <style>
++  .list {
++    counter-reset: i 2;
++  }
++  .inc {
++    counter-increment: i;
++  }
++  .show:before {
++    content: counter(i);
++    height: 2rem;
++  }
++  .container {
++    contain: style;
++  }
++  </style>
++</head>
++<body>
++  <div class="list"> </div>
++  <div class="inc"></div>
++  <div class="container">
++    <div class="inc"></div>
++    <div class="show inc"> </div>
++  </div>
++  <div class="show inc"> </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-006.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-006.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-006.html
+@@ -0,0 +1,33 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: style' counter-reset inside container</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
++  <link rel="match" href="contain-style-counter-scope-001-ref.html">
++  <style>
++  .list {
++    counter-reset: i 2;
++  }
++  .inc {
++    counter-increment: i;
++  }
++  .show:before {
++    content: counter(i);
++    height: 2rem;
++  }
++  .container {
++    contain: style;
++  }
++  </style>
++</head>
++<body>
++  <div class="container">
++    <div class="list"> </div>
++    <div class="show"> </div>
++    <div class="inc"></div>
++    <div class="show inc"> </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-review.html b/layout/reftests/w3c-css/submitted/contain/contain-style-review.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-review.html
+@@ -0,0 +1,40 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'content: counter' use on 'contain: style' element should be zero / reset value</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-paint">
++  <link rel="match" href="paint-containing-block-fixed-001-ref.html">
++  <style>
++  body { counter-reset: list }
++  li {
++    display: block;
++    counter-increment: list;
++    padding-left: 3em;
++  }
++  div {
++    border: 1px solid black;
++    padding: 1em;
++  }
++  li::before { content: counter(list) }
++  </style>
++</head>
++<body>
++  <li>one</li>
++  <li style="contain: style">zero</li>
++  <li>two</li>
++
++  <div style="contain: strict">
++    <div>
++      <li>one</li>
++    </div>
++    <li>one</li>
++  </div>
++
++  <div style="contain: style; counter-reset: list 3">
++    <li>four</li>
++    <li>five</li>
++  </div>
++</body>
++</html>
