@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  f42579afd26d7bb20b173f69566b923954845d2f
+# Parent  873ae9825310cb7e9fadb86dd9dfc9c3ac651237
 Bug 1172087 - Patch 5: Implement page break behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -61,7 +61,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    nsIRootBox* rootBox = nsIRootBox::GetRootBox(aPresShell);
    if (rootBox) {
      mPopupItems.containingBlock = rootBox->GetPopupSetFrame();
-@@ -5640,16 +5644,17 @@ nsCSSFrameConstructor::AddFrameConstruct
+@@ -5639,22 +5643,41 @@ nsCSSFrameConstructor::AddFrameConstruct
         display->mDisplay != NS_STYLE_DISPLAY_TABLE_COLUMN)) {
      SetAsUndisplayedContent(aState, aItems, aContent, styleContext, isGeneratedContent);
      return;
@@ -76,10 +76,35 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
      !(bits & FCDATA_IS_SVG_TEXT);
  
    if (canHavePageBreak && display->mBreakBefore) {
-     AddPageBreakItem(aContent, aStyleContext, aItems);
+-    AddPageBreakItem(aContent, aStyleContext, aItems);
++    // aState.mStyleContained is only set if this frame is being constructed at
++    // the same time as a 'contain: style' ancestor. However, we may be
++    // dynamically constructing frames below a 'contain: style' frame, in which
++    // case the state flag will not be set. 
++
++    // In order to handle this correctly (but slowly), we scan upwards to see
++    // if there are any 'contain: style' ancestors.
++    // Note that there is no need to do any of this for non-paginated reflow.
++    bool isContained = false;
++    for (nsIFrame *ancestor = aParentFrame; ancestor;
++         ancestor = ancestor->GetParent()) {
++      if (ancestor->StyleDisplay()->IsContainStyle()) {
++        isContained = true;
++        break;
++      }
++    }
++    if (!isContained) {
++      AddPageBreakItem(aContent, aStyleContext, aItems);
++    }
    }
  
-@@ -10340,17 +10345,19 @@ nsCSSFrameConstructor::ProcessChildren(n
+   if (MOZ_UNLIKELY(bits & FCDATA_IS_CONTENTS)) {
+     if (!GetDisplayContentsStyleFor(aContent)) {
+       MOZ_ASSERT(styleContext->GetPseudo() || !isGeneratedContent,
+                  "Should have had pseudo type");
+       aState.mFrameManager->SetDisplayContents(aContent, styleContext);
+     } else {
+@@ -10339,17 +10362,19 @@ nsCSSFrameConstructor::ProcessChildren(n
    if (mCurrentDepth != UINT16_MAX) {
      ++mCurrentDepth;
    }
