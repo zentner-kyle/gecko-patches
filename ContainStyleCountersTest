@@ -668,6 +668,107 @@ new file mode 100644
 +  <div id="c" class="container"> </div>
 +</body>
 +</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-008.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-008.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-008.html
+@@ -0,0 +1,44 @@
++<!DOCTYPE HTML>
++<html class="reftest-wait">
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: style' counter-reset scope above container</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
++  <link rel="match" href="contain-style-counter-scope-001-ref.html">
++  <style>
++  .inc {
++    counter-increment: i;
++  }
++  .show:before {
++    content: counter(i);
++  }
++  .container {
++    contain: style;
++  }
++  </style>
++  <script id="c-template" type="template">
++    <div class="inc"> </div>
++    <div class="inc show"> </div>
++  </script>
++  <script id="body-after-template" type="template">
++    <div class="inc"> </div>
++    <div class="inc"> </div>
++    <div class="inc"> </div>
++    <div class="inc show"> </div>
++  </script>
++  <script>
++    function doTest() {
++      document.getElementById('c').innerHTML =
++        document.getElementById('c-template').textContent;
++      var body = document.getElementsByTagName('body')[0];
++      body.innerHTML +=
++        document.getElementById('body-after-template').textContent;
++      document.documentElement.classList.remove("reftest-wait");
++    }
++  </script>
++</head>
++<body onload="doTest()">
++  <div id="c" class="container"> </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-009.html b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-009.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-009.html
+@@ -0,0 +1,47 @@
++<!DOCTYPE HTML>
++<html class="reftest-wait">
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: style' counter-reset scope above container</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
++  <link rel="match" href="contain-style-counter-scope-001-ref.html">
++  <style>
++  .list {
++    counter-reset: i 1;
++  }
++  .inc {
++    counter-increment: i;
++  }
++  .show:before {
++    content: counter(i);
++  }
++  .container {
++    contain: style;
++  }
++  </style>
++  <script id="c-template" type="template">
++    <div class="inc"> </div>
++    <div class="inc show"> </div>
++  </script>
++  <script id="body-after-template" type="template">
++    <div class="inc"> </div>
++    <div class="inc"> </div>
++    <div class="inc show"> </div>
++  </script>
++  <script>
++    function doTest() {
++      document.getElementById('c').innerHTML =
++        document.getElementById('c-template').textContent;
++      var body = document.getElementsByTagName('body')[0];
++      body.innerHTML +=
++        document.getElementById('body-after-template').textContent;
++      document.documentElement.classList.remove("reftest-wait");
++    }
++  </script>
++</head>
++<body onload="doTest()">
++  <div class="list"></div>
++  <div id="c" class="container"> </div>
++</body>
++</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-review.html b/layout/reftests/w3c-css/submitted/contain/contain-style-review.html
 new file mode 100644
 --- /dev/null

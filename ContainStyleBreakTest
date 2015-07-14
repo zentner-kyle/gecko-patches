@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  192abceee4201a0b68ac25c82bc1de09dd6efb71
+# Parent  9e9becc18d502aab0c22251320178005df951fd9
 Bug 1172087 - Patch 6: Test page break behavior for "contain: style"
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-001-ref.html
@@ -69,7 +69,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-001.h
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-001.html
-@@ -0,0 +1,61 @@
+@@ -0,0 +1,65 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -77,7 +77,7 @@ new file mode 100644
 +  <title>CSS Test: 'contain: style' causes page-break-* to be ignored on descendants.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
-+  <link rel="match" href="style-break-001-ref.html">
++  <link rel="match" href="contain-style-break-001-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -92,9 +92,13 @@ new file mode 100644
 +  }
 +  .b-after {
 +    page-break-after: always;
++    width: 20em;
++    height: 10em;
 +  }
 +  .b-before {
 +    page-break-before: always;
++    width: 20em;
++    height: 10em;
 +  }
 +  </style>
 +</head>
@@ -131,10 +135,76 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-002.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002.html
+@@ -0,0 +1,61 @@
++<!DOCTYPE HTML>
++<html class="reftest-wait">
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: style' causes page-break-* to be ignored on descendants.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
++  <link rel="match" href="contain-style-break-001-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    contain: style;
++    width: 20em;
++    height: 10em;
++    background: orange;
++    border: 1em solid black;
++    margin: 1em;
++  }
++  .b-after {
++    page-break-after: always;
++    width: 20em;
++    height: 10em;
++  }
++  .b-before {
++    page-break-before: always;
++    width: 20em;
++    height: 10em;
++  }
++  </style>
++  <script id="b-before-template" type="template">
++    <div>
++      <div class="b-before"> </div>
++    </div>
++  </script>
++  <script>
++    function doTest() {
++      var containers = document.getElementsByClassName('container');
++      var toInsert = document.getElementById('b-before-template').textContent;
++      for (var idx in containers) {
++        var container = containers[idx];
++        containers.innerHTML = toInsert;
++      }
++      document.documentElement.classList.remove("reftest-wait");
++    }
++  </script>
++</head>
++<body class="reftest-paint" onload="doTest()">
++  <div class="container"> </div>
++  <div class="container"> </div>
++  <div class="container"> </div>
++  <div class="container"> </div>
++  <div class="container"> </div>
++  <div class="container"> </div>
++  <div class="container"> </div>
++  <div class="container"> </div>
++  <div class="container"> </div>
++  <div class="container"> </div>
++</body>
++</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -2,8 +2,9 @@ default-preferences pref(layout.css.cont
+@@ -2,16 +2,18 @@ default-preferences pref(layout.css.cont
  
  == contain-paint-clip-001.html contain-paint-clip-001-ref.html
  == contain-paint-clip-002.html contain-paint-clip-002-ref.html
@@ -144,3 +214,12 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/ref
  == contain-paint-formatting-context-margin-001.html contain-paint-formatting-context-margin-001-ref.html
  == contain-style-quote-001.html contain-style-quote-001-ref.html
 +== contain-style-break-001.html contain-style-break-001-ref.html
++== contain-style-break-002.html contain-style-break-001-ref.html
+ == contain-style-counter-increment-001.html contain-style-counter-increment-001-ref.html
+ == contain-style-counter-insert-001.html contain-style-counter-insert-001-ref.html
+ == contain-style-counter-scope-001.html contain-style-counter-scope-001-ref.html
+ == contain-style-counter-scope-002.html contain-style-counter-scope-001-ref.html
+ == contain-style-counter-scope-003.html contain-style-counter-scope-001-ref.html
+ == contain-style-counter-scope-004.html contain-style-counter-scope-001-ref.html
+ == contain-style-counter-scope-005.html contain-style-counter-scope-001-ref.html
+ == contain-style-counter-scope-006.html contain-style-counter-scope-001-ref.html

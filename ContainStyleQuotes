@@ -1,12 +1,34 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  018615dea91cb0d23160fc74de196316cac851ce
+# Parent  03a4964650f061376a9706b205ee91f3e26e7b9e
 Bug 1172087 - Patch 3: Implement quote behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
 --- a/layout/base/nsCSSFrameConstructor.cpp
 +++ b/layout/base/nsCSSFrameConstructor.cpp
-@@ -1701,16 +1701,19 @@ nsCSSFrameConstructor::CreateGeneratedCo
+@@ -1507,19 +1507,18 @@ nsCSSFrameConstructor::nsCSSFrameConstru
+ }
+ 
+ void
+ nsCSSFrameConstructor::NotifyDestroyingFrame(nsIFrame* aFrame)
+ {
+   NS_PRECONDITION(mUpdateCount != 0,
+                   "Should be in an update while destroying frames");
+ 
+-  if (aFrame->GetStateBits() & NS_FRAME_GENERATED_CONTENT) {
+-    if (mQuoteList.DestroyNodesFor(aFrame))
+-      QuotesDirty();
++  if (mQuoteList.DestroyNodesFor(aFrame)) {
++    QuotesDirty();
+   }
+ 
+   if (mCounterManager.DestroyNodesFor(aFrame)) {
+     // Technically we don't need to update anything if we destroyed only
+     // USE nodes.  However, this is unlikely to happen in the real world
+     // since USE nodes generally go along with INCREMENT nodes.
+     CountersDirty();
+   }
+@@ -1701,16 +1700,19 @@ nsCSSFrameConstructor::CreateGeneratedCo
        }
  
        break;
@@ -26,7 +48,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  /*
   * aParentFrame - the frame that should be the parent of the generated
   *   content.  This is the frame for the corresponding content node,
-@@ -10337,16 +10340,24 @@ nsCSSFrameConstructor::ProcessChildren(n
+@@ -10337,16 +10339,24 @@ nsCSSFrameConstructor::ProcessChildren(n
    if (mCurrentDepth != UINT16_MAX) {
      ++mCurrentDepth;
    }
