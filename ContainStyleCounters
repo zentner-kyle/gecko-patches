@@ -1,48 +1,12 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  91a9c30dbcb9ee101cdfd1117c439860c7cf5ae5
+# Parent  857688a3d02b3e05f6f92a6d06355088e86f39ee
 Bug 1172087 - Patch 1: Implement counter behavior for "contain: style"
-* * *
-Bug 1172087 - Patch 2: Test counter behavior for "contain: style"
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
 --- a/layout/base/nsCSSFrameConstructor.cpp
 +++ b/layout/base/nsCSSFrameConstructor.cpp
-@@ -1635,26 +1635,32 @@ nsCSSFrameConstructor::CreateGeneratedCo
- 
-   case eStyleContentType_Counter:
-   case eStyleContentType_Counters:
-     {
-       nsCSSValue::Array* counters = data.mContent.mCounters;
-       nsCounterList* counterList = mCounterManager.CounterListFor(
-           nsDependentString(counters->Item(0).GetStringBufferValue()));
- 
-+      mCounterManager.Dump();
-       nsCounterUseNode* node =
-         new nsCounterUseNode(mPresShell->GetPresContext(),
-                              counters, aContentIndex,
-                              type == eStyleContentType_Counters);
- 
-       nsGenConInitializer* initializer =
-         new nsGenConInitializer(node, counterList,
-                                 &nsCSSFrameConstructor::CountersDirty);
--      return CreateGenConTextNode(aState, EmptyString(), &node->mText,
-+      auto res = CreateGenConTextNode(aState, EmptyString(), &node->mText,
-                                   initializer);
-+      printf("CONTAIN: USE node added.\n");
-+      mCounterManager.Dump();
-+      printf("CONTAIN: USE node added.\n");
-+      printf("CONTAIN: USE node added.\n");
-+      return res;
-     }
- 
-   case eStyleContentType_Image:
-     NS_NOTREACHED("handled by if above");
-     return nullptr;
- 
-   case eStyleContentType_OpenQuote:
-   case eStyleContentType_CloseQuote:
-@@ -4763,16 +4769,18 @@ nsCSSFrameConstructor::InitAndRestoreFra
+@@ -4763,16 +4763,18 @@ nsCSSFrameConstructor::InitAndRestoreFra
    aNewFrame->Init(aContent, aParentFrame, nullptr);
    aNewFrame->AddStateBits(aState.mAdditionalStateBits);
  
@@ -91,7 +55,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  nsCounterUseNode::GetText(nsString& aResult)
  {
      aResult.Truncate();
-@@ -135,51 +139,89 @@ nsCounterList::SetScope(nsCounterNode *a
+@@ -135,51 +139,91 @@ nsCounterList::SetScope(nsCounterNode *a
      // appropriate.
  
      if (aNode == First()) {
@@ -104,8 +68,8 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 -    // since scope includes siblings, so we want a descendant check on
 -    // parents.
 +    // Get the content node for |aNode|'s rendering object's *parent*.
-+    // Since reset-counter scopes include siblings, can perform a descendant
-+    // check on parents.
++    // Since reset-counter scopes include siblings, we can perform a descendant
++    // check on parents to test for a valid scoping.
      nsIContent *nodeContent = aNode->mPseudoFrame->GetContent()->GetParent();
  
 -    for (nsCounterNode *prev = Prev(aNode), *start;
@@ -118,30 +82,30 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 -        // scope, so the next thing in prev's scope shares its scope
 -        // start.
 -        start = (prev->mType == nsCounterNode::RESET || !prev->mScopeStart)
--                  ? prev : prev->mScopeStart;
-+        // If |prev| starts a scope, we want it as the scope start rather than
++
++        // If |prev| starts a scope , we want it as the scope start rather than
 +        // the start of its enclosing scope.  Otherwise, there's no enclosing
-+        // scope, so we can exit early.
++        // scope, so the next thing in prev's scope shares its scope start.
 +        start = (prev->mType == nsCounterNode::RESET ||
-+                 prev->mType == nsCounterNode::ROOT)
-+                 ? prev : prev->mScopeStart;
-+        if (!start) {
-+            aNode->mScopeStart = nullptr;
-+            aNode->mScopePrev = prev;
-+            return;
-+        }
++                 prev->mType == nsCounterNode::ROOT  ||
++                 !prev->mScopeStart)
+                   ? prev : prev->mScopeStart;
  
++
          // |startContent| is analogous to |nodeContent| (see above).
          nsIContent *startContent = start->mPseudoFrame->GetContent()->GetParent();
          NS_ASSERTION(nodeContent || !startContent,
                       "null check on startContent should be sufficient to "
-                      "null check nodeContent as well, since if nodeContent "
+-                     "null check nodeContent as well, since if nodeContent "
 -                     "is for the root, startContent (which is before it) "
 -                     "must be too");
-+                     "advanced above the document root, startContent (which "
++                     "null check nodeContent as well, since if |aNode| "
++                     "advanced above the document root, |start| (which "
 +                     "is before it) must have too");
  
--             // A reset's outer scope can't be a scope created by a sibling.
++        if (aNode->mType == nsCounterNode::RESET &&
++            nodeContent == startContent) {
+              // A reset's outer scope can't be a scope created by a sibling.
 -        if (!(aNode->mType == nsCounterNode::RESET &&
 -              nodeContent == startContent) &&
 -              // everything is inside the root (except the case above,
@@ -152,6 +116,9 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 -            aNode->mScopeStart = start;
 -            aNode->mScopePrev  = prev;
 -            return;
++            continue;
+         }
++
 +        bool isRootScoped = false;
 +
 +        // If |start| is a ROOT node, or a RESET on a frame that also has a ROOT
@@ -163,7 +130,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +             start->mPseudoFrame == Prev(start)->mPseudoFrame)) {
 +            // |start| is either a ROOT or a RESET for a frame which has a ROOT.
 +            isRootScoped = true;
-         }
++        }
 +
 +        if (isRootScoped) {
 +            // In order for |start| to begin scope in this case, |aNode| must have
@@ -178,8 +145,6 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +                continue;
 +            }
 +        } else {
-+            NS_ASSERTION(start->mType == nsCounterNode::RESET,
-+                        "Only RESET nodes should have reset scoping");
 +            // Check that |aNode|'s frame's parent is a descendant of |start|'s
 +            // frame's parent.
 +            // This implies that |aNode|'s frame is itself a sibling of |start|'s
@@ -205,7 +170,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  
  void
  nsCounterList::RecalcAll()
-@@ -205,16 +247,17 @@ nsCounterList::RecalcAll()
+@@ -205,16 +249,17 @@ nsCounterList::RecalcAll()
                  useNode->mText->SetData(text);
              }
          }
@@ -223,7 +188,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  {
      const nsStyleContent *styleContent = aFrame->StyleContent();
      if (!styleContent->CounterIncrementCount() &&
-@@ -257,24 +300,56 @@ nsCounterManager::AddResetOrIncrement(ns
+@@ -257,24 +302,56 @@ nsCounterManager::AddResetOrIncrement(ns
      // Don't call Calc() if the list is already dirty -- it'll be recalculated
      // anyway, and trying to calculate with a dirty list doesn't work.
      if (MOZ_LIKELY(!counterList->IsDirty())) {
@@ -281,7 +246,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  static PLDHashOperator
  RecalcDirtyLists(const nsAString& aKey, nsCounterList* aList, void* aClosure)
  {
-@@ -323,62 +398,74 @@ struct DestroyNodesData {
+@@ -323,62 +400,74 @@ struct DestroyNodesData {
          , mDestroyedAny(false)
      {
      }
