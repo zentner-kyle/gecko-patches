@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  b37c2795cb11472a5bc66f2025cbb2c43cf6e194
+# Parent  d0ff0d7c5efd56b6e4dc279d5a30c8c82e47298c
 
 diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 --- a/layout/generic/nsBlockFrame.cpp
@@ -29,8 +29,7 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 --- a/layout/style/nsRuleNode.cpp
 +++ b/layout/style/nsRuleNode.cpp
-@@ -5707,17 +5707,17 @@ nsRuleNode::ComputeDisplayData(void* aSt
-       EnsureBlockDisplay(display->mDisplay);
+@@ -5721,17 +5721,17 @@ nsRuleNode::ComputeDisplayData(void* aSt
  
        // Note that it's OK to cache this struct in the ruletree
        // because it's fine as-is for any style context that points to
@@ -38,6 +37,7 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
        // more specific rule sets "float: none") will use
        // mOriginalDisplay, which we have carefully not changed.
      }
+ 
 -    if (display->IsContainPaint()) {
 +    if (display->IsContainPaint() || display->IsContainLayout()) {
        // This is supposed to cause contain: paint and contain: layout elements
@@ -51,13 +51,13 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -2245,16 +2245,20 @@ struct nsStyleDisplay {
+@@ -2244,16 +2244,20 @@ struct nsStyleDisplay {
+ 
    bool IsScrollableOverflow() const {
      // mOverflowX and mOverflowY always match when one of them is
      // NS_STYLE_OVERFLOW_VISIBLE or NS_STYLE_OVERFLOW_CLIP.
      return mOverflowX != NS_STYLE_OVERFLOW_VISIBLE &&
-            mOverflowX != NS_STYLE_OVERFLOW_CLIP &&
-            !IsContainPaint();
+            mOverflowX != NS_STYLE_OVERFLOW_CLIP;
    }
  
 +  bool IsContainLayout() const {

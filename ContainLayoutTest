@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  ed7a3461afd755bf3a08bb13493ededdef2c2eb7
+# Parent  d65e065ca28f60097727169f5eb60dd42903c70f
 Bug 1178895 - Patch 2: Test CSS 'contain: layout'.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001-ref.html
@@ -155,24 +155,40 @@ new file mode 100644
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -5,8 +5,10 @@ default-preferences pref(layout.css.cont
- == contain-paint-containing-block-absolute-001.html contain-paint-containing-block-absolute-001-ref.html
- == contain-paint-containing-block-fixed-001.html contain-paint-containing-block-fixed-001-ref.html
- == contain-paint-formatting-context-float-001.html contain-paint-formatting-context-float-001-ref.html
- == contain-paint-formatting-context-margin-001.html contain-paint-formatting-context-margin-001-ref.html
- == contain-style-counter-increment-001.html contain-style-counter-increment-001-ref.html
- == contain-style-counter-insert-001.html contain-style-counter-insert-001-ref.html
- == contain-style-quote-001.html contain-style-quote-001-ref.html
- == contain-style-break-001.html contain-style-break-001-ref.html
+@@ -15,8 +15,10 @@ default-preferences pref(layout.css.cont
+ == contain-style-counter-scope-002.html contain-style-counter-scope-001-ref.html
+ == contain-style-counter-scope-003.html contain-style-counter-scope-001-ref.html
+ == contain-style-counter-scope-004.html contain-style-counter-scope-001-ref.html
+ == contain-style-counter-scope-005.html contain-style-counter-scope-001-ref.html
+ == contain-style-counter-scope-006.html contain-style-counter-scope-001-ref.html
+ == contain-style-counter-scope-007.html contain-style-counter-scope-001-ref.html
+ == contain-style-counter-scope-008.html contain-style-counter-scope-001-ref.html
+ == contain-style-counter-scope-009.html contain-style-counter-scope-001-ref.html
 +== contain-layout-zero-001.html contain-layout-zero-001-ref.html
 +== contain-layout-inline-zero-001.html contain-layout-inline-zero-001-ref.html
+diff --git a/layout/style/test/mochitest.ini b/layout/style/test/mochitest.ini
+--- a/layout/style/test/mochitest.ini
++++ b/layout/style/test/mochitest.ini
+@@ -274,8 +274,9 @@ support-files = bug732209-css.sjs
+ [test_counter_descriptor_storage.html]
+ [test_position_float_display.html]
+ [test_animations_async_tests.html]
+ support-files = ../../reftests/fonts/Ahem.ttf file_animations_async_tests.html
+ [test_setPropertyWithNull.html]
+ [test_attribute_selector_eof_behavior.html]
+ [test_css_loader_crossorigin_data_url.html]
+ [test_box_size_keywords.html]
++[test_contain_layout_empty.html]
 diff --git a/layout/style/test/test_contain_layout_empty.html b/layout/style/test/test_contain_layout_empty.html
 new file mode 100644
 --- /dev/null
 +++ b/layout/style/test/test_contain_layout_empty.html
-@@ -0,0 +1,99 @@
+@@ -0,0 +1,107 @@
 +<!DOCTYPE HTML>
-+<html class="reftest-wait">
++<html>
++<!--
++https://bugzilla.mozilla.org/show_bug.cgi?id=1178895
++-->
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on various elements causes them to act as
@@ -187,11 +203,12 @@ new file mode 100644
 +    contain: layout;
 +    background: green;
 +    margin: 15px;
++    overflow: visible;
 +  }
 +  .fake-container {
 +    background: green;
 +    margin: 15px;
-+    contain: paint;
++    contain: layout;
 +  }
 +  .contained {
 +    width: 10px;
@@ -229,6 +246,10 @@ new file mode 100644
 +      }
 +      var outerDisplay = displays[outerIdx];
 +      var innerDisplay = displays[innerIdx];
++      testPair(outerDisplay, innerDisplay);
++      return true;
++    }
++    function testPair(outerDisplay, innerDisplay) {
 +      var outerElem = document.createElement("div");
 +      var innerElem = document.createElement("div");
 +      outerElem.style.display = outerDisplay;
@@ -257,10 +278,10 @@ new file mode 100644
 +      outerDisplay + " / " + innerDisplay + " contain: layout", "faked contain:layout");
 +      outerElem.parentNode.removeChild(outerElem);
 +      innerElem.parentNode.removeChild(innerElem);
-+      return true;
 +    }
 +    function doTest() {
-+      while (tick()) { }
++      //while (tick()) { }
++      testPair('block', 'inline');
 +      SimpleTest.executeSoon(SimpleTest.finish);
 +    }
 +  </script>

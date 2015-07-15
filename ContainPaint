@@ -162,3 +162,43 @@ diff --git a/layout/style/test/property_database.js b/layout/style/test/property
        "inline-block",
        "table",
        "inline-table",
+@@ -3117,36 +3117,36 @@ var gCSSProperties = {
+       "calc(3*25px + 5em)",
+     ],
+     invalid_values: [ "5%", "5" ]
+   },
+   "overflow": {
+     domProp: "overflow",
+     inherited: false,
+     type: CSS_TYPE_SHORTHAND_AND_LONGHAND,
+-    prerequisites: { "display": "block" },
++    prerequisites: { "display": "block", "contain": "none" },
+     subproperties: [ "overflow-x", "overflow-y" ],
+     initial_values: [ "visible" ],
+     other_values: [ "auto", "scroll", "hidden", "-moz-hidden-unscrollable", "-moz-scrollbars-none" ],
+     invalid_values: []
+   },
+   "overflow-x": {
+     domProp: "overflowX",
+     inherited: false,
+     type: CSS_TYPE_LONGHAND,
+-    prerequisites: { "display": "block", "overflow-y": "visible" },
++    prerequisites: { "display": "block", "overflow-y": "visible", "contain": "none" },
+     initial_values: [ "visible" ],
+     other_values: [ "auto", "scroll", "hidden", "-moz-hidden-unscrollable" ],
+     invalid_values: []
+   },
+   "overflow-y": {
+     domProp: "overflowY",
+     inherited: false,
+     type: CSS_TYPE_LONGHAND,
+-    prerequisites: { "display": "block", "overflow-x": "visible" },
++    prerequisites: { "display": "block", "overflow-x": "visible", "contain": "none" },
+     initial_values: [ "visible" ],
+     other_values: [ "auto", "scroll", "hidden", "-moz-hidden-unscrollable" ],
+     invalid_values: []
+   },
+   "padding": {
+     domProp: "padding",
+     inherited: false,
+     type: CSS_TYPE_TRUE_SHORTHAND,
