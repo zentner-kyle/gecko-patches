@@ -1,0 +1,28 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  d0ff0d7c5efd56b6e4dc279d5a30c8c82e47298c
+Bug 1178895 - Patch 2: Implement 'contain: layout' for nsBlockFrame.
+diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
+--- a/layout/generic/nsBlockFrame.cpp
++++ b/layout/generic/nsBlockFrame.cpp
+@@ -1495,16 +1495,20 @@ nsBlockFrame::ComputeFinalSize(const nsH
+       aState.mPrevBEndMargin.Zero();
+     }
+     aMetrics.mCarriedOutBEndMargin = aState.mPrevBEndMargin;
+   } else {
+     aMetrics.mCarriedOutBEndMargin.Zero();
+   }
+ 
+   nscoord blockEndEdgeOfChildren = aState.mBCoord + nonCarriedOutBDirMargin;
++  if (NS_UNCONSTRAINEDSIZE == aReflowState.ComputedBSize() &&
++      StyleDisplay()->IsContainLayout()) {
++    blockEndEdgeOfChildren = 0;
++  }
+   // Shrink wrap our height around our contents.
+   if (aState.GetFlag(BRS_ISBENDMARGINROOT) ||
+       NS_UNCONSTRAINEDSIZE != aReflowState.ComputedBSize()) {
+     // When we are a block-end-margin root make sure that our last
+     // childs block-end margin is fully applied. We also do this when
+     // we have a computed height, since in that case the carried out
+     // margin is not going to be applied anywhere, so we should note it
+     // here to be included in the overflow area.
