@@ -33,7 +33,7 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 --- a/layout/style/nsRuleNode.cpp
 +++ b/layout/style/nsRuleNode.cpp
-@@ -5540,16 +5540,29 @@ nsRuleNode::ComputeDisplayData(void* aSt
+@@ -5540,16 +5540,31 @@ nsRuleNode::ComputeDisplayData(void* aSt
  
    // overflow-y: enum, inherit, initial
    SetDiscrete(*aRuleData->ValueForOverflowY(),
@@ -44,13 +44,15 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
  
 +  // When 'contain: paint', update overflow from 'visible' to 'clip'
 +  if (display->IsContainPaint()) {
-+    if (display->mOverflowX == NS_STYLE_OVERFLOW_VISIBLE ||
-+        display->mOverflowY == NS_STYLE_OVERFLOW_VISIBLE) {
-+      // XXX This actually sets overflow to -moz-hidden-unscrollable.
-+      display->mOverflowX = NS_STYLE_OVERFLOW_CLIP;
-+      display->mOverflowY = NS_STYLE_OVERFLOW_CLIP;
++    // XXX This actually sets overflow to -moz-hidden-unscrollable.
++    if (display->mOverflowX == NS_STYLE_OVERFLOW_VISIBLE) {
 +      // This uncacheability (and the one below) could be fixed by adding
 +      // mOriginalOverflowX and mOriginalOverflowY fields, if necessary.
++      display->mOverflowX = NS_STYLE_OVERFLOW_CLIP;
++      conditions.SetUncacheable();
++    }
++    if (display->mOverflowY == NS_STYLE_OVERFLOW_VISIBLE) {
++      display->mOverflowY = NS_STYLE_OVERFLOW_CLIP;
 +      conditions.SetUncacheable();
 +    }
 +  }
@@ -63,7 +65,7 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
         display->mOverflowX == NS_STYLE_OVERFLOW_CLIP ||
         display->mOverflowY == NS_STYLE_OVERFLOW_VISIBLE ||
         display->mOverflowY == NS_STYLE_OVERFLOW_CLIP)) {
-@@ -5708,16 +5721,25 @@ nsRuleNode::ComputeDisplayData(void* aSt
+@@ -5708,16 +5723,34 @@ nsRuleNode::ComputeDisplayData(void* aSt
  
        // Note that it's OK to cache this struct in the ruletree
        // because it's fine as-is for any style context that points to
@@ -75,11 +77,20 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 +    if (display->IsContainPaint()) {
 +      // This is supposed to cause contain: paint and contain: layout elements
 +      // to become formatting contexts. However, exactly how the element is
-+      // supposed to become a formatting context has not been specified.  Most
-+      // likely, the intended behavior is similar to EnsureBlockDisplay,
-+      // except with 'inline' converts to 'inline block' instead of 'block'.
++      // supposed to become a formatting context has not been specified.
++      // This behavior should be mostly correct, but ruby and table related
++      // elements may need to be changed.
 +      // XXX This behavior is probably wrong in some cases; see bug 1179349.
-+      EnsureBlockDisplay(display->mDisplay);
++      // It's okay to cache this change in the rule tree for the same
++      // reasons as floats in the previous condition.
++      switch (display->mDisplay) {
++        case NS_STYLE_DISPLAY_INLINE:
++          display->mDisplay = NS_STYLE_DISPLAY_INLINE_BLOCK;
++          break;
++        case NS_STYLE_DISPLAY_LIST_ITEM:
++          display->mDisplay = NS_STYLE_DISPLAY_BLOCK;
++          break;
++      }
 +    }
    }
  
@@ -128,10 +139,10 @@ diff --git a/layout/style/nsStyleStructInlines.h b/layout/style/nsStyleStructInl
 -  return (HasTransform(aContextFrame) || HasPerspectiveStyle() ||
 -          !aContextFrame->StyleSVGReset()->mFilters.IsEmpty()) &&
 -      !aContextFrame->IsSVGText();
-+  return IsContainPaint() ||
-+    ((HasTransform(aContextFrame) || HasPerspectiveStyle() ||
++  return (IsContainPaint() || HasTransform(aContextFrame) ||
++      HasPerspectiveStyle() ||
 +      !aContextFrame->StyleSVGReset()->mFilters.IsEmpty()) &&
-+     !aContextFrame->IsSVGText());
++    !aContextFrame->IsSVGText();
  }
  
  bool

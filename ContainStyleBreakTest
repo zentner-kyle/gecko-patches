@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  9e9becc18d502aab0c22251320178005df951fd9
+# Parent  5b7ec9b5d921e696a6e8207278739574789088b6
 Bug 1172087 - Patch 6: Test page break behavior for "contain: style"
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-001-ref.html
@@ -139,12 +139,13 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-002.h
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002.html
-@@ -0,0 +1,61 @@
+@@ -0,0 +1,62 @@
 +<!DOCTYPE HTML>
 +<html class="reftest-wait">
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: style' causes page-break-* to be ignored on descendants.</title>
++  <title>CSS Test: 'contain: style' causes page-break-* to be ignored on
++    dynamically inserted descendants.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-break-001-ref.html">

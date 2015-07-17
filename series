@@ -6,8 +6,10 @@ ContainStyleQuotes
 ContainStyleQuotesTest
 ContainStyleBreak
 ContainStyleBreakTest
-ContainLayoutAttempt2
+ContainLayoutBase
+ContainLayoutBlock
 ContainLayoutTest
+ContainLayoutTable
 ContainLayoutFixups
 try-linux-minimal
 try-all
@@ -34,3 +36,4 @@ try2
 GridParen2Brace
 ParseContain
 ContainStyleCountersTestOld
+ContainLayoutAttempt2

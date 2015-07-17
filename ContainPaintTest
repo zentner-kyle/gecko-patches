@@ -1,13 +1,13 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  3ea5f350e846417aebc356001c66a0d88927ba94
+# Parent  5e331e84ec15f6d0f10752d44321e7452bcaf396
 Bug 1170781 - Patch 2: Test CSS 'contain: paint'.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-001-ref.html
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-001-ref.html
-@@ -0,0 +1,23 @@
+@@ -0,0 +1,22 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -27,8 +27,7 @@ new file mode 100644
 +  </style>
 +</head>
 +<body>
-+  <div id="a">
-+  </div>
++  <div id="a"></div>
 +</body>
 +</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-001.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-001.html
@@ -97,12 +96,12 @@ new file mode 100644
 +<body>
 +  <div class="root">
 +    <div class="a">
-+      <div class="b"> </div>
++      <div class="b"></div>
 +      <!--These two absolutely positioned elements are checking that all sides are-->
 +      <!--clipped.  They also test that clipping is done correctly on absolutely-->
 +      <!--positioned elements.-->
-+      <div class="background"> </div>
-+      <div class="foreground"> </div>
++      <div class="background"></div>
++      <div class="foreground"></div>
 +    </div>
 +  </div>
 +</body>
@@ -111,7 +110,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-002-re
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-002-ref.html
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,33 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -123,18 +122,25 @@ new file mode 100644
 +    margin: 0;
 +  }
 +  .root {
++    overflow: hidden;
 +    width: 100px;
 +    height: 100px;
 +    background: green;
 +    margin: 25px;
 +    padding: 25px;
-+    overflow: hidden;
 +  }
 +  </style>
 +</head>
 +<body>
 +  <div class="root">
-+    This text should be clipped to the box. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris massa. Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Curabitur sodales ligula in libero. 
++    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA This text should
++    be clipped to the box. Lorem ipsum dolor sit amet, consectetur adipiscing
++    elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed
++    nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum.
++    Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris massa.
++    Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora
++    torquent per conubia nostra, per inceptos himenaeos. Curabitur sodales
++    ligula in libero.
 +  </div>
 +</body>
 +</html>
@@ -142,12 +148,12 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-002.ht
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-002.html
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,35 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: paint' with various overflowing block descendants.</title>
++  <title>CSS Test: 'contain: paint' with overflowing text contents.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-paint">
 +  <link rel="match" href="contain-paint-clip-002-ref.html">
@@ -167,7 +173,174 @@ new file mode 100644
 +</head>
 +<body>
 +  <div class="root">
-+    This text should be clipped to the box. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris massa. Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Curabitur sodales ligula in libero. 
++    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA This text should
++    be clipped to the box. Lorem ipsum dolor sit amet, consectetur adipiscing
++    elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed
++    nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum.
++    Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris massa.
++    Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora
++    torquent per conubia nostra, per inceptos himenaeos. Curabitur sodales
++    ligula in libero.
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-003-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-003-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-003-ref.html
+@@ -0,0 +1,34 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  .root {
++    overflow-x: hidden;
++    overflow-y: scroll;
++    width: 100px;
++    height: 100px;
++    background: green;
++    margin: 25px;
++    padding: 25px;
++  }
++  </style>
++</head>
++<body>
++  <div class="root">
++    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA This text should
++    be clipped to the box. Lorem ipsum dolor sit amet, consectetur adipiscing
++    elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed
++    nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum.
++    Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris massa.
++    Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora
++    torquent per conubia nostra, per inceptos himenaeos. Curabitur sodales
++    ligula in libero.
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-003.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-003.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-003.html
+@@ -0,0 +1,36 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: paint' with overflowing text contents, and 'overflow-y: scroll'.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-paint">
++  <link rel="match" href="contain-paint-clip-003-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .root {
++    contain: paint;
++    overflow-y: scroll;
++    width: 100px;
++    height: 100px;
++    background: green;
++    margin: 25px;
++    padding: 25px;
++  }
++  </style>
++</head>
++<body>
++  <div class="root">
++    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA This text should
++    be clipped to the box. Lorem ipsum dolor sit amet, consectetur adipiscing
++    elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed
++    nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum.
++    Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris massa.
++    Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora
++    torquent per conubia nostra, per inceptos himenaeos. Curabitur sodales
++    ligula in libero.
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-004-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-004-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-004-ref.html
+@@ -0,0 +1,34 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  .root {
++    overflow-y: hidden;
++    overflow-x: scroll;
++    width: 100px;
++    height: 100px;
++    background: green;
++    margin: 25px;
++    padding: 25px;
++  }
++  </style>
++</head>
++<body>
++  <div class="root">
++    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA This text should
++    be clipped to the box. Lorem ipsum dolor sit amet, consectetur adipiscing
++    elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed
++    nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum.
++    Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris massa.
++    Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora
++    torquent per conubia nostra, per inceptos himenaeos. Curabitur sodales
++    ligula in libero.
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-004.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-004.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-004.html
+@@ -0,0 +1,36 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: paint' with overflowing text contents, and 'overflow-x: scroll'.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-paint">
++  <link rel="match" href="contain-paint-clip-004-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .root {
++    contain: paint;
++    overflow-x: scroll;
++    width: 100px;
++    height: 100px;
++    background: green;
++    margin: 25px;
++    padding: 25px;
++  }
++  </style>
++</head>
++<body>
++  <div class="root">
++    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA This text should
++    be clipped to the box. Lorem ipsum dolor sit amet, consectetur adipiscing
++    elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed
++    nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum.
++    Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris massa.
++    Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora
++    torquent per conubia nostra, per inceptos himenaeos. Curabitur sodales
++    ligula in libero.
 +  </div>
 +</body>
 +</html>
@@ -175,7 +348,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-containing-
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-containing-block-absolute-001-ref.html
-@@ -0,0 +1,23 @@
+@@ -0,0 +1,22 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -195,15 +368,14 @@ new file mode 100644
 +  </style>
 +</head>
 +<body>
-+  <div id="a">
-+  </div>
++  <div id="a"></div>
 +</body>
 +</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-containing-block-absolute-001.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-containing-block-absolute-001.html
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-containing-block-absolute-001.html
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,37 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -225,19 +397,18 @@ new file mode 100644
 +  }
 +  #b {
 +      position: absolute;
++      top: 0;
++      left: 0;
 +      width: 100px;
 +      height: 100px;
 +      background: green;
-+      top: 0;
-+      left: 0;
 +  }
 +  </style>
 +</head>
 +<body>
 +  <div id="a">
 +    <div>
-+      <div id="b">
-+      </div>
++      <div id="b"></div>
 +    </div>
 +  </div>
 +</body>
@@ -246,7 +417,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-containing-
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-containing-block-fixed-001-ref.html
-@@ -0,0 +1,23 @@
+@@ -0,0 +1,22 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -266,15 +437,14 @@ new file mode 100644
 +  </style>
 +</head>
 +<body>
-+  <div id="a">
-+  </div>
++  <div id="a"></div>
 +</body>
 +</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-containing-block-fixed-001.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-containing-block-fixed-001.html
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-containing-block-fixed-001.html
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,37 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -307,8 +477,7 @@ new file mode 100644
 +<body>
 +  <div id="a">
 +    <div>
-+      <div id="b">
-+      </div>
++      <div id="b"></div>
 +    </div>
 +  </div>
 +</body>
@@ -317,7 +486,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-formatting-
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-formatting-context-float-001-ref.html
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,29 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -343,16 +512,15 @@ new file mode 100644
 +  </style>
 +</head>
 +<body>
-+  <div id="left"> </div>
-+  <div id="a">
-+  </div>
++  <div id="left"></div>
++  <div id="a"></div>
 +</body>
 +</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-formatting-context-float-001.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-formatting-context-float-001.html
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-formatting-context-float-001.html
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,40 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -387,10 +555,9 @@ new file mode 100644
 +  </style>
 +</head>
 +<body>
-+  <div id="left"> </div>
++  <div id="left"></div>
 +  <div id="a">
-+    <div id="b">
-+    </div>
++    <div id="b"></div>
 +  </div>
 +</body>
 +</html>
@@ -428,7 +595,7 @@ new file mode 100644
 +<body>
 +  <div id="a">
 +    <div id="b-padding"></div>
-+    <div id="b"> </div>
++    <div id="b"></div>
 +  </div>
 +</body>
 +</html>
@@ -471,8 +638,8 @@ new file mode 100644
 +</head>
 +<body>
 +  <div id="a">
-+    <div id="b"> </div>
-+    <div id="c"> </div>
++    <div id="b"></div>
++    <div id="c"></div>
 +  </div>
 +</body>
 +</html>
@@ -480,11 +647,13 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/ref
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -0,0 +1,8 @@
+@@ -0,0 +1,10 @@
 +default-preferences pref(layout.css.contain.enabled,true)
 +
 +== contain-paint-clip-001.html contain-paint-clip-001-ref.html
 +== contain-paint-clip-002.html contain-paint-clip-002-ref.html
++== contain-paint-clip-003.html contain-paint-clip-003-ref.html
++== contain-paint-clip-004.html contain-paint-clip-004-ref.html
 +== contain-paint-containing-block-absolute-001.html contain-paint-containing-block-absolute-001-ref.html
 +== contain-paint-containing-block-fixed-001.html contain-paint-containing-block-fixed-001-ref.html
 +== contain-paint-formatting-context-float-001.html contain-paint-formatting-context-float-001-ref.html
@@ -512,3 +681,95 @@ diff --git a/layout/reftests/w3c-css/submitted/reftest.list b/layout/reftests/w3
  
  # Image Values and Replaced Content Level 3
  include images3/reftest.list
+diff --git a/layout/style/test/mochitest.ini b/layout/style/test/mochitest.ini
+--- a/layout/style/test/mochitest.ini
++++ b/layout/style/test/mochitest.ini
+@@ -274,8 +274,9 @@ support-files = bug732209-css.sjs
+ [test_counter_descriptor_storage.html]
+ [test_position_float_display.html]
+ [test_animations_async_tests.html]
+ support-files = ../../reftests/fonts/Ahem.ttf file_animations_async_tests.html
+ [test_setPropertyWithNull.html]
+ [test_attribute_selector_eof_behavior.html]
+ [test_css_loader_crossorigin_data_url.html]
+ [test_box_size_keywords.html]
++[test_contain_formatting_context.html]
+diff --git a/layout/style/test/test_contain_formatting_context.html b/layout/style/test/test_contain_formatting_context.html
+new file mode 100644
+--- /dev/null
++++ b/layout/style/test/test_contain_formatting_context.html
+@@ -0,0 +1,74 @@
++<!DOCTYPE HTML>
++<html>
++<!--
++https://bugzilla.mozilla.org/show_bug.cgi?id=1179349
++-->
++<head>
++  <meta charset="utf-8">
++  <title>Test that 'contain: paint' updates 'display' correctly</title>
++  <script type="application/javascript" src="/tests/SimpleTest/SimpleTest.js"></script>
++  <script type="text/javascript" src="property_database.js"></script>
++  <link rel="stylesheet" type="text/css" href="/tests/SimpleTest/test.css"/>
++</head>
++<body>
++  <div id="test" style="contain: paint"></div>
++  <script>
++  // This mapping is currently mostly based off of a bugzilla comment by Tab
++  // Atkins Jr. in bug 1179349. Ultimately, it should be based on a
++  // specification.
++  var expectedChanges = {
++    'inline'    : 'inline-block',
++    'list-item' : 'block',
++  };
++  var unknownChange = [
++    'ruby',
++    'ruby-base',
++    'ruby-text',
++    'ruby-base-container',
++    'ruby-text-container',
++    'run-in',
++    'contents'
++  ];
++  var noChange = [
++    'none',
++    'block',
++    'inline-block',
++    'inline-table',
++    'table',
++    'table-caption',
++    'table-cell',
++    'table-column',
++    'table-column-group',
++    'table-footer-group',
++    'table-header-group',
++    'table-row',
++    'table-row-group',
++    'flex',
++    'inline-flex',
++    'grid',
++    'inline-grid',
++    'ruby'
++  ];
++  var displayInfo = gCSSProperties["display"];
++  var test = document.getElementById('test');
++  var displayVals = displayInfo.initial_values.concat(displayInfo.other_values);
++  var deDent = ((s) => s.replace(/ +/g, ' '));
++  for (dispVal of displayVals) {
++    test.style.display = dispVal;
++    if (expectedChanges.hasOwnProperty(dispVal)) {
++      is(getComputedStyle(test).display, expectedChanges[dispVal],
++          `'contain: paint' should change 'display: ${dispVal}' to ` +
++          `'display: ${expectedChanges[dispVal]}'`);
++    } else if (~noChange.indexOf(dispVal)) {
++      is(getComputedStyle(test).display, dispVal,
++          `'contain: paint' should not change 'display: ${dispVal}'`);
++    } else if (~unknownChange.indexOf(dispVal)) {
++      todo(false,
++            `Should 'display: ${dispVal}' change with 'contain: paint'?`);
++    } else {
++      todo(false, `'display: ${dispVal}' is not known to this test.`);
++    }
++  }
++  </script>
++</body>
++</html>

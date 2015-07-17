@@ -183,7 +183,7 @@ diff --git a/layout/style/test/test_contain_layout_empty.html b/layout/style/tes
 new file mode 100644
 --- /dev/null
 +++ b/layout/style/test/test_contain_layout_empty.html
-@@ -0,0 +1,107 @@
+@@ -0,0 +1,110 @@
 +<!DOCTYPE HTML>
 +<html>
 +<!--
@@ -211,11 +211,6 @@ new file mode 100644
 +    contain: layout;
 +  }
 +  .contained {
-+    width: 10px;
-+    height: 10px;
-+    background: blue;
-+  }
-+  .fake-contained {
 +    width: 10px;
 +    height: 10px;
 +    background: blue;
@@ -251,28 +246,36 @@ new file mode 100644
 +    }
 +    function testPair(outerDisplay, innerDisplay) {
 +      var outerElem = document.createElement("div");
-+      var innerElem = document.createElement("div");
 +      outerElem.style.display = outerDisplay;
-+      innerElem.style.display = innerDisplay;
 +      outerElem.classList.add("container");
++
++      // Insert the container
++      var holder = document.getElementById("holder");
++      holder.appendChild(outerElem);
++
++      // Get the original computed style of the ontainer
++      var containerStyle = getComputedStyle(outerElem);
++
++      // Add inner elem.
++      var innerElem = document.createElement("div");
++      innerElem.style.display = innerDisplay;
 +      innerElem.classList.add("contained");
 +      innerElem.textContent = "Lorem ipsum dolor sit amet";
 +      outerElem.appendChild(innerElem);
-+      var holder = document.getElementById("holder");
-+      holder.appendChild(outerElem);
++
 +      var realSnapshot = SpecialPowers.snapshotWindow(window);
++
++      // Switch to fake container class
 +      outerElem.classList.remove("container");
-+      innerElem.classList.remove("contained");
 +      outerElem.classList.add("fake-container");
-+      innerElem.classList.add("fake-contained");
-+      outerElem.removeChild(innerElem);
-+      outerElem.appendChild(point);
-+      var rect = point.getBoundingClientRect();
-+      outerElem.removeChild(point);
-+      innerElem.style.position = "absolute";
-+      innerElem.style.left = rect.x;
-+      innerElem.style.top = rect.y;
-+      holder.appendChild(innerElem);
++
++      for (var prop in containerStyle) {
++        if (prop !== 'contain') {
++          outerElem.style[prop] = containerStyle[prop];
++          console.log('setting ' + prop + ' to ' + containerStyle[prop]);
++        }
++      }
++
 +      var fakeSnapshot = SpecialPowers.snapshotWindow(window);
 +      assertSnapshots(realSnapshot, fakeSnapshot, true, null,
 +      outerDisplay + " / " + innerDisplay + " contain: layout", "faked contain:layout");
@@ -280,7 +283,7 @@ new file mode 100644
 +      innerElem.parentNode.removeChild(innerElem);
 +    }
 +    function doTest() {
-+      //while (tick()) { }
++      while (tick()) { }
 +      testPair('block', 'inline');
 +      SimpleTest.executeSoon(SimpleTest.finish);
 +    }

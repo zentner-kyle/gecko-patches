@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  1d2536cc61f9320d666bf62fa2029c5c19c62f50
+# Parent  b6b40142e0ec492eb60afcfd818845a5641ad5f0
 Bug 1172087 - Patch 2: Test counter behavior for "contain: style"
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html
@@ -476,7 +476,7 @@ new file mode 100644
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: style' "scopes" counters, "setting" them to 0 and back.</title>
++  <title>CSS Test: 'contain: style' "scopes" counters, scope should extend throughout container</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">
@@ -514,7 +514,7 @@ new file mode 100644
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: style' below body, after increment</title>
++  <title>CSS Test: 'contain: style' is processed before 'counter-increment'</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">
@@ -617,12 +617,13 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-sco
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-007.html
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,51 @@
 +<!DOCTYPE HTML>
 +<html class="reftest-wait">
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: style' counter-reset scope above container</title>
++  <title>CSS Test: 'contain: style' dynamically inserted counter-reset scope
++    above container</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">
@@ -672,12 +673,13 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-sco
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-008.html
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,45 @@
 +<!DOCTYPE HTML>
 +<html class="reftest-wait">
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: style' counter-reset scope above container</title>
++  <title>CSS Test: 'contain: style' "scopes" dynamically inserted counter
++    without reset</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">
@@ -721,12 +723,13 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-counter-sco
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-style-counter-scope-009.html
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,48 @@
 +<!DOCTYPE HTML>
 +<html class="reftest-wait">
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: style' counter-reset scope above container</title>
++  <title>CSS Test: 'contain: style' counter-reset scope above container with
++    dynamically inserted counter uses.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">

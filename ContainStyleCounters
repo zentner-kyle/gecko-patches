@@ -237,8 +237,8 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +}
 +
 +static PLDHashOperator
-+AddRoot(const nsAString& aKey, nsCounterList* aList, void* vargs) {
-+    struct AddRootArgs* args = static_cast<AddRootArgs*>(vargs);
++AddRoot(const nsAString& aKey, nsCounterList* aList, void* aArgs) {
++    struct AddRootArgs* args = static_cast<AddRootArgs*>(aArgs);
 +    AddRootInner(aList, args->mFrame, args->mDirty);
 +    return PL_DHASH_NEXT;
 +}
