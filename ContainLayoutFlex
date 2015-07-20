@@ -1,0 +1,68 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  6d4e4021259ebb1359ab97880f1722a139763ab5
+
+diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexContainerFrame.cpp
+--- a/layout/generic/nsFlexContainerFrame.cpp
++++ b/layout/generic/nsFlexContainerFrame.cpp
+@@ -3354,16 +3354,18 @@ nsFlexContainerFrame::ComputeCrossSize(c
+     // XXXdholbert For now, we don't support pushing children to our next
+     // continuation or splitting children, so "amount of BSize required by
+     // our children" is just the sum of our FlexLines' BSizes (cross sizes).
+     NS_FRAME_SET_INCOMPLETE(aStatus);
+     if (aSumLineCrossSizes <= aAvailableBSizeForContent) {
+       return aAvailableBSizeForContent;
+     }
+     return std::min(effectiveComputedBSize, aSumLineCrossSizes);
++  } else if (StyleDisplay()->IsContainLayout()) {
++    return 0;
+   }
+ 
+   // Row-oriented case (cross axis is block axis), with auto BSize:
+   // Shrink-wrap our line(s), subject to our min-size / max-size
+   // constraints in that (block) axis.
+   // XXXdholbert Handle constrained-aAvailableBSizeForContent case here.
+   *aIsDefinite = false;
+   return NS_CSS_MINMAX(aSumLineCrossSizes,
+@@ -4080,16 +4082,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
+ }
+ 
+ /* virtual */ nscoord
+ nsFlexContainerFrame::GetMinISize(nsRenderingContext* aRenderingContext)
+ {
+   nscoord minWidth = 0;
+   DISPLAY_MIN_WIDTH(this, minWidth);
+ 
++  if (StyleDisplay()->IsContainLayout()) {
++    return minWidth;
++  }
++
+   const nsStylePosition* stylePos = StylePosition();
+   const FlexboxAxisTracker axisTracker(stylePos, GetWritingMode());
+ 
+   for (nsIFrame* childFrame : mFrames) {
+     nscoord childMinWidth =
+       nsLayoutUtils::IntrinsicForContainer(aRenderingContext, childFrame,
+                                            nsLayoutUtils::MIN_ISIZE);
+     // For a horizontal single-line flex container, the intrinsic min width is
+@@ -4107,16 +4113,20 @@ nsFlexContainerFrame::GetMinISize(nsRend
+ }
+ 
+ /* virtual */ nscoord
+ nsFlexContainerFrame::GetPrefISize(nsRenderingContext* aRenderingContext)
+ {
+   nscoord prefWidth = 0;
+   DISPLAY_PREF_WIDTH(this, prefWidth);
+ 
++  if (StyleDisplay()->IsContainLayout()) {
++    return prefWidth;
++  }
++
+   // XXXdholbert Optimization: We could cache our intrinsic widths like
+   // nsBlockFrame does (and return it early from this function if it's set).
+   // Whenever anything happens that might change it, set it to
+   // NS_INTRINSIC_WIDTH_UNKNOWN (like nsBlockFrame::MarkIntrinsicISizesDirty
+   // does)
+   const FlexboxAxisTracker axisTracker(StylePosition(), GetWritingMode());
+ 
+   for (nsIFrame* childFrame : mFrames) {

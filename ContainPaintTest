@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  5e331e84ec15f6d0f10752d44321e7452bcaf396
+# Parent  e101470a86fbe328fd56053f779e0c0523082279
 Bug 1170781 - Patch 2: Test CSS 'contain: paint'.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-001-ref.html
@@ -344,6 +344,53 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-005.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-005.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-005.html
+@@ -0,0 +1,42 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: paint' on li with overflowing text contents and
++    bullet, and 'overflow-y: scroll'.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-paint">
++  <link rel="match" href="contain-paint-clip-003-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  ul {
++    padding: 0;
++  }
++  .root {
++    contain: paint;
++    overflow-y: scroll;
++    width: 100px;
++    height: 100px;
++    background: green;
++    margin: 25px;
++    padding: 25px;
++  }
++  </style>
++</head>
++<body>
++  <ul>
++    <li class="root">
++      AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA This text should
++      be clipped to the box. Lorem ipsum dolor sit amet, consectetur adipiscing
++      elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam.
++      Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis
++      ipsum.  Praesent mauris. Fusce nec tellus sed augue semper porta. Mauris
++      massa.  Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu
++      ad litora torquent per conubia nostra, per inceptos himenaeos. Curabitur
++      sodales ligula in libero.
++    </li>
++  </ul>
++</body>
++</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-containing-block-absolute-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-containing-block-absolute-001-ref.html
 new file mode 100644
 --- /dev/null
@@ -647,13 +694,14 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/ref
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -0,0 +1,10 @@
+@@ -0,0 +1,11 @@
 +default-preferences pref(layout.css.contain.enabled,true)
 +
 +== contain-paint-clip-001.html contain-paint-clip-001-ref.html
 +== contain-paint-clip-002.html contain-paint-clip-002-ref.html
 +== contain-paint-clip-003.html contain-paint-clip-003-ref.html
 +== contain-paint-clip-004.html contain-paint-clip-004-ref.html
++== contain-paint-clip-005.html contain-paint-clip-003-ref.html
 +== contain-paint-containing-block-absolute-001.html contain-paint-containing-block-absolute-001-ref.html
 +== contain-paint-containing-block-fixed-001.html contain-paint-containing-block-fixed-001-ref.html
 +== contain-paint-formatting-context-float-001.html contain-paint-formatting-context-float-001-ref.html
@@ -684,21 +732,29 @@ diff --git a/layout/reftests/w3c-css/submitted/reftest.list b/layout/reftests/w3
 diff --git a/layout/style/test/mochitest.ini b/layout/style/test/mochitest.ini
 --- a/layout/style/test/mochitest.ini
 +++ b/layout/style/test/mochitest.ini
-@@ -274,8 +274,9 @@ support-files = bug732209-css.sjs
- [test_counter_descriptor_storage.html]
- [test_position_float_display.html]
- [test_animations_async_tests.html]
- support-files = ../../reftests/fonts/Ahem.ttf file_animations_async_tests.html
- [test_setPropertyWithNull.html]
- [test_attribute_selector_eof_behavior.html]
- [test_css_loader_crossorigin_data_url.html]
- [test_box_size_keywords.html]
+@@ -120,16 +120,17 @@ support-files = file_bug1089417_iframe.h
+ [test_ch_ex_no_infloops.html]
+ [test_compute_data_with_start_struct.html]
+ skip-if = toolkit == 'android'
+ [test_computed_style.html]
+ [test_computed_style_no_pseudo.html]
+ [test_computed_style_prefs.html]
+ [test_condition_text.html]
+ [test_condition_text_assignment.html]
 +[test_contain_formatting_context.html]
+ [test_default_computed_style.html]
+ [test_css_cross_domain.html]
+ skip-if = toolkit == 'android' #bug 536603
+ [test_css_eof_handling.html]
+ [test_css_escape_api.html]
+ [test_css_function_mismatched_parenthesis.html]
+ [test_css_supports.html]
+ [test_css_supports_variables.html]
 diff --git a/layout/style/test/test_contain_formatting_context.html b/layout/style/test/test_contain_formatting_context.html
 new file mode 100644
 --- /dev/null
 +++ b/layout/style/test/test_contain_formatting_context.html
-@@ -0,0 +1,74 @@
+@@ -0,0 +1,40 @@
 +<!DOCTYPE HTML>
 +<html>
 +<!--
@@ -717,57 +773,23 @@ new file mode 100644
 +  // This mapping is currently mostly based off of a bugzilla comment by Tab
 +  // Atkins Jr. in bug 1179349. Ultimately, it should be based on a
 +  // specification.
++
++  // XXX 'ruby[-*]' and 'run-in' might need to be added here.
 +  var expectedChanges = {
-+    'inline'    : 'inline-block',
-+    'list-item' : 'block',
++    'inline'              : 'inline-block',
 +  };
-+  var unknownChange = [
-+    'ruby',
-+    'ruby-base',
-+    'ruby-text',
-+    'ruby-base-container',
-+    'ruby-text-container',
-+    'run-in',
-+    'contents'
-+  ];
-+  var noChange = [
-+    'none',
-+    'block',
-+    'inline-block',
-+    'inline-table',
-+    'table',
-+    'table-caption',
-+    'table-cell',
-+    'table-column',
-+    'table-column-group',
-+    'table-footer-group',
-+    'table-header-group',
-+    'table-row',
-+    'table-row-group',
-+    'flex',
-+    'inline-flex',
-+    'grid',
-+    'inline-grid',
-+    'ruby'
-+  ];
 +  var displayInfo = gCSSProperties["display"];
 +  var test = document.getElementById('test');
 +  var displayVals = displayInfo.initial_values.concat(displayInfo.other_values);
-+  var deDent = ((s) => s.replace(/ +/g, ' '));
 +  for (dispVal of displayVals) {
 +    test.style.display = dispVal;
 +    if (expectedChanges.hasOwnProperty(dispVal)) {
 +      is(getComputedStyle(test).display, expectedChanges[dispVal],
 +          `'contain: paint' should change 'display: ${dispVal}' to ` +
 +          `'display: ${expectedChanges[dispVal]}'`);
-+    } else if (~noChange.indexOf(dispVal)) {
++    } else {
 +      is(getComputedStyle(test).display, dispVal,
 +          `'contain: paint' should not change 'display: ${dispVal}'`);
-+    } else if (~unknownChange.indexOf(dispVal)) {
-+      todo(false,
-+            `Should 'display: ${dispVal}' change with 'contain: paint'?`);
-+    } else {
-+      todo(false, `'display: ${dispVal}' is not known to this test.`);
 +    }
 +  }
 +  </script>

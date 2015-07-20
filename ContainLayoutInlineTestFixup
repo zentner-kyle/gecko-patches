@@ -1,0 +1,65 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  1cc833160bb54edc0735484412e6df8ddea08f0c
+
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001-ref.html
+--- a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001-ref.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001-ref.html
+@@ -4,25 +4,30 @@
+   <meta charset="utf-8">
+   <title>CSS Reftest Reference</title>
+   <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
+   <style>
+   body {
+     margin: 0;
+   }
+   .container-ref {
+-    display: block;
++    display: inline-block;
+     background: red;
+-    border: 1em solid green;
+-    width: auto;
++    border: 16px solid green;
++    width: 0;
+     height: 0;
++    padding: 0;
++    margin: 0;
+   }
+   .inner-ref {
+     position: absolute;
+-    left: 1em;
++    top: 16px;
++    left: 16px;
++    width: 0;
++    height: 0;
+   }
+   </style>
+ </head>
+ <body class="reftest-paint">
+-  <span class="container-ref"><span class="inner-ref">Test span.</span></span>
+-  <!--<div class="container-ref"><span class="inner-ref">Test span.</span></div>-->
++  <span class="container-ref"></span>
++  <div class="inner-ref">Test span.</span>
+ </body>
+ </html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001.html
+--- a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001.html
+@@ -9,16 +9,16 @@
+   <link rel="match" href="layout-inline-zero-001-ref.html">
+   <style>
+   body {
+     margin: 0;
+   }
+   .container {
+     contain: layout;
+     background: red;
+-    border: 1em solid green;
++    border: 16px solid green;
+   }
+   </style>
+ </head>
+ <body class="reftest-paint">
+   <span class="container">Test span.</span>
+ </body>
+ </html>
