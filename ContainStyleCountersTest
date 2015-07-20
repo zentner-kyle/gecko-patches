@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  b6b40142e0ec492eb60afcfd818845a5641ad5f0
+# Parent  4bd73231b871e735d2e69b37658a2d4662572885
 Bug 1172087 - Patch 2: Test counter behavior for "contain: style"
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html
@@ -820,11 +820,11 @@ new file mode 100644
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -1,8 +1,19 @@
- default-preferences pref(layout.css.contain.enabled,true)
- 
+@@ -3,8 +3,19 @@ default-preferences pref(layout.css.cont
  == contain-paint-clip-001.html contain-paint-clip-001-ref.html
  == contain-paint-clip-002.html contain-paint-clip-002-ref.html
+ == contain-paint-clip-003.html contain-paint-clip-003-ref.html
+ == contain-paint-clip-004.html contain-paint-clip-004-ref.html
  == contain-paint-containing-block-absolute-001.html contain-paint-containing-block-absolute-001-ref.html
  == contain-paint-containing-block-fixed-001.html contain-paint-containing-block-fixed-001-ref.html
  == contain-paint-formatting-context-float-001.html contain-paint-formatting-context-float-001-ref.html

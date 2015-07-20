@@ -10,6 +10,7 @@ ContainLayoutBase
 ContainLayoutBlock
 ContainLayoutTest
 ContainLayoutTable
+ContainLayoutInlineBlock
 ContainLayoutFixups
 try-linux-minimal
 try-all
