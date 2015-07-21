@@ -9,6 +9,7 @@ ContainStyleBreakTest
 ContainLayoutBase
 ContainLayoutBlock
 ContainLayoutTest
+ContainLayoutMochiTest
 ContainLayoutTable
 ContainLayoutInlineTestFixup
 ContainLayoutFlex
@@ -42,4 +43,3 @@ GridParen2Brace
 ParseContain
 ContainStyleCountersTestOld
 ContainLayoutAttempt2
-ContainLayoutMochiTest
