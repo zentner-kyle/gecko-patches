@@ -10,11 +10,11 @@ ContainLayoutBase
 ContainLayoutBlock
 ContainLayoutTest
 ContainLayoutTable
-ContainLayoutInlineBlock
 ContainLayoutInlineTestFixup
 ContainLayoutFlex
 ContainLayoutBlockTestFixups
 ContainLayoutFlexTests
+ContainLayoutMochitestImprovement
 ContainLayoutFixups
 try-linux-minimal
 try-all

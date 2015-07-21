@@ -1,0 +1,147 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  19c6c2d571f3127e2348fbb672b5dacc6fd1c6de
+
+diff --git a/layout/style/test/test_contain_layout_empty.html b/layout/style/test/test_contain_layout_empty.html
+--- a/layout/style/test/test_contain_layout_empty.html
++++ b/layout/style/test/test_contain_layout_empty.html
+@@ -7,16 +7,17 @@ https://bugzilla.mozilla.org/show_bug.cg
+   <meta charset="utf-8">
+   <title>CSS Test: 'contain: layout' on various elements causes them to act as
+     though they are empty</title>
+   <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
+   <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
+   <script src=/tests/SimpleTest/SimpleTest.js></script>
+   <script type="text/javascript" src="/tests/SimpleTest/WindowSnapshot.js"></script>
+   <link rel=stylesheet href=/tests/SimpleTest/test.css>
++  <script type="text/javascript" src="property_database.js"></script>
+   <style>
+   .container {
+     contain: layout;
+     background: green;
+     margin: 15px;
+     overflow: visible;
+   }
+   .fake-container {
+@@ -29,37 +30,49 @@ https://bugzilla.mozilla.org/show_bug.cg
+     height: 10px;
+     background: blue;
+   }
+   </style>
+   <script class='testbody'>
+     SimpleTest.waitForExplicitFinish();
+     SimpleTest.requestLongerTimeout(3600);
+ 
+-    var point = document.createElement('div')
+-    var displays = ["inline", "block", "contents", "list-item",
+-    "inline-block", "inline-table", "table", "table-cell", "table-column",
+-    "table-column-group", "table-footer-group", "table-header-group",
+-    "table-row", "table-row-group", "flex", "inline-flex", "grid",
+-    "inline-grid", "ruby", "ruby-base", "ruby-text", "ruby-base-container",
+-    "ruby-text-container ", "run-in"];
++    var interesting_contents = [
++    `
++    <div style="float: left; width: 10px; height: 10px; background: blue;"></div>
++    <div style="float: right; width: 10px; height: 10px; background: orange;"></div>
++    `,
++    `
++    <tr style="width: 20px; height: 10px;"></tr>
++    `,
++    `
++    <td style="width: 20px; height: 10px;"></td>
++    `,
++    `
++    <tbody style="width: 20px; height: 10px;"></tbody>
++    `
++    ];
++
++
++    var displayInfo = gCSSProperties["display"];
++    var displayVals = displayInfo.initial_values.concat(displayInfo.other_values);
+     var outerIdx = 0;
+     var innerIdx = 0;
+     function tick() {
+-      if (innerIdx === displays.length) {
++      if (innerIdx === displayVals.length) {
+         outerIdx += 1;
+         innerIdx = 0;
+       } else {
+         innerIdx += 1;
+       }
+-      if (outerIdx === displays.length) {
++      if (outerIdx === displayVals.length) {
+         return;
+       }
+-      var outerDisplay = displays[outerIdx];
+-      var innerDisplay = displays[innerIdx];
++      var outerDisplay = displayVals[outerIdx];
++      var innerDisplay = displayVals[innerIdx];
+       testPair(outerDisplay, innerDisplay);
+       return true;
+     }
+     function testPair(outerDisplay, innerDisplay) {
+       var outerElem = document.createElement("div");
+       outerElem.style.display = outerDisplay;
+       outerElem.classList.add("container");
+ 
+@@ -91,20 +104,58 @@ https://bugzilla.mozilla.org/show_bug.cg
+       }
+ 
+       var fakeSnapshot = SpecialPowers.snapshotWindow(window);
+       assertSnapshots(realSnapshot, fakeSnapshot, true, null,
+       outerDisplay + " / " + innerDisplay + " contain: layout", "faked contain:layout");
+       outerElem.parentNode.removeChild(outerElem);
+       innerElem.parentNode.removeChild(innerElem);
+     }
++    function testContents(outerDisplay, contents) {
++      var outerElem = document.createElement("div");
++      outerElem.style.display = outerDisplay;
++      outerElem.classList.add("container");
++
++      // Insert the container
++      var holder = document.getElementById("holder");
++      holder.appendChild(outerElem);
++
++      // Get the original computed style of the ontainer
++      var containerStyle = getComputedStyle(outerElem);
++
++      // Add `interesting contents`.
++      outerElem.innerHTML = contents;
++
++      var realSnapshot = SpecialPowers.snapshotWindow(window);
++
++      // Switch to fake container class
++      outerElem.classList.remove("container");
++      outerElem.classList.add("fake-container");
++
++      for (var prop in containerStyle) {
++        if (prop !== 'contain') {
++          outerElem.style[prop] = containerStyle[prop];
++          console.log('setting ' + prop + ' to ' + containerStyle[prop]);
++        }
++      }
++
++      var fakeSnapshot = SpecialPowers.snapshotWindow(window);
++      assertSnapshots(realSnapshot, fakeSnapshot, true, null,
++      outerDisplay + " / " + contents + " contain: layout", "faked contain:layout");
++      outerElem.parentNode.removeChild(outerElem);
++    }
+     function doTest() {
+       //while (tick()) { }
+-      for (var inner of displays) {
+-        testPair('table', inner);
++      for (var outer of displayVals) {
++        //for (var inner of displayVals) {
++          //testPair(outer, inner);
++        //}
++        for (var contents of interesting_contents) {
++          testContents(outer, contents);
++        }
+       }
+       //testPair('block', 'inline');
+       SimpleTest.executeSoon(SimpleTest.finish);
+     }
+   </script>
+ </head>
+ <body onload="doTest()">
+   <div id="holder">

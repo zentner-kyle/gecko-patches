@@ -1,11 +1,63 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  d0ff0d7c5efd56b6e4dc279d5a30c8c82e47298c
+# Parent  5cc8e1b0e183951ae49ecc1674d5f5384e5b7853
 Bug 1178895 - Patch 2: Implement 'contain: layout' for nsBlockFrame.
+
 diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 --- a/layout/generic/nsBlockFrame.cpp
 +++ b/layout/generic/nsBlockFrame.cpp
-@@ -1495,16 +1495,20 @@ nsBlockFrame::ComputeFinalSize(const nsH
+@@ -671,16 +671,24 @@ nsBlockFrame::GetMinISize(nsRenderingCon
+   nsIFrame* firstInFlow = FirstContinuation();
+   if (firstInFlow != this)
+     return firstInFlow->GetMinISize(aRenderingContext);
+ 
+   DISPLAY_MIN_WIDTH(this, mMinWidth);
+ 
+   CheckIntrinsicCacheAgainstShrinkWrapState();
+ 
++  if (StyleDisplay()->IsContainLayout()) {
++    if (mMinWidth != NS_INTRINSIC_WIDTH_UNKNOWN) {
++      return mMinWidth;
++    } else {
++      return 0;
++    }
++  }
++
+   if (mMinWidth != NS_INTRINSIC_WIDTH_UNKNOWN)
+     return mMinWidth;
+ 
+ #ifdef DEBUG
+   if (gNoisyIntrinsic) {
+     IndentBy(stdout, gNoiseIndent);
+     ListTag(stdout);
+     printf(": GetMinISize\n");
+@@ -756,16 +764,25 @@ nsBlockFrame::GetPrefISize(nsRenderingCo
+   nsIFrame* firstInFlow = FirstContinuation();
+   if (firstInFlow != this)
+     return firstInFlow->GetPrefISize(aRenderingContext);
+ 
+   DISPLAY_PREF_WIDTH(this, mPrefWidth);
+ 
+   CheckIntrinsicCacheAgainstShrinkWrapState();
+ 
++  if (StyleDisplay()->IsContainLayout()) {
++    if (mPrefWidth != NS_INTRINSIC_WIDTH_UNKNOWN) {
++      return mPrefWidth;
++    } else {
++      return 0;
++    }
++  }
++
++
+   if (mPrefWidth != NS_INTRINSIC_WIDTH_UNKNOWN)
+     return mPrefWidth;
+ 
+ #ifdef DEBUG
+   if (gNoisyIntrinsic) {
+     IndentBy(stdout, gNoiseIndent);
+     ListTag(stdout);
+     printf(": GetPrefISize\n");
+@@ -1494,16 +1511,20 @@ nsBlockFrame::ComputeFinalSize(const nsH
        aState.mPrevBEndMargin.Zero();
      }
      aMetrics.mCarriedOutBEndMargin = aState.mPrevBEndMargin;

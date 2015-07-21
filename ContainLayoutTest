@@ -3,10 +3,10 @@
 # Parent  d65e065ca28f60097727169f5eb60dd42903c70f
 Bug 1178895 - Patch 2: Test CSS 'contain: layout'.
 
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-001-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001-ref.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-001-ref.html
 @@ -0,0 +1,28 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -36,20 +36,20 @@ new file mode 100644
 +  <!--<div class="container-ref"><span class="inner-ref">Test span.</span></div>-->
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-001.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-001.html
 @@ -0,0 +1,24 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on inline element should cause the element
-+    to become a block with zero height.</title>
++    to become a inline-block with zero height and width.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <link rel="match" href="layout-inline-zero-001-ref.html">
++  <link rel="match" href="layout-inline-block-001-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -65,10 +65,10 @@ new file mode 100644
 +  <span class="container">Test span.</span>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-zero-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-zero-001-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-block-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-block-001-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-zero-001-ref.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-block-001-ref.html
 @@ -0,0 +1,37 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -107,20 +107,20 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-zero-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-zero-001.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-block-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-block-001.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-zero-001.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-block-001.html
 @@ -0,0 +1,40 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on auto sized block should cause the block
-+    to be zero sized.</title>
++    to be zero block-sized.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <link rel="match" href="layout-zero-001-ref.html">
++  <link rel="match" href="layout-block-001-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -164,8 +164,8 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/ref
  == contain-style-counter-scope-007.html contain-style-counter-scope-001-ref.html
  == contain-style-counter-scope-008.html contain-style-counter-scope-001-ref.html
  == contain-style-counter-scope-009.html contain-style-counter-scope-001-ref.html
-+== contain-layout-zero-001.html contain-layout-zero-001-ref.html
-+== contain-layout-inline-zero-001.html contain-layout-inline-zero-001-ref.html
++== contain-layout-block-001.html contain-layout-block-001-ref.html
++== contain-layout-inline-block-001.html contain-layout-inline-block-001-ref.html
 diff --git a/layout/style/test/mochitest.ini b/layout/style/test/mochitest.ini
 --- a/layout/style/test/mochitest.ini
 +++ b/layout/style/test/mochitest.ini
