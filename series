@@ -8,7 +8,7 @@ ContainStyleBreak
 ContainStyleBreakTest
 ContainLayoutBase
 ContainLayoutBlock
-ContainLayoutTest
+ContainLayoutBlockTest
 ContainLayoutMochiTest
 ContainLayoutTable
 ContainLayoutInlineTestFixup

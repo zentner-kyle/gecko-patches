@@ -1,7 +1,7 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
 # Parent  d65e065ca28f60097727169f5eb60dd42903c70f
-Bug 1178895 - Patch 2: Test CSS 'contain: layout'.
+Bug 1178895 - Patch 2: Test CSS 'contain: layout' on blocks.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-001-ref.html
 new file mode 100644
