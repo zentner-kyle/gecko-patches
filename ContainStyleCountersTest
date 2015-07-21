@@ -772,51 +772,6 @@ new file mode 100644
 +  <div id="c" class="container"> </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-review.html b/layout/reftests/w3c-css/submitted/contain/contain-style-review.html
-new file mode 100644
---- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-style-review.html
-@@ -0,0 +1,40 @@
-+<!DOCTYPE HTML>
-+<html>
-+<head>
-+  <meta charset="utf-8">
-+  <title>CSS Test: 'content: counter' use on 'contain: style' element should be zero / reset value</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
-+  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-paint">
-+  <link rel="match" href="paint-containing-block-fixed-001-ref.html">
-+  <style>
-+  body { counter-reset: list }
-+  li {
-+    display: block;
-+    counter-increment: list;
-+    padding-left: 3em;
-+  }
-+  div {
-+    border: 1px solid black;
-+    padding: 1em;
-+  }
-+  li::before { content: counter(list) }
-+  </style>
-+</head>
-+<body>
-+  <li>one</li>
-+  <li style="contain: style">zero</li>
-+  <li>two</li>
-+
-+  <div style="contain: strict">
-+    <div>
-+      <li>one</li>
-+    </div>
-+    <li>one</li>
-+  </div>
-+
-+  <div style="contain: style; counter-reset: list 3">
-+    <li>four</li>
-+    <li>five</li>
-+  </div>
-+</body>
-+</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
