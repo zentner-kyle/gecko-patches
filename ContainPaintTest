@@ -758,7 +758,7 @@ new file mode 100644
 +<!DOCTYPE HTML>
 +<html>
 +<!--
-+https://bugzilla.mozilla.org/show_bug.cgi?id=1179349
++https://bugzilla.mozilla.org/show_bug.cgi?id=1170781
 +-->
 +<head>
 +  <meta charset="utf-8">

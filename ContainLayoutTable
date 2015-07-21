@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  bcb96d97a18c4c80f0b4517125388f3cf8eaf2fd
+# Parent  61c0ef0e8f3c7ed7d370fd810618a2c94c3221cc
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-001.html
 new file mode 100644
@@ -111,7 +111,7 @@ diff --git a/layout/tables/FixedTableLayoutStrategy.cpp b/layout/tables/FixedTab
 diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame.cpp
 --- a/layout/tables/nsTableCellFrame.cpp
 +++ b/layout/tables/nsTableCellFrame.cpp
-@@ -980,37 +980,41 @@ nsTableCellFrame::Reflow(nsPresContext* 
+@@ -975,37 +975,42 @@ nsTableCellFrame::Reflow(nsPresContext* 
    // see testcase "emptyCells.html"
    nsIFrame* prevInFlow = GetPrevInFlow();
    bool isEmpty;
@@ -124,11 +124,12 @@ diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame
 +  if (StyleDisplay()->IsContainLayout()) {
 +    isEmpty = true;
 +  }
++
    SetContentEmpty(isEmpty);
  
    // Place the child
    FinishReflowChild(firstKid, aPresContext, kidSize, &kidReflowState,
-                     wm, kidOrigin, containerWidth, 0);
+                     wm, kidOrigin, containerSize, 0);
  
    nsTableFrame::InvalidateTableFrame(firstKid, origRect, origVisualOverflow,
                                       firstReflow);
@@ -145,11 +146,10 @@ diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame
    if (NS_UNCONSTRAINEDSIZE != cellSize.BSize(wm)) {
      cellSize.BSize(wm) += borderPadding.BStartEnd(wm);
    }
--
+ 
 -  // next determine the cell's isize
 -  cellSize.ISize(wm) = kidSize.ISize(wm);      // at this point, we've factored in the cell's style attributes
 -
-+  
    // factor in border and padding
    if (NS_UNCONSTRAINEDSIZE != cellSize.ISize(wm)) {
      cellSize.ISize(wm) += borderPadding.IStartEnd(wm);
@@ -161,7 +161,7 @@ diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame
 diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
 --- a/layout/tables/nsTableFrame.cpp
 +++ b/layout/tables/nsTableFrame.cpp
-@@ -3302,17 +3302,17 @@ nsTableFrame::CalcDesiredBSize(const nsH
+@@ -3295,17 +3295,17 @@ nsTableFrame::CalcDesiredBSize(const nsH
      aDesiredSize.BSize(wm) = 0;
      return;
    }
@@ -180,7 +180,7 @@ diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
            // empty tables should not have a size in quirks mode
        aDesiredSize.BSize(wm) = tableSpecifiedBSize;
      } else {
-@@ -3671,16 +3671,21 @@ nsTableFrame::DistributeBSizeToRows(cons
+@@ -3667,16 +3667,21 @@ nsTableFrame::DistributeBSizeToRows(cons
    ResizeCells(*this);
  }
  
@@ -205,7 +205,7 @@ diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
 diff --git a/layout/tables/nsTableRowFrame.cpp b/layout/tables/nsTableRowFrame.cpp
 --- a/layout/tables/nsTableRowFrame.cpp
 +++ b/layout/tables/nsTableRowFrame.cpp
-@@ -1115,18 +1115,23 @@ nsTableRowFrame::Reflow(nsPresContext*  
+@@ -1109,18 +1109,23 @@ nsTableRowFrame::Reflow(nsPresContext*  
    }
  
    // see if a special bsize reflow needs to occur due to having a pct bsize

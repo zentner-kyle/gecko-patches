@@ -1,6 +1,5 @@
 ContainPaint
 ContainPaintTest
-try-linux-minimal
 ContainStyleCounters
 ContainStyleCountersTest
 ContainStyleQuotes
@@ -17,6 +16,7 @@ ContainLayoutFlex
 ContainLayoutBlockTestFixups
 ContainLayoutFlexTests
 ContainLayoutFixups
+try-linux-minimal
 try-all
 fixups
 ContainLayout

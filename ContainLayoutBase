@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  06be38afa9317ad64d3c9b9f38ea2dfcb620c608
+# Parent  d0584fa546ee1887c288e7cea78907cf169f7f1d
 Bug 1178895 - Patch 1: Basic changes needed for all 'contain: layout' elements.
 
 Turns 'contain: layout' elements into formatting contexts.
@@ -20,14 +20,14 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
  
 -    if (display->IsContainPaint()) {
 +    if (display->IsContainPaint() || display->IsContainLayout()) {
-       // This is supposed to cause contain: paint and contain: layout elements
-       // to become formatting contexts. However, exactly how the element is
-       // supposed to become a formatting context has not been specified.
-       // This behavior should be mostly correct, but ruby and table related
-       // elements may need to be changed.
-       // XXX This behavior is probably wrong in some cases; see bug 1179349.
+       // An element with contain:paint or contain:layout needs to "be a
+       // formatting context". For the purposes of the "display" property, that
+       // just means we need to promote "display:inline" to "inline-block".
+       // XXX We may also need to promote ruby display vals; see bug 1179349.
+ 
        // It's okay to cache this change in the rule tree for the same
        // reasons as floats in the previous condition.
+       if (display->mDisplay == NS_STYLE_DISPLAY_INLINE) {
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
