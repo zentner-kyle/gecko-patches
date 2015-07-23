@@ -1,3 +1,5 @@
+TableCellContentClipping
+ContainLayoutBaselineFixup
 ContainPaint
 ContainPaintTest
 ContainStyleCounters
@@ -9,16 +11,15 @@ ContainStyleBreakTest
 ContainLayoutBase
 ContainLayoutBlock
 ContainLayoutBlockTest
-ContainLayoutMochiTest
 ContainLayoutTable
-ContainLayoutInlineTestFixup
 ContainLayoutFlex
-ContainLayoutBlockTestFixups
-ContainLayoutFlexTests
+ContainLayoutFlexTest
+ContainLayoutMochiTest
 ContainLayoutMochitestImprovement
 ContainLayoutFixups
 try-linux-minimal
 try-all
+ContainLayoutInlineTestFixup
 fixups
 ContainLayout
 UnRemoveBoxSizingPaddingBoxTests

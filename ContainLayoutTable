@@ -1,67 +1,240 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  61c0ef0e8f3c7ed7d370fd810618a2c94c3221cc
+# Parent  751b4da609673786b03ab2bdcdebf62c70158585
+Bug 1178895 - Patch 4: Implement 'contain: layout' for table elements.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-001.html
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-001.html
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,227 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: layout' on tr in table
-+    to become a block with zero height.</title>
++  <title>CSS Test: 'contain: layout' on block element containing
++    floats should cause the element to have zero height.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <link rel="match" href="FIXME.html">
++  <link rel="match" href="contain-layout-block-003-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
 +  }
 +  .container {
 +    contain: layout;
-+    background: red;
-+    border: 1em solid green;
++    border: 1em solid black;
++    background: cyan;
++  }
++  .right-float {
++    float: right;
++    background: blue;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++  .left-float {
++    float: left;
++    background: orange;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++  table {
++    margin: 100px;
++    border: solid black 3px;
++    background: blue;
++    padding: 3px;
++  }
++  td {
++    margin: 5px;
++    border: solid black 10px;
++    padding: 3px;
++  }
++  tbody {
++    padding: 3px;
++    background: pink;
++  }
++  tr {
++    padding: 5px;
++    background: orange;
++  }
++  thead td {
++    background: pink;
++  }
++  tbody td {
++    background: green;
++  }
++  tfoot td {
++    background: purple;
++  }
++  .big-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++  }
++  .block {
++    display: inline-block;
++    width: 50px;
++    height: 50px;
++    background: teal;
++  }
++  td {
++    //border: 1em solid black;
++  }
++  table {
++    table-layout: fixed;
 +  }
 +  </style>
 +</head>
-+<body>
-+  <table class="container">
-+    <tr>
-+      Lorem ipsum dolor sit amet
-+    </tr>
++<body class="reftest-paint">
++  <table>
++    <thead>
++      <tr>
++        <td>
++          Table begin.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="block"></div>
++        </td>
++        <td>
++          Table begin.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="block"></div>
++        </td>
++      </tr>
++      <tr>
++        <td>Table begin. Things thing sthings things things. Words words words words. Words words words words words words.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="block"></div>
++          <div class="block"></div>
++          <div class="block"></div>
++          <div class="block"></div>
++          <div class="block"></div>
++          <div class="block"></div>
++          <div class="block"></div>
++          <div class="block"></div>
++          <div class="block"></div>
++          <div class="block"></div>
++          <div class="block"></div>
++          <div class="block"></div>
++        </td>
++        <td>
++          Table begin.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="block"></div>
++        </td>
++      </tr>
++      <tr>
++        <td>
++          Table begin.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="block"></div>
++        </td>
++        <td>
++          Table begin.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="big-block"></div>
++          <div class="block"></div>
++        </td>
++      </tr>
++    </thead>
++    <tbody>
++      <tr>
++        <td>
++          Table begin.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="block"></div>
++        </td>
++        <td>
++          Table begin.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="block"></div>
++        </td>
++      </tr>
++      <tr>
++        <td>
++          Table begin.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="block"></div>
++        </td>
++        <td>
++          Table begin.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="block"></div>
++        </td>
++      </tr>
++    </tbody>
++    <tfoot>
++      <tr>
++        <td>
++          Table begin.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="block"></div>
++        </td>
++        <td>
++          Table begin.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="block"></div>
++        </td>
++      </tr>
++      <tr>
++        <td>
++          Table begin.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="block"></div>
++        </td>
++        <td>
++          Table begin.
++          <div class="right-float"></div>
++          Table table.
++          <div class="left-float"></div>
++          Table end.
++          <div class="block"></div>
++        </td>
++      </tr>
++    </tfoot>
 +  </table>
 +</body>
 +</html>
-diff --git a/layout/style/test/test_contain_layout_empty.html b/layout/style/test/test_contain_layout_empty.html
---- a/layout/style/test/test_contain_layout_empty.html
-+++ b/layout/style/test/test_contain_layout_empty.html
-@@ -92,18 +92,21 @@ https://bugzilla.mozilla.org/show_bug.cg
- 
-       var fakeSnapshot = SpecialPowers.snapshotWindow(window);
-       assertSnapshots(realSnapshot, fakeSnapshot, true, null,
-       outerDisplay + " / " + innerDisplay + " contain: layout", "faked contain:layout");
-       outerElem.parentNode.removeChild(outerElem);
-       innerElem.parentNode.removeChild(innerElem);
-     }
-     function doTest() {
--      while (tick()) { }
--      testPair('block', 'inline');
-+      //while (tick()) { }
-+      for (var inner of displays) {
-+        testPair('table', inner);
-+      }
-+      //testPair('block', 'inline');
-       SimpleTest.executeSoon(SimpleTest.finish);
-     }
-   </script>
- </head>
- <body onload="doTest()">
-   <div id="holder">
-   </div>
- </body>
 diff --git a/layout/tables/BasicTableLayoutStrategy.cpp b/layout/tables/BasicTableLayoutStrategy.cpp
 --- a/layout/tables/BasicTableLayoutStrategy.cpp
 +++ b/layout/tables/BasicTableLayoutStrategy.cpp
@@ -111,7 +284,63 @@ diff --git a/layout/tables/FixedTableLayoutStrategy.cpp b/layout/tables/FixedTab
 diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame.cpp
 --- a/layout/tables/nsTableCellFrame.cpp
 +++ b/layout/tables/nsTableCellFrame.cpp
-@@ -975,37 +975,42 @@ nsTableCellFrame::Reflow(nsPresContext* 
+@@ -623,17 +623,17 @@ void nsTableCellFrame::BlockDirAlignChil
+     break;
+ 
+     default:
+     case NS_STYLE_VERTICAL_ALIGN_MIDDLE:
+       // Align the middle of the child frame with the middle of the content area,
+       kidBStart = (bSize - childBSize - bEndInset + bStartInset) / 2;
+   }
+   // if the content is larger than the cell bsize, align from bstart
+-  kidBStart = std::max(0, kidBStart);
++  kidBStart = std::max(bStartInset, kidBStart);
+ 
+   if (kidBStart != kidRect.BStart(aWM)) {
+     // Invalidate at the old position first
+     firstKid->InvalidateFrameSubtree();
+   }
+ 
+   firstKid->SetPosition(aWM, LogicalPoint(aWM, kidRect.IStart(aWM),
+                                           kidBStart), containerSize);
+@@ -769,28 +769,36 @@ int32_t nsTableCellFrame::GetColSpan()
+ }
+ 
+ /* virtual */ nscoord
+ nsTableCellFrame::GetMinISize(nsRenderingContext *aRenderingContext)
+ {
+   nscoord result = 0;
+   DISPLAY_MIN_WIDTH(this, result);
+ 
++  if (StyleDisplay()->IsContainLayout()) {
++    return result;
++  }
++
+   nsIFrame *inner = mFrames.FirstChild();
+   result = nsLayoutUtils::IntrinsicForContainer(aRenderingContext, inner,
+                                                     nsLayoutUtils::MIN_ISIZE);
+   return result;
+ }
+ 
+ /* virtual */ nscoord
+ nsTableCellFrame::GetPrefISize(nsRenderingContext *aRenderingContext)
+ {
+   nscoord result = 0;
+   DISPLAY_PREF_WIDTH(this, result);
+ 
++  if (StyleDisplay()->IsContainLayout()) {
++    return result;
++  }
++
+   nsIFrame *inner = mFrames.FirstChild();
+   result = nsLayoutUtils::IntrinsicForContainer(aRenderingContext, inner,
+                                                 nsLayoutUtils::PREF_ISIZE);
+   return result;
+ }
+ 
+ /* virtual */ nsIFrame::IntrinsicISizeOffsetData
+ nsTableCellFrame::IntrinsicISizeOffsets()
+@@ -975,37 +983,38 @@ nsTableCellFrame::Reflow(nsPresContext* 
    // see testcase "emptyCells.html"
    nsIFrame* prevInFlow = GetPrevInFlow();
    bool isEmpty;
@@ -120,10 +349,6 @@ diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame
    } else {
      isEmpty = !CellHasVisibleContent(kidSize.Height(), tableFrame, firstKid);
    }
-+  // TODO kzentner: Is this necessary?
-+  if (StyleDisplay()->IsContainLayout()) {
-+    isEmpty = true;
-+  }
 +
    SetContentEmpty(isEmpty);
  
@@ -229,3 +454,31 @@ diff --git a/layout/tables/nsTableRowFrame.cpp b/layout/tables/nsTableRowFrame.c
    // Just set our isize to what was available.
    // The table will calculate the isize and not use our value.
    aDesiredSize.ISize(wm) = aReflowState.AvailableISize();
+diff --git a/layout/tables/nsTableRowGroupFrame.cpp b/layout/tables/nsTableRowGroupFrame.cpp
+--- a/layout/tables/nsTableRowGroupFrame.cpp
++++ b/layout/tables/nsTableRowGroupFrame.cpp
+@@ -452,19 +452,21 @@ nsTableRowGroupFrame::ReflowChildren(nsP
+     ConsiderChildOverflow(aDesiredSize.mOverflowAreas, kidFrame);
+   }
+ 
+   if (haveRow) {
+     aReflowState.bCoord -= tableFrame->GetRowSpacing(GetStartRowIndex() +
+                                                      GetRowCount());
+   }
+ 
+-  // Return our desired rect
+-  aDesiredSize.ISize(wm) = aReflowState.reflowState.AvailableISize();
+-  aDesiredSize.BSize(wm) = aReflowState.bCoord;
++  if (!StyleDisplay()->IsContainPaint()) {
++    // Return our desired rect
++    aDesiredSize.ISize(wm) = aReflowState.reflowState.AvailableISize();
++    aDesiredSize.BSize(wm) = aReflowState.bCoord;
++  }
+ 
+   if (aReflowState.reflowState.mFlags.mSpecialBSizeReflow) {
+     DidResizeRows(aDesiredSize);
+     if (isPaginated) {
+       CacheRowBSizesForPrinting(aPresContext, GetFirstRow(), wm);
+     }
+   }
+   else if (needToCalcRowBSizes) {

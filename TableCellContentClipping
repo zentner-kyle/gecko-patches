@@ -1,0 +1,135 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  512c7e8f0030155cee43622aac309761f5af0e66
+Bug 1186998: Align overflowing table-cell content to content-box.
+
+diff --git a/layout/reftests/table-overflow/reftest.list b/layout/reftests/table-overflow/reftest.list
+--- a/layout/reftests/table-overflow/reftest.list
++++ b/layout/reftests/table-overflow/reftest.list
+@@ -1,5 +1,6 @@
+ == bug785684-x.html bug785684-ref.html
+ == bug785684-y.html bug785684-ref.html
+ skip-if(B2G||Mulet) == table-row-pagination.html table-row-pagination-ref.html # Frequently failing on b2g (bug 1155426)
+ == 963441.html 963441-ref.html
+ == table-caption-scroll.html table-caption-scroll-ref.html
++== table-cell-block-overflow.html table-cell-block-overflow-ref.html
+diff --git a/layout/reftests/table-overflow/table-cell-block-overflow-ref.html b/layout/reftests/table-overflow/table-cell-block-overflow-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/table-overflow/table-cell-block-overflow-ref.html
+@@ -0,0 +1,43 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <style>
++  .content {
++    padding: 20px;
++    height: 100%;
++    width:  20px;
++    height:  54px;
++    background: purple;
++  }
++  .fake-td {
++    float: left;
++    border: 20px solid teal;
++    height: 54px;
++    width: 60px;
++    padding: 1px;
++    margin: 1px;
++  }
++  .fake-table-tr {
++    padding: 1px;
++  }
++  </style>
++</head>
++  <body>
++    <div class="fake-table-tr">
++      <div class="fake-td">
++        <div class="content"></div>
++      </div>
++      <div class="fake-td">
++        <div class="content"></div>
++      </div>
++      <div class="fake-td">
++        <div class="content"></div>
++      </div>
++      <div class="fake-td">
++        <div class="content"></div>
++      </div>
++    </div>
++  </body>
++</html>
+diff --git a/layout/reftests/table-overflow/table-cell-block-overflow.html b/layout/reftests/table-overflow/table-cell-block-overflow.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/table-overflow/table-cell-block-overflow.html
+@@ -0,0 +1,42 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>Test table-cell content overflowing in the block direction for each
++    vertical-align value</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  td {
++    border: 20px solid teal;
++    height: 100%;
++  }
++  table {
++    height: 100px;
++  }
++  .content {
++    padding: 20px;
++    height: 100%;
++    width:  20px;
++    background: purple;
++  }
++  </style>
++</head>
++  <body>
++    <table>
++      <tr>
++        <td style="vertical-align: middle">
++          <div class="content"></div>
++        </td>
++        <td style="vertical-align: baseline">
++          <div class="content"></div>
++        </td>
++        <td style="vertical-align: bottom">
++          <div class="content"></div>
++        </td>
++        <td style="vertical-align: top">
++          <div class="content"></div>
++        </td>
++      </tr>
++    </table>
++  </body>
++</html>
+diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame.cpp
+--- a/layout/tables/nsTableCellFrame.cpp
++++ b/layout/tables/nsTableCellFrame.cpp
+@@ -622,18 +622,19 @@ void nsTableCellFrame::BlockDirAlignChil
+       kidBStart = bSize - childBSize - bEndInset;
+     break;
+ 
+     default:
+     case NS_STYLE_VERTICAL_ALIGN_MIDDLE:
+       // Align the middle of the child frame with the middle of the content area,
+       kidBStart = (bSize - childBSize - bEndInset + bStartInset) / 2;
+   }
+-  // if the content is larger than the cell bsize, align from bstart
+-  kidBStart = std::max(0, kidBStart);
++  // If the content is larger than the cell bsize, align from bStartInset
++  // (cell's content-box bstart edge).
++  kidBStart = std::max(bStartInset, kidBStart);
+ 
+   if (kidBStart != kidRect.BStart(aWM)) {
+     // Invalidate at the old position first
+     firstKid->InvalidateFrameSubtree();
+   }
+ 
+   firstKid->SetPosition(aWM, LogicalPoint(aWM, kidRect.IStart(aWM),
+                                           kidBStart), containerSize);

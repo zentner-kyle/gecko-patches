@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  5cc8e1b0e183951ae49ecc1674d5f5384e5b7853
+# Parent  9190d6cfa4ce65fae51e98bdb8c93260b421b5f1
 Bug 1178895 - Patch 2: Implement 'contain: layout' for nsBlockFrame.
 
 diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
@@ -78,3 +78,24 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
      // we have a computed height, since in that case the carried out
      // margin is not going to be applied anywhere, so we should note it
      // here to be included in the overflow area.
+@@ -1517,17 +1538,19 @@ nsBlockFrame::ComputeFinalSize(const nsH
+     }
+   }
+   if (aState.GetFlag(BRS_FLOAT_MGR)) {
+     // Include the float manager's state to properly account for the
+     // block-end margin of any floated elements; e.g., inside a table cell.
+     nscoord floatHeight =
+       aState.ClearFloats(blockEndEdgeOfChildren, NS_STYLE_CLEAR_BOTH,
+                          nullptr, nsFloatManager::DONT_CLEAR_PUSHED_FLOATS);
+-    blockEndEdgeOfChildren = std::max(blockEndEdgeOfChildren, floatHeight);
++    if (!StyleDisplay()->IsContainLayout()) {
++      blockEndEdgeOfChildren = std::max(blockEndEdgeOfChildren, floatHeight);
++    }
+   }
+ 
+   if (NS_UNCONSTRAINEDSIZE != aReflowState.ComputedBSize()
+       && (GetParent()->GetType() != nsGkAtoms::columnSetFrame ||
+           aReflowState.parentReflowState->AvailableBSize() == NS_UNCONSTRAINEDSIZE)) {
+     ComputeFinalBSize(aReflowState, &aState.mReflowStatus,
+                       aState.mBCoord + nonCarriedOutBDirMargin,
+                       borderPadding, finalSize, aState.mConsumedBSize);

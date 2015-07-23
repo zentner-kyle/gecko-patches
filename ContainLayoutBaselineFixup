@@ -1,0 +1,47 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  9b4cf19794aab1ff1533f3280cece2dc3fe7f9e7
+
+diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
+--- a/layout/base/nsLayoutUtils.cpp
++++ b/layout/base/nsLayoutUtils.cpp
+@@ -5579,16 +5579,19 @@ nsLayoutUtils::GetFirstLineBaseline(Writ
+   return true;
+ }
+ 
+ /* static */ bool
+ nsLayoutUtils::GetFirstLinePosition(WritingMode aWM,
+                                     const nsIFrame* aFrame,
+                                     LinePosition* aResult)
+ {
++  if (aFrame->StyleDisplay()->IsContainLayout()) {
++    return false;
++  }
+   const nsBlockFrame* block = nsLayoutUtils::GetAsBlock(const_cast<nsIFrame*>(aFrame));
+   if (!block) {
+     // For the first-line baseline we also have to check for a table, and if
+     // so, use the baseline of its first row.
+     nsIAtom* fType = aFrame->GetType();
+     if (fType == nsGkAtoms::tableOuterFrame) {
+       aResult->mBStart = 0;
+       aResult->mBaseline = aFrame->GetLogicalBaseline(aWM);
+@@ -5662,16 +5665,19 @@ nsLayoutUtils::GetFirstLinePosition(Writ
+   }
+   return false;
+ }
+ 
+ /* static */ bool
+ nsLayoutUtils::GetLastLineBaseline(WritingMode aWM,
+                                    const nsIFrame* aFrame, nscoord* aResult)
+ {
++  if (aFrame->StyleDisplay()->IsContainLayout()) {
++    return false;
++  }
+   const nsBlockFrame* block = nsLayoutUtils::GetAsBlock(const_cast<nsIFrame*>(aFrame));
+   if (!block)
+     // No baseline.  (We intentionally don't descend into scroll frames.)
+     return false;
+ 
+   for (nsBlockFrame::const_reverse_line_iterator line = block->rbegin_lines(),
+                                              line_end = block->rend_lines();
+        line != line_end; ++line) {
