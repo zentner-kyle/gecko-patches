@@ -150,54 +150,6 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
    NS_FRAME_SET_TRUNCATION(aStatus, aReflowState, aDesiredSize)
  }
  
-diff --git a/layout/generic/nsLineLayout.cpp b/layout/generic/nsLineLayout.cpp
---- a/layout/generic/nsLineLayout.cpp
-+++ b/layout/generic/nsLineLayout.cpp
-@@ -1954,18 +1954,22 @@ nsLineLayout::VerticalAlignFrames(PerSpa
-     if (frameSpan) {
-       // For span frames the logical-block-size and start-leading were
-       // pre-computed when the span was reflowed.
-       logicalBSize = frameSpan->mLogicalBSize;
-     }
-     else {
-       // For other elements the logical block size is the same as the
-       // frame's block size plus its margins.
--      logicalBSize = pfd->mBounds.BSize(lineWM) +
--                     pfd->mMargin.BStartEnd(lineWM);
-+      if (frame->StyleDisplay()->IsContainLayout()) {
-+        logicalBSize = 0;
-+      } else {
-+        logicalBSize = pfd->mBounds.BSize(lineWM) +
-+                      pfd->mMargin.BStartEnd(lineWM);
-+      }
-       if (logicalBSize < 0 &&
-           mPresContext->CompatibilityMode() == eCompatibility_NavQuirks) {
-         pfd->mAscent -= logicalBSize;
-         logicalBSize = 0;
-       }
-     }
- 
-     // Get vertical-align property ("vertical-align" is the CSS name for
-@@ -2016,16 +2020,19 @@ nsLineLayout::VerticalAlignFrames(PerSpa
-               break;
-           }
-         }
-       }
- 
-       // baseline coord that may be adjusted for script offset
-       nscoord revisedBaselineBCoord = baselineBCoord;
- 
-+      if (frame->StyleDisplay()->IsContainLayout()) {
-+        revisedBaselineBCoord = 0;
-+      }
-       // For superscript and subscript, raise or lower the baseline of the box
-       // to the proper offset of the parent's box, then proceed as for BASELINE
-       if (verticalAlignEnum == NS_STYLE_VERTICAL_ALIGN_SUB ||
-           verticalAlignEnum == NS_STYLE_VERTICAL_ALIGN_SUPER) {
-         revisedBaselineBCoord += lineWM.FlowRelativeToLineRelativeFactor() *
-           (verticalAlignEnum == NS_STYLE_VERTICAL_ALIGN_SUB
-             ? fm->SubscriptOffset() : -fm->SuperscriptOffset());
-         verticalAlignEnum = NS_STYLE_VERTICAL_ALIGN_BASELINE;
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html
 new file mode 100644
 --- /dev/null
