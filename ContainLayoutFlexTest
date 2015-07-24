@@ -1,7 +1,203 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  6820b28b1575f0fa802d9951fed9eace28fe705f
+# Parent  f96a603d76f9e80756b459c33d9635a5cdfe02b7
 
+diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
+--- a/layout/base/nsLayoutUtils.cpp
++++ b/layout/base/nsLayoutUtils.cpp
+@@ -5567,16 +5567,19 @@ nsLayoutUtils::GetCenteredFontBaseline(n
+   return fontAscent + leading/2;
+ }
+ 
+ 
+ /* static */ bool
+ nsLayoutUtils::GetFirstLineBaseline(WritingMode aWritingMode,
+                                     const nsIFrame* aFrame, nscoord* aResult)
+ {
++  if (aFrame->StyleDisplay()->IsContainLayout()) {
++    return false;
++  }
+   LinePosition position;
+   if (!GetFirstLinePosition(aWritingMode, aFrame, &position))
+     return false;
+   *aResult = position.mBaseline;
+   return true;
+ }
+ 
+ /* static */ bool
+@@ -5711,16 +5714,19 @@ nsLayoutUtils::GetLastLineBaseline(Writi
+ 
+ static nscoord
+ CalculateBlockContentBEnd(WritingMode aWM, nsBlockFrame* aFrame)
+ {
+   NS_PRECONDITION(aFrame, "null ptr");
+ 
+   nscoord contentBEnd = 0;
+ 
++  if (aFrame->StyleDisplay()->IsContainLayout()) {
++    return contentBEnd;
++  }
+   for (nsBlockFrame::line_iterator line = aFrame->begin_lines(),
+                                    line_end = aFrame->end_lines();
+        line != line_end; ++line) {
+     if (line->IsBlock()) {
+       nsIFrame* child = line->mFirstChild;
+       const nsSize& containerSize = line->mContainerSize;
+       nscoord offset =
+         child->GetLogicalNormalPosition(aWM, containerSize).B(aWM);
+@@ -5737,16 +5743,20 @@ CalculateBlockContentBEnd(WritingMode aW
+ 
+ /* static */ nscoord
+ nsLayoutUtils::CalculateContentBEnd(WritingMode aWM, nsIFrame* aFrame)
+ {
+   NS_PRECONDITION(aFrame, "null ptr");
+ 
+   nscoord contentBEnd = aFrame->BSize(aWM);
+ 
++  if (aFrame->StyleDisplay()->IsContainLayout()) {
++    return contentBEnd;
++  }
++
+   // We want scrollable overflow rather than visual because this
+   // calculation is intended to affect layout.
+   LogicalSize overflowSize(aWM, aFrame->GetScrollableOverflowRect().Size());
+   if (overflowSize.BSize(aWM) > contentBEnd) {
+     nsIFrame::ChildListIDs skip(nsIFrame::kOverflowList |
+                                 nsIFrame::kExcessOverflowContainersList |
+                                 nsIFrame::kOverflowOutOfFlowList);
+     nsBlockFrame* blockFrame = GetAsBlock(aFrame);
+diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexContainerFrame.cpp
+--- a/layout/generic/nsFlexContainerFrame.cpp
++++ b/layout/generic/nsFlexContainerFrame.cpp
+@@ -3703,17 +3703,17 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
+       //     height.)
+       if (!item->IsStretched() && // !A
+           !item->IsStrut() &&     // !B
+           !aAxisTracker.IsCrossAxisHorizontal()) { // !C
+         WritingMode wm = item->Frame()->GetWritingMode();
+         LogicalSize availSize = aReflowState.ComputedSize(wm);
+         availSize.BSize(wm) = NS_UNCONSTRAINEDSIZE;
+         nsHTMLReflowState childReflowState(aPresContext, aReflowState,
+-                                           item->Frame(), availSize);
++                                          item->Frame(), availSize);
+         // Override computed main-size
+         if (aAxisTracker.IsMainAxisHorizontal()) {
+           childReflowState.SetComputedWidth(item->GetMainSize());
+         } else {
+           // XXXdholbert NOTE: For now, we'll never hit this case, due to the
+           // !aAxisTracker.IsCrossAxisHorizontal() check above. But
+           // when we add support for vertical writing modes, we'll relax that
+           // check and be able to hit this code.
+@@ -3897,24 +3897,28 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
+   // starting w/ content-box size & growing from there:
+   LogicalSize desiredSizeInFlexWM =
+     aAxisTracker.LogicalSizeFromFlexRelativeSizes(aContentBoxMainSize,
+                                                   contentBoxCrossSize);
+   // Add border/padding (w/ skipSides already applied):
+   desiredSizeInFlexWM.ISize(flexWM) += containerBP.IStartEnd(flexWM);
+   desiredSizeInFlexWM.BSize(flexWM) += containerBP.BStartEnd(flexWM);
+ 
+-  if (flexContainerAscent == nscoord_MIN) {
+-    // Still don't have our baseline set -- this happens if we have no
+-    // children (or if our children are huge enough that they have nscoord_MIN
+-    // as their baseline... in which case, we'll use the wrong baseline, but no
+-    // big deal)
+-    NS_WARN_IF_FALSE(lines.getFirst()->IsEmpty(),
+-                     "Have flex items but didn't get an ascent - that's odd "
+-                     "(or there are just gigantic sizes involved)");
++  if (flexContainerAscent == nscoord_MIN || StyleDisplay()->IsContainLayout()) {
++    if (flexContainerAscent == nscoord_MIN) {
++      // Still don't have our baseline set -- this happens if we have no
++      // children (or if our children are huge enough that they have nscoord_MIN
++      // as their baseline... in which case, we'll use the wrong baseline, but no
++      // big deal)
++      NS_WARN_IF_FALSE(lines.getFirst()->IsEmpty(),
++                      "Have flex items but didn't get an ascent - that's odd "
++                      "(or there are just gigantic sizes involved)");
++    } else {
++      flexContainerAscent = nscoord_MIN;
++    }
+     // Per spec, synthesize baseline from the flex container's content box
+     // (i.e. use block-end side of content-box)
+     // XXXdholbert This only makes sense if parent's writing mode is
+     // horizontal (& even then, really we should be using the BSize in terms
+     // of the parent's writing mode, not ours). Clean up in bug 1155322.
+     flexContainerAscent = desiredSizeInFlexWM.BSize(flexWM);
+   }
+ 
+@@ -3944,19 +3948,21 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
+       NS_FRAME_SET_INCOMPLETE(aStatus);
+     }
+   }
+ 
+   // Convert flex container's final desired size to parent's WM, for outparam.
+   aDesiredSize.SetSize(flexWM, desiredSizeInFlexWM);
+ 
+   // Overflow area = union(my overflow area, kids' overflow areas)
+-  aDesiredSize.SetOverflowAreasToDesiredBounds();
+-  for (nsIFrame* childFrame : mFrames) {
+-    ConsiderChildOverflow(aDesiredSize.mOverflowAreas, childFrame);
++  if (!StyleDisplay()->IsContainLayout()) {
++    aDesiredSize.SetOverflowAreasToDesiredBounds();
++    for (nsIFrame* childFrame : mFrames) {
++      ConsiderChildOverflow(aDesiredSize.mOverflowAreas, childFrame);
++    }
+   }
+ 
+   FinishReflowWithAbsoluteFrames(aPresContext, aDesiredSize,
+                                  aReflowState, aStatus);
+ 
+   NS_FRAME_SET_TRUNCATION(aStatus, aReflowState, aDesiredSize)
+ }
+ 
+diff --git a/layout/generic/nsLineLayout.cpp b/layout/generic/nsLineLayout.cpp
+--- a/layout/generic/nsLineLayout.cpp
++++ b/layout/generic/nsLineLayout.cpp
+@@ -1954,18 +1954,22 @@ nsLineLayout::VerticalAlignFrames(PerSpa
+     if (frameSpan) {
+       // For span frames the logical-block-size and start-leading were
+       // pre-computed when the span was reflowed.
+       logicalBSize = frameSpan->mLogicalBSize;
+     }
+     else {
+       // For other elements the logical block size is the same as the
+       // frame's block size plus its margins.
+-      logicalBSize = pfd->mBounds.BSize(lineWM) +
+-                     pfd->mMargin.BStartEnd(lineWM);
++      if (frame->StyleDisplay()->IsContainLayout()) {
++        logicalBSize = 0;
++      } else {
++        logicalBSize = pfd->mBounds.BSize(lineWM) +
++                      pfd->mMargin.BStartEnd(lineWM);
++      }
+       if (logicalBSize < 0 &&
+           mPresContext->CompatibilityMode() == eCompatibility_NavQuirks) {
+         pfd->mAscent -= logicalBSize;
+         logicalBSize = 0;
+       }
+     }
+ 
+     // Get vertical-align property ("vertical-align" is the CSS name for
+@@ -2016,16 +2020,19 @@ nsLineLayout::VerticalAlignFrames(PerSpa
+               break;
+           }
+         }
+       }
+ 
+       // baseline coord that may be adjusted for script offset
+       nscoord revisedBaselineBCoord = baselineBCoord;
+ 
++      if (frame->StyleDisplay()->IsContainLayout()) {
++        revisedBaselineBCoord = 0;
++      }
+       // For superscript and subscript, raise or lower the baseline of the box
+       // to the proper offset of the parent's box, then proceed as for BASELINE
+       if (verticalAlignEnum == NS_STYLE_VERTICAL_ALIGN_SUB ||
+           verticalAlignEnum == NS_STYLE_VERTICAL_ALIGN_SUPER) {
+         revisedBaselineBCoord += lineWM.FlowRelativeToLineRelativeFactor() *
+           (verticalAlignEnum == NS_STYLE_VERTICAL_ALIGN_SUB
+             ? fm->SubscriptOffset() : -fm->SuperscriptOffset());
+         verticalAlignEnum = NS_STYLE_VERTICAL_ALIGN_BASELINE;
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html
 new file mode 100644
 --- /dev/null
@@ -33,7 +229,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001.h
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001.html
-@@ -0,0 +1,24 @@
+@@ -0,0 +1,81 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -47,15 +243,72 @@ new file mode 100644
 +    margin: 0;
 +  }
 +  .container {
-+    display: flex;
++    /* display: inline-block; */
++    display: inline-flex;
++    //display: flex;
 +    contain: layout;
++    /* overflow: hidden; */
 +    background: red;
-+    border: 16px solid green;
++    border: 8px solid green;
++    margin: 2px;
++  }
++
++  .right-float {
++    float: right;
++    background: blue;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .left-float {
++    float: left;
++    background: orange;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .big-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++  }
++
++  .block {
++    display: inline-block;
++    width: 50px;
++    height: 50px;
++    background: teal;
++  }
++  .positioned-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++    position: relative;
++    top: -20px;
++    left: -20px;
 +  }
 +  </style>
 +</head>
 +<body class="reftest-paint">
-+  <div class="container">Test div.</div>
++  All of the following green boxes should be on the same line, and the same size.
++  All of the words should be on the same line as each other as well.
++  <br>
++  <div class="container"></div>
++  Word
++  <div class="container">Test text contents.</div>
++  Word
++  <div class="container"><div><div class="right-float"></div></div></div>
++  Word
++  <div class="container"><div><div class="left-float"></div></div></div>
++  Word
++  <div class="container"><div class="block"></div></div>
++  Word
++  <div class="container"><div class="big-block"></div></div>
++  Word
++  <div class="container"><div class="positioned-block"></div></div>
++  Word
 +</body>
 +</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002-ref.html
@@ -120,14 +373,19 @@ new file mode 100644
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -19,8 +19,10 @@ default-preferences pref(layout.css.cont
+@@ -19,13 +19,15 @@ default-preferences pref(layout.css.cont
+ == contain-style-counter-scope-006.html contain-style-counter-scope-001-ref.html
  == contain-style-counter-scope-007.html contain-style-counter-scope-001-ref.html
  == contain-style-counter-scope-008.html contain-style-counter-scope-001-ref.html
  == contain-style-counter-scope-009.html contain-style-counter-scope-001-ref.html
- == contain-layout-zero-001.html contain-layout-zero-001-ref.html
- == contain-layout-inline-zero-001.html contain-layout-inline-zero-001-ref.html
+ == contain-layout-block-001.html contain-layout-block-001-ref.html
+ == contain-layout-block-002.html contain-layout-block-002-ref.html
+ == contain-layout-block-003.html contain-layout-block-003-ref.html
+ == contain-layout-block-004.html contain-layout-block-004-ref.html
++== contain-layout-flex-001.html contain-layout-flex-001-ref.html
++== contain-layout-flex-002.html contain-layout-flex-002-ref.html
+ == contain-layout-inline-block-001.html contain-layout-inline-block-001-ref.html
+ == contain-layout-inline-block-002.html contain-layout-inline-block-002-ref.html
  == contain-style-quote-001.html contain-style-quote-001-ref.html
  == contain-style-break-001.html contain-style-break-001-ref.html
  == contain-style-break-002.html contain-style-break-001-ref.html
-+== contain-layout-flex-001.html contain-layout-flex-001-ref.html
-+== contain-layout-flex-002.html contain-layout-flex-002-ref.html
