@@ -98,16 +98,21 @@ diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 diff --git a/layout/style/ua.css b/layout/style/ua.css
 --- a/layout/style/ua.css
 +++ b/layout/style/ua.css
-@@ -519,8 +519,12 @@ div:-moz-native-anonymous.moz-custom-con
-   position: fixed;
-   top: 0;
-   left: 0;
-   width: 100%;
-   height: 100%;
- 
-   z-index: 2147483648;
+@@ -153,16 +153,17 @@
  }
-+
-+*|*::-moz-scrolled-content {
+ 
+ *|*::-moz-scrolled-content, *|*::-moz-scrolled-canvas,
+ *|*::-moz-scrolled-page-sequence {
+   /* e.g., text inputs, select boxes */
+   padding: inherit;
+   /* The display doesn't affect the kind of frame constructed here.  This just
+      affects auto-width sizing of the block we create. */
 +  contain: inherit;
-+}
+   display: block;
+   -moz-box-orient: inherit;
+   /* make unicode-bidi inherit, otherwise it has no effect on text inputs and
+      blocks with overflow: scroll; */
+   unicode-bidi: inherit;
+   text-overflow: inherit;
+   -moz-column-count: inherit;
+   -moz-column-width: inherit;

@@ -595,10 +595,311 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003-ref.html
+@@ -0,0 +1,36 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    display: inline-block;
++    overflow: hidden;
++    background: red;
++    border: 8px solid green;
++    margin: 2px;
++  }
++  </style>
++</head>
++<body>
++  <div class="container"></div>
++  Word
++  <div class="container"></div>
++  Word
++  <div class="container"></div>
++  Word
++  <div class="container"></div>
++  Word
++  <div class="container"></div>
++  Word
++  <div class="container"></div>
++  Word
++  <div class="container"></div>
++  Word
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003.html
+@@ -0,0 +1,82 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: hidden contents of an 'contain: layout' inline-block should not
++    cause the baseline to move.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-inline-block-003-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    display: inline-block;
++    contain: layout;
++    overflow: hidden;
++    background: red;
++    border: 8px solid green;
++    margin: 2px;
++  }
++
++  .right-float {
++    float: right;
++    background: blue;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .left-float {
++    float: left;
++    background: orange;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .big-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++  }
++
++  .block {
++    display: inline-block;
++    width: 50px;
++    height: 50px;
++    background: teal;
++  }
++  .positioned-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++    position: relative;
++    top: 20px;
++    left: 20px;
++  }
++  </style>
++</head>
++<body>
++  <!--
++    Since the contents of a contained element do not move the baseline, all
++    of the following green boxes should be on the same line, and the same size.
++    All of the words should be on the same line as each other as well.
++  -->
++  <div class="container"></div>
++  Word
++  <div class="container">Test text contents.</div>
++  Word
++  <div class="container"><div><div class="right-float"></div></div></div>
++  Word
++  <div class="container"><div><div class="left-float"></div></div></div>
++  Word
++  <div class="container"><div class="block"></div></div>
++  Word
++  <div class="container"><div class="big-block"></div></div>
++  Word
++  <div class="container"><div class="positioned-block"></div></div>
++  Word
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004-ref.html
+@@ -0,0 +1,82 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    display: inline-block;
++    position: relative;
++    width: 0;
++    height: 0;
++    background: red;
++    border: 8px solid green;
++    margin: 2px;
++    z-index: -1;
++  }
++
++  .right-float {
++    float: right;
++    background: blue;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .left-float {
++    float: left;
++    background: orange;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .big-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++  }
++
++  .block {
++    display: inline-block;
++    width: 50px;
++    height: 50px;
++    background: teal;
++  }
++  .positioned-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++    position: relative;
++    top: 20px;
++    left: 20px;
++  }
++  .line-fix {
++    position: relative;
++    top: -43px;
++  }
++  </style>
++</head>
++<body>
++  <div class="line-fix">
++    <div class="container"></div>
++    Word
++    <div class="container" style="top:43px">Test text contents.</div>
++    Word
++    <div class="container"><div><div class="right-float"></div></div></div>
++    Word
++    <div class="container"><div><div class="left-float"></div></div></div>
++    Word
++    <div class="container" style="top:40px"><div class="block"></div></div>
++    Word
++    <div class="container"><div class="big-block"></div></div>
++    Word
++    <div class="container"><div class="positioned-block"></div></div>
++    Word
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004.html
+@@ -0,0 +1,81 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: visible contents of an 'contain: layout' inline-block should not
++    cause the baseline to move.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-inline-block-004-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    display: inline-block;
++    contain: layout;
++    background: red;
++    border: 8px solid green;
++    margin: 2px;
++  }
++
++  .right-float {
++    float: right;
++    background: blue;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .left-float {
++    float: left;
++    background: orange;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .big-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++  }
++
++  .block {
++    display: inline-block;
++    width: 50px;
++    height: 50px;
++    background: teal;
++  }
++  .positioned-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++    position: relative;
++    top: 20px;
++    left: 20px;
++  }
++  </style>
++</head>
++<body>
++  <!--
++    Since the contents of a contained element do not move the baseline, all
++    of the following green boxes should be on the same line, and the same size.
++    All of the words should be on the same line as each other as well.
++  -->
++  <div class="container"></div>
++  Word
++  <div class="container">Test text contents.</div>
++  Word
++  <div class="container"><div><div class="right-float"></div></div></div>
++  Word
++  <div class="container"><div><div class="left-float"></div></div></div>
++  Word
++  <div class="container"><div class="block"></div></div>
++  Word
++  <div class="container"><div class="big-block"></div></div>
++  Word
++  <div class="container"><div class="positioned-block"></div></div>
++  Word
++</body>
++</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -15,11 +15,17 @@ default-preferences pref(layout.css.cont
+@@ -15,11 +15,19 @@ default-preferences pref(layout.css.cont
  == contain-style-counter-scope-002.html contain-style-counter-scope-001-ref.html
  == contain-style-counter-scope-003.html contain-style-counter-scope-001-ref.html
  == contain-style-counter-scope-004.html contain-style-counter-scope-001-ref.html
@@ -613,134 +914,8 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/ref
 +== contain-layout-block-004.html contain-layout-block-004-ref.html
 +== contain-layout-inline-block-001.html contain-layout-inline-block-001-ref.html
 +== contain-layout-inline-block-002.html contain-layout-inline-block-002-ref.html
++== contain-layout-inline-block-003.html contain-layout-inline-block-003-ref.html
++== contain-layout-inline-block-004.html contain-layout-inline-block-004-ref.html
  == contain-style-quote-001.html contain-style-quote-001-ref.html
  == contain-style-break-001.html contain-style-break-001-ref.html
  == contain-style-break-002.html contain-style-break-001-ref.html
-diff --git a/layout/style/test/mochitest.ini b/layout/style/test/mochitest.ini
---- a/layout/style/test/mochitest.ini
-+++ b/layout/style/test/mochitest.ini
-@@ -275,8 +275,9 @@ support-files = bug732209-css.sjs
- [test_counter_descriptor_storage.html]
- [test_position_float_display.html]
- [test_animations_async_tests.html]
- support-files = ../../reftests/fonts/Ahem.ttf file_animations_async_tests.html
- [test_setPropertyWithNull.html]
- [test_attribute_selector_eof_behavior.html]
- [test_css_loader_crossorigin_data_url.html]
- [test_box_size_keywords.html]
-+[test_contain_layout_empty.html]
-diff --git a/layout/style/test/test_contain_layout_empty.html b/layout/style/test/test_contain_layout_empty.html
-new file mode 100644
---- /dev/null
-+++ b/layout/style/test/test_contain_layout_empty.html
-@@ -0,0 +1,110 @@
-+<!DOCTYPE HTML>
-+<html>
-+<!--
-+https://bugzilla.mozilla.org/show_bug.cgi?id=1178895
-+-->
-+<head>
-+  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: layout' on various elements causes them to act as
-+    though they are empty</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
-+  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <script src=/tests/SimpleTest/SimpleTest.js></script>
-+  <script type="text/javascript" src="/tests/SimpleTest/WindowSnapshot.js"></script>
-+  <link rel=stylesheet href=/tests/SimpleTest/test.css>
-+  <style>
-+  .container {
-+    contain: layout;
-+    background: green;
-+    margin: 15px;
-+    overflow: visible;
-+  }
-+  .fake-container {
-+    background: green;
-+    margin: 15px;
-+    contain: layout;
-+  }
-+  .contained {
-+    width: 10px;
-+    height: 10px;
-+    background: blue;
-+  }
-+  </style>
-+  <script class='testbody'>
-+    SimpleTest.waitForExplicitFinish();
-+    SimpleTest.requestLongerTimeout(3600);
-+
-+    var point = document.createElement('div')
-+    var displays = ["inline", "block", "contents", "list-item",
-+    "inline-block", "inline-table", "table", "table-cell", "table-column",
-+    "table-column-group", "table-footer-group", "table-header-group",
-+    "table-row", "table-row-group", "flex", "inline-flex", "grid",
-+    "inline-grid", "ruby", "ruby-base", "ruby-text", "ruby-base-container",
-+    "ruby-text-container ", "run-in"];
-+    var outerIdx = 0;
-+    var innerIdx = 0;
-+    function tick() {
-+      if (innerIdx === displays.length) {
-+        outerIdx += 1;
-+        innerIdx = 0;
-+      } else {
-+        innerIdx += 1;
-+      }
-+      if (outerIdx === displays.length) {
-+        return;
-+      }
-+      var outerDisplay = displays[outerIdx];
-+      var innerDisplay = displays[innerIdx];
-+      testPair(outerDisplay, innerDisplay);
-+      return true;
-+    }
-+    function testPair(outerDisplay, innerDisplay) {
-+      var outerElem = document.createElement("div");
-+      outerElem.style.display = outerDisplay;
-+      outerElem.classList.add("container");
-+
-+      // Insert the container
-+      var holder = document.getElementById("holder");
-+      holder.appendChild(outerElem);
-+
-+      // Get the original computed style of the ontainer
-+      var containerStyle = getComputedStyle(outerElem);
-+
-+      // Add inner elem.
-+      var innerElem = document.createElement("div");
-+      innerElem.style.display = innerDisplay;
-+      innerElem.classList.add("contained");
-+      innerElem.textContent = "Lorem ipsum dolor sit amet";
-+      outerElem.appendChild(innerElem);
-+
-+      var realSnapshot = SpecialPowers.snapshotWindow(window);
-+
-+      // Switch to fake container class
-+      outerElem.classList.remove("container");
-+      outerElem.classList.add("fake-container");
-+
-+      for (var prop in containerStyle) {
-+        if (prop !== 'contain') {
-+          outerElem.style[prop] = containerStyle[prop];
-+          console.log('setting ' + prop + ' to ' + containerStyle[prop]);
-+        }
-+      }
-+
-+      var fakeSnapshot = SpecialPowers.snapshotWindow(window);
-+      assertSnapshots(realSnapshot, fakeSnapshot, true, null,
-+      outerDisplay + " / " + innerDisplay + " contain: layout", "faked contain:layout");
-+      outerElem.parentNode.removeChild(outerElem);
-+      innerElem.parentNode.removeChild(innerElem);
-+    }
-+    function doTest() {
-+      while (tick()) { }
-+      testPair('block', 'inline');
-+      SimpleTest.executeSoon(SimpleTest.finish);
-+    }
-+  </script>
-+</head>
-+<body onload="doTest()">
-+  <div id="holder">
-+  </div>
-+</body>
-+</html>
