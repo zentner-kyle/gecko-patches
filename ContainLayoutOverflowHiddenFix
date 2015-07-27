@@ -1,0 +1,20 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  f2d96d94a212aa1f57ed315e8a9b3f12de824ecd
+
+diff --git a/layout/style/ua.css b/layout/style/ua.css
+--- a/layout/style/ua.css
++++ b/layout/style/ua.css
+@@ -519,8 +519,12 @@ div:-moz-native-anonymous.moz-custom-con
+   position: fixed;
+   top: 0;
+   left: 0;
+   width: 100%;
+   height: 100%;
+ 
+   z-index: 2147483648;
+ }
++
++*|*::-moz-scrolled-content {
++  contain: inherit;
++}
