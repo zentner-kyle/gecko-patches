@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  37c84b6a1982af6cf3100085c1ec54589f8fbb07
+# Parent  30ca403c2f49b80f815d08d704b8fbb9d75d4f12
 Bug 1178895 - Patch 3: Test CSS 'contain: layout' on blocks.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-block-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-block-001-ref.html
@@ -113,7 +113,7 @@ new file mode 100644
 +  </style>
 +</head>
 +<body class="reftest-paint">
-+  <div class="container-ref">Test div.</div>
++  <div class="container-ref">This text should not affect the size of the container.</div>
 +</body>
 +</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-block-002.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-block-002.html
@@ -142,7 +142,7 @@ new file mode 100644
 +  </style>
 +</head>
 +<body class="reftest-paint">
-+  <div class="container">Test div.</div>
++  <div class="container">This text should not affect the size of the container.</div>
 +</body>
 +</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-block-003-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-block-003-ref.html
@@ -182,7 +182,7 @@ new file mode 100644
 +<body class="reftest-paint">
 +  <div class="container-ref">
 +    <div class="right-float"></div>
-+    Test span.
++    This text should not affect the size of the container.
 +    <div class="left-float"></div>
 +  </div>
 +</body>
@@ -227,7 +227,7 @@ new file mode 100644
 +<body class="reftest-paint">
 +  <div class="container">
 +    <div class="right-float"></div>
-+    Test span.
++    This text should not affect the size of the container.
 +    <div class="left-float"></div>
 +  </div>
 +</body>
@@ -472,7 +472,7 @@ new file mode 100644
 +  </style>
 +</head>
 +<body class="reftest-paint">
-+  <span class="container-ref">Test span.</span>
++  <span class="container-ref">This text should not affect the size of the container.</span>
 +</body>
 +</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-001.html
@@ -501,7 +501,7 @@ new file mode 100644
 +  </style>
 +</head>
 +<body class="reftest-paint">
-+  <span class="container">Test span.</span>
++  <span class="container">This text should not affect the size of the container.</span>
 +</body>
 +</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-002-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-002-ref.html
@@ -543,7 +543,7 @@ new file mode 100644
 +<body class="reftest-paint">
 +  <div class="container-ref">
 +    <div class="right-float"></div>
-+    Test span.
++    This text should not affect the size of the container.
 +    <div class="left-float"></div>
 +  </div>
 +</body>
@@ -590,7 +590,7 @@ new file mode 100644
 +<body class="reftest-paint">
 +  <div class="container">
 +    <div class="right-float"></div>
-+    Test span.
++    This text should not affect the size of the container.
 +    <div class="left-float"></div>
 +  </div>
 +</body>
