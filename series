@@ -8,13 +8,11 @@ ContainStyleQuotesTest
 ContainStyleBreak
 ContainStyleBreakTest
 ContainLayoutBase
-ContainLayoutBaselineFixup
 ContainLayoutBlock
 ContainLayoutBlockTest
 ContainLayoutTable
 ContainLayoutFlex
 ContainLayoutFlexTest
-ContainLayoutOverflowHiddenFix
 ContainLayoutMochiTest
 ContainLayoutMochitestImprovement
 ContainLayoutFixups
