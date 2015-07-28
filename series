@@ -10,6 +10,8 @@ ContainStyleBreakTest
 ContainLayoutBase
 ContainLayoutBlock
 ContainLayoutBlockTest
+UACSSDebugging
+UACSSFix
 ContainLayoutTable
 ContainLayoutFlex
 ContainLayoutFlexTest

@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  9df7342bd788ead13fc3ed85bf3d33424107349b
+# Parent  8fd84f5b0789ada9c60268ab732b62334ac981e2
 Bug 1172087 - Patch 4: Test quote behavior for "contain: style"
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-quote-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-quote-001-ref.html
@@ -13,7 +13,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 2em;
@@ -68,7 +68,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' "scopes" quote depth, "setting" it to 0 and back.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="style-quote-001-ref.html">
 +  <style>
@@ -111,7 +111,7 @@ new file mode 100644
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -14,8 +14,9 @@ default-preferences pref(layout.css.cont
+@@ -15,8 +15,9 @@ default-preferences pref(layout.css.cont
  == contain-style-counter-scope-002.html contain-style-counter-scope-001-ref.html
  == contain-style-counter-scope-003.html contain-style-counter-scope-001-ref.html
  == contain-style-counter-scope-004.html contain-style-counter-scope-001-ref.html

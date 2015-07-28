@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  825716c5c6eea5aa6c7daf5094adf5c3c6fb95cb
+# Parent  3adc6dc9d59b0590c0440336f99250a3e5d9c0fb
 Bug 1172087 - Patch 2: Test counter behavior for "contain: style"
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html
@@ -13,7 +13,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -56,7 +56,7 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on various elements causes them to act as
 +    though they are empty</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="layout-zero-001-ref.html">
 +  <style>
@@ -154,7 +154,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -221,7 +221,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' "scopes" counters, "setting" them to 0 and back.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-increment-001-ref.html">
 +  <style>
@@ -288,7 +288,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -335,7 +335,7 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' "scopes" counters, "setting" them to 0 and
 +    back, even if the counter use is inserted after load.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-insert-001-ref.html">
 +  <style>
@@ -388,7 +388,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +</head>
 +<body>
 +  <div>2</div>
@@ -405,7 +405,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' counter-reset scope above container</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">
 +  <style>
@@ -443,7 +443,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' counter-reset on container.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">
 +  <style>
@@ -477,7 +477,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' "scopes" counters, scope should extend throughout container</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">
 +  <style>
@@ -515,7 +515,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' is processed before 'counter-increment'</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">
 +  <style>
@@ -547,7 +547,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' counter-reset with container as middle sibling</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">
 +  <style>
@@ -586,7 +586,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' counter-reset inside container</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">
 +  <style>
@@ -624,7 +624,7 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' dynamically inserted counter-reset scope
 +    above container</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">
 +  <style>
@@ -680,7 +680,7 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' "scopes" dynamically inserted counter
 +    without reset</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">
 +  <style>
@@ -730,7 +730,7 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' counter-reset scope above container with
 +    dynamically inserted counter uses.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-counter-scope-001-ref.html">
 +  <style>

@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  8a4b446635209296d7fde8c78147a848e407e38e
+# Parent  42659d7ba13f7fe7104cfeca6b038f4a91d44e6e
 Bug 1172087 - Patch 6: Test page break behavior for "contain: style"
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-001-ref.html
@@ -13,7 +13,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -75,7 +75,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' causes page-break-* to be ignored on descendants.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-break-001-ref.html">
 +  <style>
@@ -146,7 +146,7 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: style' causes page-break-* to be ignored on
 +    dynamically inserted descendants.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
 +  <link rel="match" href="contain-style-break-001-ref.html">
 +  <style>
@@ -205,7 +205,7 @@ new file mode 100644
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -15,8 +15,10 @@ default-preferences pref(layout.css.cont
+@@ -16,8 +16,10 @@ default-preferences pref(layout.css.cont
  == contain-style-counter-scope-003.html contain-style-counter-scope-001-ref.html
  == contain-style-counter-scope-004.html contain-style-counter-scope-001-ref.html
  == contain-style-counter-scope-005.html contain-style-counter-scope-001-ref.html
