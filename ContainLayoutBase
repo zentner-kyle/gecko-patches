@@ -4,7 +4,7 @@
 Bug 1178895 - Patch 1: Basic changes needed for all 'contain: layout' elements.
 
 Turns 'contain: layout' elements into formatting contexts.
-Add IsContainLayout helper method.
+Add IsContainLayout helper function.
 
 diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
 --- a/layout/base/nsLayoutUtils.cpp
@@ -18,7 +18,7 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
                                      const nsIFrame* aFrame,
                                      LinePosition* aResult)
  {
-+  if (aFrame->StyleDisplay()->IsContainLayout()) {
++  if (nsLayoutUtils::IsContainLayout(aFrame)) {
 +    return false;
 +  }
    const nsBlockFrame* block = nsLayoutUtils::GetAsBlock(const_cast<nsIFrame*>(aFrame));
@@ -38,7 +38,7 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
  nsLayoutUtils::GetLastLineBaseline(WritingMode aWM,
                                     const nsIFrame* aFrame, nscoord* aResult)
  {
-+  if (aFrame->StyleDisplay()->IsContainLayout()) {
++  if (nsLayoutUtils::IsContainLayout(aFrame)) {
 +    return false;
 +  }
    const nsBlockFrame* block = nsLayoutUtils::GetAsBlock(const_cast<nsIFrame*>(aFrame));
@@ -111,7 +111,7 @@ diff --git a/layout/style/nsLayoutStylesheetCache.cpp b/layout/style/nsLayoutSty
 diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 --- a/layout/style/nsRuleNode.cpp
 +++ b/layout/style/nsRuleNode.cpp
-@@ -5723,17 +5723,17 @@ nsRuleNode::ComputeDisplayData(void* aSt
+@@ -5723,17 +5723,20 @@ nsRuleNode::ComputeDisplayData(void* aSt
  
        // Note that it's OK to cache this struct in the ruletree
        // because it's fine as-is for any style context that points to
@@ -121,7 +121,10 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
      }
  
 -    if (display->IsContainPaint()) {
-+    if (display->IsContainPaint() || display->IsContainLayout()) {
++    // We can use mContain here directly, since in the case where
++    // IsContainLayout() differs from using mContain directly, the frame is a
++    // scroll frame, and thus already a formatting context.
++    if (display->IsContainPaint() || (display->mContain & NS_STYLE_CONTAIN_LAYOUT)) {
        // An element with contain:paint or contain:layout needs to "be a
        // formatting context". For the purposes of the "display" property, that
        // just means we need to promote "display:inline" to "inline-block".
