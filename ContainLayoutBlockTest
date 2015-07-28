@@ -13,7 +13,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -56,7 +56,7 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on auto sized block should cause the block
 +    to be zero block-sized.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-block-001-ref.html">
 +  <style>
@@ -100,7 +100,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -127,7 +127,7 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on block element should cause the element
 +    to have zero height.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-block-002-ref.html">
 +  <style>
@@ -155,7 +155,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -198,7 +198,7 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on block element containing
 +    floats should cause the element to have zero height.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-block-003-ref.html">
 +  <style>
@@ -242,7 +242,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -279,7 +279,7 @@ new file mode 100644
 +  <title>CSS Test: 'contain: layout' on block element containing
 +    a block with margins should cause the element to have zero
 +    height.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-block-004-ref.html">
 +  <style>
@@ -316,7 +316,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -345,7 +345,7 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on inline element should cause the element
 +    to become a inline-block with zero height and width.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-inline-block-001-ref.html">
 +  <style>
@@ -373,7 +373,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -419,9 +419,9 @@ new file mode 100644
 +  <title>CSS Test: 'contain: layout' on inline-block element
 +    containing floats should cause the element to have zero width and
 +    height.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <link rel="match" href="contain-layout-block-003-ref.html">
++  <link rel="match" href="contain-layout-block-002-ref.html">
 +  <style>
 +  body {
 +    margin: 0;

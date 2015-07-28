@@ -9,7 +9,38 @@ Add IsContainLayout helper function.
 diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
 --- a/layout/base/nsLayoutUtils.cpp
 +++ b/layout/base/nsLayoutUtils.cpp
-@@ -5579,16 +5579,19 @@ nsLayoutUtils::GetFirstLineBaseline(Writ
+@@ -4122,16 +4122,30 @@ nsLayoutUtils::IsViewportScrollbarFrame(
+   if (!IsProperAncestorFrame(rootScrollFrame, aFrame))
+     return false;
+ 
+   nsIFrame* rootScrolledFrame = rootScrollableFrame->GetScrolledFrame();
+   return !(rootScrolledFrame == aFrame ||
+            IsProperAncestorFrame(rootScrolledFrame, aFrame));
+ }
+ 
++bool
++nsLayoutUtils::IsContainLayout(const nsIFrame* aFrame) {
++  if (aFrame->StyleDisplay()->mContain & NS_STYLE_CONTAIN_LAYOUT) {
++    return true;
++  }
++  if (aFrame->StyleContext()->GetPseudo() == nsCSSAnonBoxes::scrolledContent) {
++    nsIFrame* parent = aFrame->GetParent();
++    MOZ_ASSERT(parent,
++               "If we're scrolled content, we should have a parent scrollframe");
++    return parent->StyleDisplay()->mContain & NS_STYLE_CONTAIN_LAYOUT;
++  }
++  return false;
++}
++
+ static nscoord AddPercents(nsLayoutUtils::IntrinsicISizeType aType,
+                            nscoord aCurrent, float aPercent)
+ {
+   nscoord result = aCurrent;
+   if (aPercent > 0.0f && aType == nsLayoutUtils::PREF_ISIZE) {
+     // XXX Should we also consider percentages for min widths, up to a
+     // limit?
+     if (aPercent >= 1.0f)
+@@ -5579,16 +5593,19 @@ nsLayoutUtils::GetFirstLineBaseline(Writ
    return true;
  }
  
@@ -29,7 +60,7 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
      if (fType == nsGkAtoms::tableOuterFrame) {
        aResult->mBStart = 0;
        aResult->mBaseline = aFrame->GetLogicalBaseline(aWM);
-@@ -5662,16 +5665,19 @@ nsLayoutUtils::GetFirstLinePosition(Writ
+@@ -5662,16 +5679,19 @@ nsLayoutUtils::GetFirstLinePosition(Writ
    }
    return false;
  }
@@ -52,7 +83,7 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
 diff --git a/layout/base/nsLayoutUtils.h b/layout/base/nsLayoutUtils.h
 --- a/layout/base/nsLayoutUtils.h
 +++ b/layout/base/nsLayoutUtils.h
-@@ -1465,16 +1465,33 @@ public:
+@@ -1465,16 +1465,23 @@ public:
              aCoord.GetCoordValue() == 0) ||
             (aCoord.GetUnit() == eStyleUnit_Percent &&
              aCoord.GetPercentValue() == 0.0f) ||
@@ -66,17 +97,7 @@ diff --git a/layout/base/nsLayoutUtils.h b/layout/base/nsLayoutUtils.h
 +   * the other portions of containment), this function is needed. Otherwise,
 +   * there would be a nsStyleDisplay::IsContainLayout().
 +   */
-+  static bool IsContainLayout(nsIFrame* aFrame) {
-+    nsIFrame* parent = aFrame->GetParent();
-+    if (parent) {
-+      if (parent->StyleDisplay()->mContain & NS_STYLE_CONTAIN_LAYOUT) {
-+        if (parent->StyleContext()->GetPseudo() == nsGkAtoms::scrollFrame) {
-+          return true;
-+        }
-+      }
-+    }
-+    return false;
-+  }
++  static bool IsContainLayout(const nsIFrame* aFrame);
 +
    static void MarkDescendantsDirty(nsIFrame *aSubtreeRoot);
  
@@ -86,28 +107,6 @@ diff --git a/layout/base/nsLayoutUtils.h b/layout/base/nsLayoutUtils.h
     *   http://www.w3.org/TR/CSS21/visudet.html#min-max-widths
     */
    static mozilla::LogicalSize
-diff --git a/layout/style/nsLayoutStylesheetCache.cpp b/layout/style/nsLayoutStylesheetCache.cpp
---- a/layout/style/nsLayoutStylesheetCache.cpp
-+++ b/layout/style/nsLayoutStylesheetCache.cpp
-@@ -387,16 +387,18 @@ nsLayoutStylesheetCache::EnsureGlobal()
-                                true);
- 
-   // For each pref that controls a CSS feature that a UA style sheet depends
-   // on (such as a pref that enables a property that a UA style sheet uses),
-   // register DependentPrefChanged as a callback to ensure that the relevant
-   // style sheets will be re-parsed.
-   Preferences::RegisterCallback(&DependentPrefChanged,
-                                 "layout.css.ruby.enabled");
-+  Preferences::RegisterCallback(&DependentPrefChanged,
-+                                "layout.css.contain.enabled");
- }
- 
- void
- nsLayoutStylesheetCache::InitFromProfile()
- {
-   nsCOMPtr<nsIXULRuntime> appInfo = do_GetService("@mozilla.org/xre/app-info;1");
-   if (appInfo) {
-     bool inSafeMode = false;
 diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 --- a/layout/style/nsRuleNode.cpp
 +++ b/layout/style/nsRuleNode.cpp
