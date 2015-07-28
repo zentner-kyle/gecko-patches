@@ -142,64 +142,46 @@ diff --git a/layout/generic/nsBlockFrame.h b/layout/generic/nsBlockFrame.h
  
  #ifdef ACCESSIBILITY
    virtual mozilla::a11y::AccType AccessibleType() override;
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003.html
---- a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003.html
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003.html
-@@ -8,17 +8,17 @@
-   <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-   <link rel="match" href="contain-layout-inline-block-003-ref.html">
-   <style>
-   body {
-     margin: 0;
-   }
-   .container {
-     display: inline-block;
--    contain: layout;
-+    contain: layout !important;
-     overflow: hidden;
-     background: red;
-     border: 8px solid green;
-     margin: 2px;
-   }
+diff --git a/layout/style/nsLayoutStylesheetCache.cpp b/layout/style/nsLayoutStylesheetCache.cpp
+--- a/layout/style/nsLayoutStylesheetCache.cpp
++++ b/layout/style/nsLayoutStylesheetCache.cpp
+@@ -387,16 +387,18 @@ nsLayoutStylesheetCache::EnsureGlobal()
+                                true);
  
-   .right-float {
-     float: right;
-@@ -61,16 +61,20 @@
- <body>
-   <!--
-     Since the contents of a contained element do not move the baseline, all
-     of the following green boxes should be on the same line, and the same size.
-     All of the words should be on the same line as each other as well.
-   -->
-   <div class="container"></div>
-   Word
-+  <script>
-+    var c = document.getElementsByClassName('container')[0];
-+    document.write(getComputedStyle(c).contain);
-+  </script>
-   <div class="container">Test text contents.</div>
-   Word
-   <div class="container"><div><div class="right-float"></div></div></div>
-   Word
-   <div class="container"><div><div class="left-float"></div></div></div>
-   Word
-   <div class="container"><div class="block"></div></div>
-   Word
+   // For each pref that controls a CSS feature that a UA style sheet depends
+   // on (such as a pref that enables a property that a UA style sheet uses),
+   // register DependentPrefChanged as a callback to ensure that the relevant
+   // style sheets will be re-parsed.
+   Preferences::RegisterCallback(&DependentPrefChanged,
+                                 "layout.css.ruby.enabled");
++  Preferences::RegisterCallback(&DependentPrefChanged,
++                                "layout.css.contain.enabled");
+ }
+ 
+ void
+ nsLayoutStylesheetCache::InitFromProfile()
+ {
+   nsCOMPtr<nsIXULRuntime> appInfo = do_GetService("@mozilla.org/xre/app-info;1");
+   if (appInfo) {
+     bool inSafeMode = false;
 diff --git a/layout/style/ua.css b/layout/style/ua.css
 --- a/layout/style/ua.css
 +++ b/layout/style/ua.css
-@@ -153,17 +153,18 @@
+@@ -149,21 +149,21 @@
+   float: none ! important;
+   -moz-box-ordinal-group: inherit !important;
+   text-overflow: inherit;
+   overflow-clip-box: inherit;
  }
  
  *|*::-moz-scrolled-content, *|*::-moz-scrolled-canvas,
  *|*::-moz-scrolled-page-sequence {
++  contain: inherit;
    /* e.g., text inputs, select boxes */
    padding: inherit;
    /* The display doesn't affect the kind of frame constructed here.  This just
       affects auto-width sizing of the block we create. */
 -  contain: inherit;
-+  contain: layout !important;
-+  background: green;
    display: block;
    -moz-box-orient: inherit;
    /* make unicode-bidi inherit, otherwise it has no effect on text inputs and
@@ -212,7 +194,7 @@ diff --git a/layout/tools/reftest/reftest-preferences.js b/layout/tools/reftest/
 --- a/layout/tools/reftest/reftest-preferences.js
 +++ b/layout/tools/reftest/reftest-preferences.js
 @@ -1,8 +1,9 @@
-+if (false) {
++    branch.setBoolPref("layout.css.contain.enabled", true);
      // For mochitests, we're more interested in testing the behavior of in-
      // content XBL bindings, so we set this pref to true. In reftests, we're
      // more interested in testing the behavior of XBL as it works in chrome,
@@ -221,13 +203,3 @@ diff --git a/layout/tools/reftest/reftest-preferences.js b/layout/tools/reftest/
      branch.setIntPref("gfx.color_management.mode", 2);
      branch.setBoolPref("gfx.color_management.force_srgb", true);
      branch.setBoolPref("browser.dom.window.dump.enabled", true);
-@@ -65,8 +66,9 @@
-     // Make sure SelfSupport doesn't hit the network.
-     branch.setCharPref("browser.selfsupport.url", "https://%(server)s/selfsupport-dummy/");
- 
-     // Disable periodic updates of service workers.
-     branch.setBoolPref("dom.serviceWorkers.periodic-updates.enabled", false);
- 
-     // Allow XUL and XBL files to be opened from file:// URIs
-     branch.setBoolPref("dom.allow_XUL_XBL_for_file", true);
-+}
