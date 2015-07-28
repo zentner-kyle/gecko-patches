@@ -10,13 +10,13 @@ ContainStyleBreakTest
 ContainLayoutBase
 ContainLayoutBlock
 ContainLayoutBlockTest
-try-linux-minimal
 ContainLayoutTable
 ContainLayoutFlex
 ContainLayoutFlexTest
 ContainLayoutMochiTest
 ContainLayoutMochitestImprovement
 ContainLayoutFixups
+try-linux-minimal
 try-all
 ContainLayoutInlineTestFixup
 fixups
