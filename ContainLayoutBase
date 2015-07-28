@@ -117,24 +117,3 @@ diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
      return NS_STYLE_CONTAIN_PAINT & mContain;
    }
  
-diff --git a/layout/style/ua.css b/layout/style/ua.css
---- a/layout/style/ua.css
-+++ b/layout/style/ua.css
-@@ -149,16 +149,17 @@
-   float: none ! important;
-   -moz-box-ordinal-group: inherit !important;
-   text-overflow: inherit;
-   overflow-clip-box: inherit;
- }
- 
- *|*::-moz-scrolled-content, *|*::-moz-scrolled-canvas,
- *|*::-moz-scrolled-page-sequence {
-+  contain: inherit;
-   /* e.g., text inputs, select boxes */
-   padding: inherit;
-   /* The display doesn't affect the kind of frame constructed here.  This just
-      affects auto-width sizing of the block we create. */
-   display: block;
-   -moz-box-orient: inherit;
-   /* make unicode-bidi inherit, otherwise it has no effect on text inputs and
-      blocks with overflow: scroll; */

@@ -10,6 +10,7 @@ ContainStyleBreakTest
 ContainLayoutBase
 ContainLayoutBlock
 ContainLayoutBlockTest
+try-linux-minimal
 ContainLayoutTable
 ContainLayoutFlex
 ContainLayoutFlexTest
@@ -17,7 +18,6 @@ ContainLayoutMochiTest
 ContainLayoutMochitestImprovement
 ContainLayoutFixups
 try-all
-try-linux-minimal
 ContainLayoutInlineTestFixup
 fixups
 ContainLayout
