@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  d138e0766f91c0463c55597d45373df308bc6056
+# Parent  d21517da19004b7b4e3248c31a635b1f507031de
 Bug 1178895 - Patch 2: Implement 'contain: layout' for nsBlockFrame.
 
 diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
@@ -15,7 +15,7 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
  
    CheckIntrinsicCacheAgainstShrinkWrapState();
  
-+  if (StyleDisplay()->IsContainLayout()) {
++  if (nsLayoutUtils::IsContainLayout(this)) {
 +    if (mMinWidth != NS_INTRINSIC_WIDTH_UNKNOWN) {
 +      return mMinWidth;
 +    } else {
@@ -40,7 +40,7 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
  
    CheckIntrinsicCacheAgainstShrinkWrapState();
  
-+  if (StyleDisplay()->IsContainLayout()) {
++  if (nsLayoutUtils::IsContainLayout(this)) {
 +    if (mPrefWidth != NS_INTRINSIC_WIDTH_UNKNOWN) {
 +      return mPrefWidth;
 +    } else {
@@ -67,7 +67,7 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
  
    nscoord blockEndEdgeOfChildren = aState.mBCoord + nonCarriedOutBDirMargin;
 +  if (NS_UNCONSTRAINEDSIZE == aReflowState.ComputedBSize() &&
-+      StyleDisplay()->IsContainLayout()) {
++      nsLayoutUtils::IsContainLayout(this)) {
 +    // If we don't have a specified size, and we're layout contained, we should
 +    // pretend our children don't exist (have zero block size) when calculating
 +    // our own size.
@@ -91,7 +91,7 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
      }
    }
 -  if (aState.GetFlag(BRS_FLOAT_MGR)) {
-+  if (aState.GetFlag(BRS_FLOAT_MGR) && !StyleDisplay()->IsContainLayout()) {
++  if (aState.GetFlag(BRS_FLOAT_MGR) && !nsLayoutUtils::IsContainLayout(this)) {
      // Include the float manager's state to properly account for the
      // block-end margin of any floated elements; e.g., inside a table cell.
      nscoord floatHeight =
