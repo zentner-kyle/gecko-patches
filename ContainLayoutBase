@@ -49,6 +49,52 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
    for (nsBlockFrame::const_reverse_line_iterator line = block->rbegin_lines(),
                                               line_end = block->rend_lines();
         line != line_end; ++line) {
+diff --git a/layout/base/nsLayoutUtils.h b/layout/base/nsLayoutUtils.h
+--- a/layout/base/nsLayoutUtils.h
++++ b/layout/base/nsLayoutUtils.h
+@@ -1465,16 +1465,42 @@ public:
+             aCoord.GetCoordValue() == 0) ||
+            (aCoord.GetUnit() == eStyleUnit_Percent &&
+             aCoord.GetPercentValue() == 0.0f) ||
+            (aCoord.IsCalcUnit() &&
+             nsRuleNode::ComputeCoordPercentCalc(aCoord, nscoord_MAX) == 0 &&
+             nsRuleNode::ComputeCoordPercentCalc(aCoord, 0) == 0);
+   }
+ 
++  /*
++   * Because layout containment should be inherited from scroll frames (but not
++   * the other portions of containment), this function is needed. Otherwise,
++   * there would be a nsStyleDisplay::IsContainLayout().
++   */
++  static bool IsContainLayout(nsIFrame* aFrame) {
++    //if (aFrame->StyleDisplay()->mContain & NS_STYLE_CONTAIN_LAYOUT) {
++      //return true;
++    //} else if (parent->StyleContext()->GetPseudo() == nsGkAtoms::scrollFrame) {
++      //nsIFrame* parent = aFrame->GetParent();
++      //if (parent) {
++        //return parent->StyleDisplay()->mContain & NS_STYLE_CONTAIN_LAYOUT;
++      //}
++    //}
++    //return false;
++    nsIFrame* parent = aFrame->GetParent();
++    if (parent) {
++      if (parent->StyleDisplay()->mContain & NS_STYLE_CONTAIN_LAYOUT) {
++        if (parent->StyleContext()->GetPseudo() == nsGkAtoms::scrollFrame) {
++          return true;
++        }
++      }
++    }
++    return false;
++  }
++
+   static void MarkDescendantsDirty(nsIFrame *aSubtreeRoot);
+ 
+   /*
+    * Calculate the used values for 'width' and 'height' for a replaced element.
+    *
+    *   http://www.w3.org/TR/CSS21/visudet.html#min-max-widths
+    */
+   static mozilla::LogicalSize
 diff --git a/layout/style/nsLayoutStylesheetCache.cpp b/layout/style/nsLayoutStylesheetCache.cpp
 --- a/layout/style/nsLayoutStylesheetCache.cpp
 +++ b/layout/style/nsLayoutStylesheetCache.cpp
@@ -96,7 +142,7 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -2244,16 +2244,20 @@ struct nsStyleDisplay {
+@@ -2244,16 +2244,21 @@ struct nsStyleDisplay {
  
    bool IsScrollableOverflow() const {
      // mOverflowX and mOverflowY always match when one of them is
@@ -105,9 +151,10 @@ diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
             mOverflowX != NS_STYLE_OVERFLOW_CLIP;
    }
  
-+  bool IsContainLayout() const {
-+    return NS_STYLE_CONTAIN_LAYOUT & mContain;
-+  }
++  /*
++   * IsContainLayout is located in nsLayoutUtils.h, since determining whether
++   * a frame is layout contained requires looking at the parent's style.
++   */
 +
    bool IsContainStyle() const {
      return NS_STYLE_CONTAIN_STYLE & mContain;
