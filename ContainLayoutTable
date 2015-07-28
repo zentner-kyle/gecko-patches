@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  751b4da609673786b03ab2bdcdebf62c70158585
+# Parent  d3a12cd455c1ecb5d1a67af7ce08f121dec89315
 Bug 1178895 - Patch 4: Implement 'contain: layout' for table elements.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-001.html
@@ -238,72 +238,30 @@ new file mode 100644
 diff --git a/layout/tables/BasicTableLayoutStrategy.cpp b/layout/tables/BasicTableLayoutStrategy.cpp
 --- a/layout/tables/BasicTableLayoutStrategy.cpp
 +++ b/layout/tables/BasicTableLayoutStrategy.cpp
-@@ -444,16 +444,19 @@ BasicTableLayoutStrategy::ComputeIntrins
-     ComputeColumnIntrinsicISizes(aRenderingContext);
- 
+@@ -446,16 +446,19 @@ BasicTableLayoutStrategy::ComputeIntrins
      nsTableCellMap *cellMap = mTableFrame->GetCellMap();
      nscoord min = 0, pref = 0, max_small_pct_pref = 0, nonpct_pref_total = 0;
      float pct_total = 0.0f; // always from 0.0f - 1.0f
      int32_t colCount = cellMap->GetColCount();
      // add a total of (colcount + 1) lots of cellSpacingX for columns where a
      // cell originates
-+    if (mTableFrame->StyleDisplay()->IsContainLayout()) {
-+        colCount = 0;
-+    }
      nscoord add = mTableFrame->GetColSpacing(colCount);
  
++    if (nsLayoutUtils::IsContainLayout(mTableFrame)) {
++        colCount = 0;
++    }
      for (int32_t col = 0; col < colCount; ++col) {
          nsTableColFrame *colFrame = mTableFrame->GetColFrame(col);
          if (!colFrame) {
              NS_ERROR("column frames out of sync with cell map");
              continue;
          }
-diff --git a/layout/tables/FixedTableLayoutStrategy.cpp b/layout/tables/FixedTableLayoutStrategy.cpp
---- a/layout/tables/FixedTableLayoutStrategy.cpp
-+++ b/layout/tables/FixedTableLayoutStrategy.cpp
-@@ -29,16 +29,19 @@ FixedTableLayoutStrategy::~FixedTableLay
- 
- /* virtual */ nscoord
- FixedTableLayoutStrategy::GetMinISize(nsRenderingContext* aRenderingContext)
- {
-   DISPLAY_MIN_WIDTH(mTableFrame, mMinISize);
-   if (mMinISize != NS_INTRINSIC_WIDTH_UNKNOWN) {
-     return mMinISize;
-   }
-+  if (mTableFrame->StyleDisplay()->IsContainLayout()) {
-+    return (mMinISize = 0);
-+  }
- 
-   // It's theoretically possible to do something much better here that
-   // depends only on the columns and the first row (where we look at
-   // intrinsic inline sizes inside the first row and then reverse the
-   // algorithm to find the narrowest inline size that would hold all of
-   // those intrinsic inline sizes), but it wouldn't be compatible with
-   // other browsers, or with the use of GetMinISize by
-   // nsTableFrame::ComputeSize to determine the inline size of a fixed
+         if (mTableFrame->ColumnHasCellSpacingBefore(col)) {
+             add += mTableFrame->GetColSpacing(col - 1);
 diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame.cpp
 --- a/layout/tables/nsTableCellFrame.cpp
 +++ b/layout/tables/nsTableCellFrame.cpp
-@@ -623,17 +623,17 @@ void nsTableCellFrame::BlockDirAlignChil
-     break;
- 
-     default:
-     case NS_STYLE_VERTICAL_ALIGN_MIDDLE:
-       // Align the middle of the child frame with the middle of the content area,
-       kidBStart = (bSize - childBSize - bEndInset + bStartInset) / 2;
-   }
-   // if the content is larger than the cell bsize, align from bstart
--  kidBStart = std::max(0, kidBStart);
-+  kidBStart = std::max(bStartInset, kidBStart);
- 
-   if (kidBStart != kidRect.BStart(aWM)) {
-     // Invalidate at the old position first
-     firstKid->InvalidateFrameSubtree();
-   }
- 
-   firstKid->SetPosition(aWM, LogicalPoint(aWM, kidRect.IStart(aWM),
-                                           kidBStart), containerSize);
-@@ -769,28 +769,36 @@ int32_t nsTableCellFrame::GetColSpan()
+@@ -770,28 +770,36 @@ int32_t nsTableCellFrame::GetColSpan()
  }
  
  /* virtual */ nscoord
@@ -312,7 +270,7 @@ diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame
    nscoord result = 0;
    DISPLAY_MIN_WIDTH(this, result);
  
-+  if (StyleDisplay()->IsContainLayout()) {
++  if (nsLayoutUtils::IsContainLayout(this)) {
 +    return result;
 +  }
 +
@@ -328,7 +286,7 @@ diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame
    nscoord result = 0;
    DISPLAY_PREF_WIDTH(this, result);
  
-+  if (StyleDisplay()->IsContainLayout()) {
++  if (nsLayoutUtils::IsContainLayout(this)) {
 +    return result;
 +  }
 +
@@ -340,20 +298,7 @@ diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame
  
  /* virtual */ nsIFrame::IntrinsicISizeOffsetData
  nsTableCellFrame::IntrinsicISizeOffsets()
-@@ -975,37 +983,38 @@ nsTableCellFrame::Reflow(nsPresContext* 
-   // see testcase "emptyCells.html"
-   nsIFrame* prevInFlow = GetPrevInFlow();
-   bool isEmpty;
-   if (prevInFlow) {
-     isEmpty = static_cast<nsTableCellFrame*>(prevInFlow)->GetContentEmpty();
-   } else {
-     isEmpty = !CellHasVisibleContent(kidSize.Height(), tableFrame, firstKid);
-   }
-+
-   SetContentEmpty(isEmpty);
- 
-   // Place the child
-   FinishReflowChild(firstKid, aPresContext, kidSize, &kidReflowState,
+@@ -988,25 +996,25 @@ nsTableCellFrame::Reflow(nsPresContext* 
                      wm, kidOrigin, containerSize, 0);
  
    nsTableFrame::InvalidateTableFrame(firstKid, origRect, origVisualOverflow,
@@ -363,7 +308,7 @@ diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame
    // available bsize
    LogicalSize cellSize(wm);
 -  cellSize.BSize(wm) = kidSize.BSize(wm);
-+  if (!StyleDisplay()->IsContainLayout()) {
++  if (!nsLayoutUtils::IsContainLayout(this)) {
 +    cellSize.BSize(wm) = kidSize.BSize(wm);
 +    cellSize.ISize(wm) = kidSize.ISize(wm);
 +  }
@@ -396,7 +341,7 @@ diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
    RowGroupArray rowGroups;
    OrderRowGroups(rowGroups);
 -  if (rowGroups.IsEmpty()) {
-+  if (StyleDisplay()->IsContainLayout() || rowGroups.IsEmpty()) {
++  if (nsLayoutUtils::IsContainLayout(this) || rowGroups.IsEmpty()) {
      // tables can be used as rectangular items without content
      nscoord tableSpecifiedBSize = CalcBorderBoxBSize(aReflowState);
      if ((NS_UNCONSTRAINEDSIZE != tableSpecifiedBSize) &&
@@ -405,80 +350,3 @@ diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
            // empty tables should not have a size in quirks mode
        aDesiredSize.BSize(wm) = tableSpecifiedBSize;
      } else {
-@@ -3667,16 +3667,21 @@ nsTableFrame::DistributeBSizeToRows(cons
-   ResizeCells(*this);
- }
- 
- nscoord
- nsTableFrame::GetColumnISizeFromFirstInFlow(int32_t aColIndex)
- {
-   MOZ_ASSERT(this == FirstInFlow());
-   nsTableColFrame* colFrame = GetColFrame(aColIndex);
-+  // TODO kzentner: Do we need to do this?
-+  //nsTableColFrame* colFrame = nullptr;
-+  //if (!StyleDisplay()->IsContainLayout()) {
-+    //colFrame = GetColFrame(aColIndex);
-+  //}
-   return colFrame ? colFrame->GetFinalISize() : 0;
- }
- 
- nscoord
- nsTableFrame::GetColSpacing()
- {
-   if (IsBorderCollapse())
-     return 0;
-diff --git a/layout/tables/nsTableRowFrame.cpp b/layout/tables/nsTableRowFrame.cpp
---- a/layout/tables/nsTableRowFrame.cpp
-+++ b/layout/tables/nsTableRowFrame.cpp
-@@ -1109,18 +1109,23 @@ nsTableRowFrame::Reflow(nsPresContext*  
-   }
- 
-   // see if a special bsize reflow needs to occur due to having a pct bsize
-   nsTableFrame::CheckRequestSpecialBSizeReflow(aReflowState);
- 
-   // See if we have a cell with specified/pct bsize
-   InitHasCellWithStyleBSize(tableFrame);
- 
-+  nscoord emptyBSize = aDesiredSize.BSize(wm);
-   ReflowChildren(aPresContext, aDesiredSize, aReflowState, *tableFrame, aStatus);
- 
-+  if (StyleDisplay()->IsContainLayout()) {
-+    aDesiredSize.BSize(wm) = emptyBSize;
-+  }
-+
-   if (aPresContext->IsPaginated() && !NS_FRAME_IS_FULLY_COMPLETE(aStatus) &&
-       ShouldAvoidBreakInside(aReflowState)) {
-     aStatus = NS_INLINE_LINE_BREAK_BEFORE();
-   }
- 
-   // Just set our isize to what was available.
-   // The table will calculate the isize and not use our value.
-   aDesiredSize.ISize(wm) = aReflowState.AvailableISize();
-diff --git a/layout/tables/nsTableRowGroupFrame.cpp b/layout/tables/nsTableRowGroupFrame.cpp
---- a/layout/tables/nsTableRowGroupFrame.cpp
-+++ b/layout/tables/nsTableRowGroupFrame.cpp
-@@ -452,19 +452,21 @@ nsTableRowGroupFrame::ReflowChildren(nsP
-     ConsiderChildOverflow(aDesiredSize.mOverflowAreas, kidFrame);
-   }
- 
-   if (haveRow) {
-     aReflowState.bCoord -= tableFrame->GetRowSpacing(GetStartRowIndex() +
-                                                      GetRowCount());
-   }
- 
--  // Return our desired rect
--  aDesiredSize.ISize(wm) = aReflowState.reflowState.AvailableISize();
--  aDesiredSize.BSize(wm) = aReflowState.bCoord;
-+  if (!StyleDisplay()->IsContainPaint()) {
-+    // Return our desired rect
-+    aDesiredSize.ISize(wm) = aReflowState.reflowState.AvailableISize();
-+    aDesiredSize.BSize(wm) = aReflowState.bCoord;
-+  }
- 
-   if (aReflowState.reflowState.mFlags.mSpecialBSizeReflow) {
-     DidResizeRows(aDesiredSize);
-     if (isPaginated) {
-       CacheRowBSizesForPrinting(aPresContext, GetFirstRow(), wm);
-     }
-   }
-   else if (needToCalcRowBSizes) {
