@@ -52,7 +52,7 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
 diff --git a/layout/base/nsLayoutUtils.h b/layout/base/nsLayoutUtils.h
 --- a/layout/base/nsLayoutUtils.h
 +++ b/layout/base/nsLayoutUtils.h
-@@ -1465,16 +1465,42 @@ public:
+@@ -1465,16 +1465,33 @@ public:
              aCoord.GetCoordValue() == 0) ||
             (aCoord.GetUnit() == eStyleUnit_Percent &&
              aCoord.GetPercentValue() == 0.0f) ||
@@ -67,15 +67,6 @@ diff --git a/layout/base/nsLayoutUtils.h b/layout/base/nsLayoutUtils.h
 +   * there would be a nsStyleDisplay::IsContainLayout().
 +   */
 +  static bool IsContainLayout(nsIFrame* aFrame) {
-+    //if (aFrame->StyleDisplay()->mContain & NS_STYLE_CONTAIN_LAYOUT) {
-+      //return true;
-+    //} else if (parent->StyleContext()->GetPseudo() == nsGkAtoms::scrollFrame) {
-+      //nsIFrame* parent = aFrame->GetParent();
-+      //if (parent) {
-+        //return parent->StyleDisplay()->mContain & NS_STYLE_CONTAIN_LAYOUT;
-+      //}
-+    //}
-+    //return false;
 +    nsIFrame* parent = aFrame->GetParent();
 +    if (parent) {
 +      if (parent->StyleDisplay()->mContain & NS_STYLE_CONTAIN_LAYOUT) {
