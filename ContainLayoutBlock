@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  d21517da19004b7b4e3248c31a635b1f507031de
+# Parent  35299add31e8500e33bc17b3640724b0da6b097c
 Bug 1178895 - Patch 2: Implement 'contain: layout' for nsBlockFrame.
 
 diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
