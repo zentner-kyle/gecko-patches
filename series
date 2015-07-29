@@ -10,8 +10,8 @@ ContainStyleBreakTest
 ContainLayoutBase
 ContainLayoutBlock
 ContainLayoutBlockTest
+ContainLayoutTableCell
 try-linux-minimal
-ContainLayoutTable
 ContainLayoutFlex
 ContainLayoutFlexTest
 ContainLayoutMochiTest

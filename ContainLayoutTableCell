@@ -1,7 +1,7 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
 # Parent  d3a12cd455c1ecb5d1a67af7ce08f121dec89315
-Bug 1178895 - Patch 4: Implement 'contain: layout' for table elements.
+Bug 1178895 - Patch 4: Implement 'contain: layout' for table cell elements.
 
 diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame.cpp
 --- a/layout/tables/nsTableCellFrame.cpp
