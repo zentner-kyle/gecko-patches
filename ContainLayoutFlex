@@ -3,6 +3,29 @@
 # Parent  d9bee8b6b5e14ab1ff4071167c569dbadae07414
 Bug 1178895 - Patch 6: Implement 'contain: layout' for flexbox.
 
+diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
+--- a/layout/base/nsLayoutUtils.cpp
++++ b/layout/base/nsLayoutUtils.cpp
+@@ -5724,16 +5724,19 @@ nsLayoutUtils::GetLastLineBaseline(Writi
+ }
+ 
+ static nscoord
+ CalculateBlockContentBEnd(WritingMode aWM, nsBlockFrame* aFrame)
+ {
+   NS_PRECONDITION(aFrame, "null ptr");
+ 
+   nscoord contentBEnd = 0;
++  if (nsLayoutUtils::IsContainLayout(aFrame)) {
++    return contentBEnd;
++  }
+ 
+   for (nsBlockFrame::line_iterator line = aFrame->begin_lines(),
+                                    line_end = aFrame->end_lines();
+        line != line_end; ++line) {
+     if (line->IsBlock()) {
+       nsIFrame* child = line->mFirstChild;
+       const nsSize& containerSize = line->mContainerSize;
+       nscoord offset =
 diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexContainerFrame.cpp
 --- a/layout/generic/nsFlexContainerFrame.cpp
 +++ b/layout/generic/nsFlexContainerFrame.cpp
@@ -29,7 +52,70 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
    // XXXdholbert Handle constrained-aAvailableBSizeForContent case here.
    *aIsDefinite = false;
    return NS_CSS_MINMAX(aSumLineCrossSizes,
-@@ -4083,16 +4089,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
+@@ -3895,24 +3901,29 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
+   // starting w/ content-box size & growing from there:
+   LogicalSize desiredSizeInFlexWM =
+     aAxisTracker.LogicalSizeFromFlexRelativeSizes(aContentBoxMainSize,
+                                                   contentBoxCrossSize);
+   // Add border/padding (w/ skipSides already applied):
+   desiredSizeInFlexWM.ISize(flexWM) += containerBP.IStartEnd(flexWM);
+   desiredSizeInFlexWM.BSize(flexWM) += containerBP.BStartEnd(flexWM);
+ 
+-  if (flexContainerAscent == nscoord_MIN) {
+-    // Still don't have our baseline set -- this happens if we have no
+-    // children (or if our children are huge enough that they have nscoord_MIN
+-    // as their baseline... in which case, we'll use the wrong baseline, but no
+-    // big deal)
+-    NS_WARN_IF_FALSE(lines.getFirst()->IsEmpty(),
+-                     "Have flex items but didn't get an ascent - that's odd "
+-                     "(or there are just gigantic sizes involved)");
++  if (flexContainerAscent == nscoord_MIN || nsLayoutUtils::IsContainLayout(this)) {
++    if (flexContainerAscent == nscoord_MIN) {
++      // Still don't have our baseline set -- this happens if we have no
++      // children (or if our children are huge enough that they have nscoord_MIN
++      // as their baseline... in which case, we'll use the wrong baseline, but no
++      // big deal)
++      NS_WARN_IF_FALSE(lines.getFirst()->IsEmpty(),
++                      "Have flex items but didn't get an ascent - that's odd "
++                      "(or there are just gigantic sizes involved)");
++    } else {
++      // Otherwise, we're a contain layout.
++      flexContainerAscent = nscoord_MIN;
++    }
+     // Per spec, synthesize baseline from the flex container's content box
+     // (i.e. use block-end side of content-box)
+     // XXXdholbert This only makes sense if parent's writing mode is
+     // horizontal (& even then, really we should be using the BSize in terms
+     // of the parent's writing mode, not ours). Clean up in bug 1155322.
+     flexContainerAscent = desiredSizeInFlexWM.BSize(flexWM);
+   }
+ 
+@@ -3942,19 +3953,21 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
+       NS_FRAME_SET_INCOMPLETE(aStatus);
+     }
+   }
+ 
+   // Convert flex container's final desired size to parent's WM, for outparam.
+   aDesiredSize.SetSize(flexWM, desiredSizeInFlexWM);
+ 
+   // Overflow area = union(my overflow area, kids' overflow areas)
+-  aDesiredSize.SetOverflowAreasToDesiredBounds();
+-  for (nsIFrame* childFrame : mFrames) {
+-    ConsiderChildOverflow(aDesiredSize.mOverflowAreas, childFrame);
++  if (!nsLayoutUtils::IsContainLayout(this)) {
++    aDesiredSize.SetOverflowAreasToDesiredBounds();
++    for (nsIFrame* childFrame : mFrames) {
++      ConsiderChildOverflow(aDesiredSize.mOverflowAreas, childFrame);
++    }
+   }
+ 
+   FinishReflowWithAbsoluteFrames(aPresContext, aDesiredSize,
+                                  aReflowState, aStatus);
+ 
+   NS_FRAME_SET_TRUNCATION(aStatus, aReflowState, aDesiredSize)
+ }
+ 
+@@ -4083,16 +4096,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
  }
  
  /* virtual */ nscoord
@@ -50,7 +136,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
        nsLayoutUtils::IntrinsicForContainer(aRenderingContext, childFrame,
                                             nsLayoutUtils::MIN_ISIZE);
      // For a horizontal single-line flex container, the intrinsic min width is
-@@ -4110,16 +4120,20 @@ nsFlexContainerFrame::GetMinISize(nsRend
+@@ -4110,16 +4127,20 @@ nsFlexContainerFrame::GetMinISize(nsRend
  }
  
  /* virtual */ nscoord
