@@ -46,13 +46,13 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-tab
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-001.html
-@@ -0,0 +1,35 @@
+@@ -0,0 +1,36 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: layout' on inline element should cause the element
-+    to become a inline-block with zero height and width.</title>
++  <title>CSS Test: 'contain: layout' on an inline-table's cell with unspecified
++    size should cause the table cell to have zero size.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-inline-table-cell-001-ref.html">
@@ -63,6 +63,7 @@ new file mode 100644
 +  table {
 +    display: inline-table;
 +    border: 5px solid green;
++    vertical-align: top;
 +  }
 +  td {
 +    border: 3px solid blue;
@@ -190,7 +191,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on an inline-table cell should
-+    not move the line's baseline.</title>
++    cause the contents to not move the line's baseline.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-inline-table-cell-002-ref.html">
@@ -253,7 +254,7 @@ new file mode 100644
 +<body>
 +  <!--
 +    Since the contents of a contained element do not move the baseline, all
-+    of the following green boxes should be on the same line, and the same size.
++    of the following tables should be on the same line, and the same size.
 +    All of the words should be on the same line as each other as well.
 +  -->
 +  <table><tr><td class="container"></td></tr></table>
@@ -321,8 +322,8 @@ new file mode 100644
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: layout' on an inline-table cell should
-+    not move the line's baseline.</title>
++  <title>CSS Test: 'contain: layout' on an inline-table's cell should
++    not move its line's baseline.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-inline-table-cell-003-ref.html">
@@ -517,7 +518,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on a lone table cell should
-+    result in a zero height table cell with "visible
++    result in a zero content height table cell with "visible
 +    overflow".</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
@@ -613,7 +614,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on a lone table cell should
-+    result in a zero height table cell with "visible
++    result in a zero content height table cell with "visible
 +    overflow".</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
@@ -687,7 +688,7 @@ new file mode 100644
 +  .contained-float {
 +    position: relative;
 +    top: 30px;
-+    left: 50px;
++    left: 30px;
 +    background: blue;
 +    width: 20px;
 +    height: 20px;
@@ -717,7 +718,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on a lone table cell should
-+    result in a zero height table cell with "visible
++    result in a zero content height table cell with "visible
 +    overflow".</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
@@ -736,7 +737,7 @@ new file mode 100644
 +    contain: layout;
 +  }
 +  .contained-float {
-+    float: right;
++    float: left;
 +    background: blue;
 +    width: 20px;
 +    height: 20px;
@@ -811,7 +812,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on a lone table cell should
-+    result in a zero height table cell with "visible
++    result in a zero content height table cell with "visible
 +    overflow".</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
@@ -845,7 +846,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-006-ref.html
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,43 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -866,12 +867,11 @@ new file mode 100644
 +    height: 115px;
 +  }
 +  .container {
-+    vertical-align: middle;
 +    font-size: 50px;
 +  }
 +  .container-inner {
 +    position: relative;
-+    top: -12.5px; /* XXX kzentner: Why is it not 12? */
++    top: 15px;
 +  }
 +  </style>
 +</head>
