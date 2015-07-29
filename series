@@ -13,8 +13,8 @@ ContainLayoutBlockTest
 ContainLayoutTableCell
 ContainLayoutTableCellTest
 ContainLayoutFlex
-try-linux-minimal
 ContainLayoutFlexTest
+try-linux-minimal
 ContainLayoutMochiTest
 ContainLayoutMochitestImprovement
 ContainLayoutFixups
