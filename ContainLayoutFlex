@@ -6,7 +6,7 @@ Bug 1178895 - Patch 6: Implement 'contain: layout' for flexbox.
 diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexContainerFrame.cpp
 --- a/layout/generic/nsFlexContainerFrame.cpp
 +++ b/layout/generic/nsFlexContainerFrame.cpp
-@@ -3354,16 +3354,18 @@ nsFlexContainerFrame::ComputeCrossSize(c
+@@ -3354,16 +3354,22 @@ nsFlexContainerFrame::ComputeCrossSize(c
      // XXXdholbert For now, we don't support pushing children to our next
      // continuation or splitting children, so "amount of BSize required by
      // our children" is just the sum of our FlexLines' BSizes (cross sizes).
@@ -16,6 +16,10 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
      }
      return std::min(effectiveComputedBSize, aSumLineCrossSizes);
 +  } else if (nsLayoutUtils::IsContainLayout(this)) {
++    // We have no intrinsic size, and "no flex items" (because we act like we
++    // have no contents). Therefore, our cross size is zero.
++    // This is mostly important when our cross size is used for its effect on
++    // the baseline.
 +    return 0;
    }
  
@@ -25,7 +29,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
    // XXXdholbert Handle constrained-aAvailableBSizeForContent case here.
    *aIsDefinite = false;
    return NS_CSS_MINMAX(aSumLineCrossSizes,
-@@ -4083,16 +4085,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
+@@ -4083,16 +4089,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
  }
  
  /* virtual */ nscoord
@@ -46,7 +50,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
        nsLayoutUtils::IntrinsicForContainer(aRenderingContext, childFrame,
                                             nsLayoutUtils::MIN_ISIZE);
      // For a horizontal single-line flex container, the intrinsic min width is
-@@ -4110,16 +4116,20 @@ nsFlexContainerFrame::GetMinISize(nsRend
+@@ -4110,16 +4120,20 @@ nsFlexContainerFrame::GetMinISize(nsRend
  }
  
  /* virtual */ nscoord
