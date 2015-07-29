@@ -6,6 +6,37 @@ Bug 1178895 - Patch 6: Implement 'contain: layout' for flexbox.
 diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexContainerFrame.cpp
 --- a/layout/generic/nsFlexContainerFrame.cpp
 +++ b/layout/generic/nsFlexContainerFrame.cpp
+@@ -3252,23 +3252,23 @@ GetLargestLineMainSize(const FlexLine* a
+  * aside from cases with huge lengths which happen to compute to that value.
+  * XXXdholbert (this^ isn't quite true, if we're row-oriented and in an
+  * orthogonal flow, per mentions of bug 1163238 in GetMainSizeFromReflowState.)
+  *
+  * (Note: This function should be structurally similar to 'ComputeCrossSize()',
+  * except that here, the caller has already grabbed the tentative size from the
+  * reflow state.)
+  */
+-static nscoord
+-ResolveFlexContainerMainSize(const nsHTMLReflowState& aReflowState,
+-                             const FlexboxAxisTracker& aAxisTracker,
+-                             nscoord aTentativeMainSize,
+-                             nscoord aAvailableBSizeForContent,
+-                             const FlexLine* aFirstLine,
+-                             nsReflowStatus& aStatus)
++nscoord
++nsFlexContainerFrame::ResolveFlexContainerMainSize(const nsHTMLReflowState& aReflowState,
++                                                   const FlexboxAxisTracker& aAxisTracker,
++                                                   nscoord aTentativeMainSize,
++                                                   nscoord aAvailableBSizeForContent,
++                                                   const FlexLine* aFirstLine,
++                                                   nsReflowStatus& aStatus)
+ {
+   MOZ_ASSERT(aFirstLine, "null first line pointer");
+ 
+   if (aAxisTracker.IsRowOriented()) {
+     // Row-oriented --> our main axis is the inline axis, so our main size
+     // is our inline size (which should already be resolved).
+     return aTentativeMainSize;
+   }
 @@ -3293,16 +3293,20 @@ ResolveFlexContainerMainSize(const nsHTM
      // our children" is just the main-size (BSize) of our longest flex line.
      NS_FRAME_SET_INCOMPLETE(aStatus);
@@ -128,3 +159,30 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
    const FlexboxAxisTracker axisTracker(StylePosition(), GetWritingMode());
  
    for (nsIFrame* childFrame : mFrames) {
+diff --git a/layout/generic/nsFlexContainerFrame.h b/layout/generic/nsFlexContainerFrame.h
+--- a/layout/generic/nsFlexContainerFrame.h
++++ b/layout/generic/nsFlexContainerFrame.h
+@@ -154,16 +154,23 @@ protected:
+                          nscoord aAvailableBSizeForContent,
+                          const nsTArray<StrutInfo>& aStruts,
+                          const FlexboxAxisTracker& aAxisTracker,
+                          mozilla::LinkedList<FlexLine>& aLines);
+ 
+   nscoord GetMainSizeFromReflowState(const nsHTMLReflowState& aReflowState,
+                                      const FlexboxAxisTracker& aAxisTracker);
+ 
++  nscoord ResolveFlexContainerMainSize(const nsHTMLReflowState& aReflowState,
++                                       const FlexboxAxisTracker& aAxisTracker,
++                                       nscoord aTentativeMainSize,
++                                       nscoord aAvailableBSizeForContent,
++                                       const FlexLine* aFirstLine,
++                                       nsReflowStatus& aStatus);
++
+   nscoord ComputeCrossSize(const nsHTMLReflowState& aReflowState,
+                            const FlexboxAxisTracker& aAxisTracker,
+                            nscoord aSumLineCrossSizes,
+                            nscoord aAvailableBSizeForContent,
+                            bool* aIsDefinite,
+                            nsReflowStatus& aStatus);
+ 
+   void SizeItemInCrossAxis(nsPresContext* aPresContext,
