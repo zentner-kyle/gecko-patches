@@ -1,6 +1,7 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  6d4e4021259ebb1359ab97880f1722a139763ab5
+# Parent  d9bee8b6b5e14ab1ff4071167c569dbadae07414
+Bug 1178895 - Patch 6: Implement 'contain: layout' for flexbox.
 
 diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexContainerFrame.cpp
 --- a/layout/generic/nsFlexContainerFrame.cpp
@@ -14,7 +15,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
        return aAvailableBSizeForContent;
      }
      return std::min(effectiveComputedBSize, aSumLineCrossSizes);
-+  } else if (StyleDisplay()->IsContainLayout()) {
++  } else if (nsLayoutUtils::IsContainLayout(this)) {
 +    return 0;
    }
  
@@ -24,7 +25,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
    // XXXdholbert Handle constrained-aAvailableBSizeForContent case here.
    *aIsDefinite = false;
    return NS_CSS_MINMAX(aSumLineCrossSizes,
-@@ -4080,16 +4082,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
+@@ -4083,16 +4085,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
  }
  
  /* virtual */ nscoord
@@ -33,7 +34,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
    nscoord minWidth = 0;
    DISPLAY_MIN_WIDTH(this, minWidth);
  
-+  if (StyleDisplay()->IsContainLayout()) {
++  if (nsLayoutUtils::IsContainLayout(this)) {
 +    return minWidth;
 +  }
 +
@@ -45,7 +46,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
        nsLayoutUtils::IntrinsicForContainer(aRenderingContext, childFrame,
                                             nsLayoutUtils::MIN_ISIZE);
      // For a horizontal single-line flex container, the intrinsic min width is
-@@ -4107,16 +4113,20 @@ nsFlexContainerFrame::GetMinISize(nsRend
+@@ -4110,16 +4116,20 @@ nsFlexContainerFrame::GetMinISize(nsRend
  }
  
  /* virtual */ nscoord
@@ -54,7 +55,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
    nscoord prefWidth = 0;
    DISPLAY_PREF_WIDTH(this, prefWidth);
  
-+  if (StyleDisplay()->IsContainLayout()) {
++  if (nsLayoutUtils::IsContainLayout(this)) {
 +    return prefWidth;
 +  }
 +
