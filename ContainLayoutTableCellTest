@@ -1,0 +1,963 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  f1f448559a1aea4650e525a6549634a0146c288a
+Bug 1178895 - Patch 5: Test 'contain: layout' for table cell elements.
+
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-001-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-001-ref.html
+@@ -0,0 +1,34 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    border: 5px solid green;
++  }
++  td {
++    border: 3px solid blue;
++  }
++  .container-inner {
++    width: 0;
++    height: 0;
++  }
++  </style>
++</head>
++<body>
++  <table>
++    <tr>
++      <td class="container">
++        <div class="container-inner">
++          This text should not affect the size of the container.
++        </div>
++      </td>
++    </tr>
++  </table>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-001.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-001.html
+@@ -0,0 +1,35 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on inline element should cause the element
++    to become a inline-block with zero height and width.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-inline-table-cell-001-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    display: inline-table;
++    border: 5px solid green;
++  }
++  td {
++    border: 3px solid blue;
++  }
++  .container {
++    contain: layout;
++  }
++  </style>
++</head>
++<body>
++  <table>
++    <tr>
++      <td class="container">
++        This text should not affect the size of the container.
++      </td>
++    </tr>
++  </table>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-002-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-002-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-002-ref.html
+@@ -0,0 +1,93 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++
++  table {
++    display: inline-table;
++    border: 5px solid green;
++  }
++
++  td {
++    border: 3px solid blue;
++  }
++
++  .container-inner {
++    width: 0;
++    height: 0;
++  }
++
++  .right-float {
++    position: relative;
++    background: blue;
++    width: 20px;
++    height: 20px;
++    top: 20px;
++    right: 40px;
++  }
++
++  .left-float {
++    position: relative;
++    top: 20px;
++    left: 20px;
++    background: orange;
++    width: 20px;
++    height: 20px;
++  }
++
++  .big-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++  }
++
++  .block {
++    display: inline-block;
++    width: 50px;
++    height: 50px;
++    background: teal;
++  }
++  .positioned-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++    position: relative;
++    top: 20px;
++    left: 20px;
++  }
++  .line-fix {
++    position: relative;
++    top: 4px;
++  }
++  .word-fix {
++    display: inline-block;
++    position: relative;
++    top: -4px;
++  }
++  </style>
++</head>
++<body>
++  <div class="line-fix">
++    <table><tr><td class="container"><div class="container-inner"></div></td></tr></table>
++    <div class="word-fix">Word</div>
++    <table><tr><td class="container"><div class="container-inner">Test text contents.</div></td></tr></table>
++    <div class="word-fix">Word</div>
++    <table><tr><td class="container"><div class="container-inner"><div><div class="right-float"></div></div></div></td></tr></table>
++    <div class="word-fix">Word</div>
++    <table><tr><td class="container"><div class="container-inner"><div><div class="left-float"></div></div></div></td></tr></table>
++    <div class="word-fix">Word</div>
++    <table><tr><td class="container"><div class="container-inner"><div class="block"></div></div></td></tr></table>
++    <div class="word-fix">Word</div>
++    <table><tr><td class="container"><div class="container-inner"><div class="big-block"></div></div></td></tr></table>
++    <div class="word-fix">Word</div>
++    <table><tr><td class="container"><div class="container-inner"><div class="positioned-block"></div></div></td></tr></table>
++    <div class="word-fix">Word</div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-002.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-002.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-002.html
+@@ -0,0 +1,87 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on an inline-table cell should
++    not move the line's baseline.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-inline-table-cell-002-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++
++  table {
++    display: inline-table;
++    border: 5px solid green;
++  }
++
++  td {
++    border: 3px solid blue;
++  }
++
++  .container {
++    contain: layout;
++  }
++
++  .right-float {
++    float: right;
++    background: blue;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .left-float {
++    float: left;
++    background: orange;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .big-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++  }
++
++  .block {
++    display: inline-block;
++    width: 50px;
++    height: 50px;
++    background: teal;
++  }
++  .positioned-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++    position: relative;
++    top: 20px;
++    left: 20px;
++  }
++  </style>
++</head>
++<body>
++  <!--
++    Since the contents of a contained element do not move the baseline, all
++    of the following green boxes should be on the same line, and the same size.
++    All of the words should be on the same line as each other as well.
++  -->
++  <table><tr><td class="container"></td></tr></table>
++  Word
++  <table><tr><td class="container">Test text contents.</td></tr></table>
++  Word
++  <table><tr><td class="container"><div><div class="right-float"></div></div></td></tr></table>
++  Word
++  <table><tr><td class="container"><div><div class="left-float"></div></div></td></tr></table>
++  Word
++  <table><tr><td class="container"><div class="block"></div></td></tr></table>
++  Word
++  <table><tr><td class="container"><div class="big-block"></div></td></tr></table>
++  Word
++  <table><tr><td class="container"><div class="positioned-block"></div></td></tr></table>
++  Word
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-003-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-003-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-003-ref.html
+@@ -0,0 +1,35 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++
++  table {
++    display: inline-table;
++    border: 5px solid green;
++    vertical-align: top;
++    position: relative;
++    top: 8px;
++  }
++
++  td {
++    border: 3px solid blue;
++    width: 30px;
++    height: 30px;
++  }
++
++  .container {
++  }
++  </style>
++</head>
++<body>
++  Word
++  <table><tr><td class="container">a</td></tr></table>
++  Word
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-003.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-003.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-003.html
+@@ -0,0 +1,36 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on an inline-table cell should
++    not move the line's baseline.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-inline-table-cell-003-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++
++  table {
++    display: inline-table;
++    border: 5px solid green;
++  }
++
++  td {
++    border: 3px solid blue;
++    width: 30px;
++    height: 30px;
++  }
++
++  .container {
++    contain: layout;
++  }
++  </style>
++</head>
++<body>
++  Word
++  <table><tr><td class="container">a</td></tr></table>
++  Word
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-001-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-001-ref.html
+@@ -0,0 +1,52 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    border: 5px solid green;
++  }
++  td {
++    border: 3px solid blue;
++  }
++  .container {
++    width: 100px;
++    vertical-align: top;
++  }
++  .container-inner {
++    width: 100%;
++    height: 0;
++  }
++  </style>
++</head>
++<body>
++  <div class="fun">
++    <div>
++      This is some content before the contained element.
++    </div>
++    <div>
++      This is a parent of the contained element.
++      <table>
++        <tr>
++          <td>
++            Text
++          </td>
++          <td class="container">
++            <div class="container-inner">
++              Lorem ipsum dolor sit amet
++            </div>
++          </td>
++        </tr>
++      </table>
++    </div>
++    <div>
++      This is some content after the contained element.
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-001.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-001.html
+@@ -0,0 +1,49 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on a table cell should allow
++    "visible overflow".</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-table-cell-001-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    border: 5px solid green;
++  }
++  td {
++    border: 3px solid blue;
++  }
++  .container {
++    contain: layout;
++    width: 100px;
++  }
++  </style>
++</head>
++<body>
++  <div class="fun">
++    <div>
++      This is some content before the contained element.
++    </div>
++    <div>
++      This is a parent of the contained element.
++      <table>
++        <tr>
++          <td>
++            Text
++          </td>
++          <td class="container">
++            Lorem ipsum dolor sit amet
++          </td>
++        </tr>
++      </table>
++    </div>
++    <div>
++      This is some content after the contained element.
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-002-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-002-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-002-ref.html
+@@ -0,0 +1,38 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    border: 5px solid green;
++  }
++  td {
++    border: 3px solid blue;
++  }
++  .container {
++    width: 100px;
++    vertical-align: top;
++  }
++  .container-inner {
++    width: 100%;
++    height: 0;
++  }
++  </style>
++</head>
++<body>
++  <table>
++    <tr>
++      <td class="container">
++        <div class="container-inner">
++          Lorem ipsum dolor sit amet
++        </div>
++      </td>
++    </tr>
++  </table>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-002.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-002.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-002.html
+@@ -0,0 +1,36 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on a lone table cell should
++    result in a zero height table cell with "visible
++    overflow".</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-table-cell-002-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    border: 5px solid green;
++  }
++  td {
++    border: 3px solid blue;
++  }
++  .container {
++    contain: layout;
++    width: 100px;
++  }
++  </style>
++</head>
++<body>
++  <table>
++    <tr>
++      <td class="container">
++        Lorem ipsum dolor sit amet
++      </td>
++    </tr>
++  </table>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-003-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-003-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-003-ref.html
+@@ -0,0 +1,50 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    border: 5px solid green;
++  }
++  td {
++    border: 3px solid blue;
++  }
++  .container {
++    width: 100px;
++    vertical-align: top;
++  }
++  .container-inner {
++    width: 100%;
++    height: 0;
++  }
++  .contained-float {
++    position: relative;
++    top: 30px;
++    left: 50px;
++    background: blue;
++    width: 20px;
++    height: 20px;
++  }
++  .clear-fix {
++    clear: both;
++  }
++  </style>
++</head>
++<body>
++  <table>
++    <tr>
++      <td class="container">
++        <div class="container-inner">
++          Lorem ipsum dolor sit amet
++        <div class="contained-float"></div>
++        </div>
++      </td>
++    </tr>
++  </table>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-003.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-003.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-003.html
+@@ -0,0 +1,48 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on a lone table cell should
++    result in a zero height table cell with "visible
++    overflow".</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-table-cell-003-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    border: 5px solid green;
++  }
++  td {
++    border: 3px solid blue;
++  }
++  .container {
++    contain: layout;
++    width: 100px;
++  }
++  .contained-float {
++    float: right;
++    background: blue;
++    width: 20px;
++    height: 20px;
++    margin: 30px;
++  }
++  .clear-fix {
++    clear: both;
++  }
++  </style>
++</head>
++<body>
++  <table>
++    <tr>
++      <td class="container">
++        Lorem ipsum dolor sit amet
++        <div class="contained-float"></div>
++        <div class="clear-fix"></div>
++      </td>
++    </tr>
++  </table>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-004-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-004-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-004-ref.html
+@@ -0,0 +1,46 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    border: 5px solid green;
++  }
++  td {
++    border: 3px solid blue;
++  }
++  .container {
++    vertical-align: top;
++  }
++  .container-inner {
++    width: 0;
++    height: 0;
++  }
++  .contained-float {
++    position: relative;
++    top: 30px;
++    left: 50px;
++    background: blue;
++    width: 20px;
++    height: 20px;
++  }
++  </style>
++</head>
++<body>
++  <table>
++    <tr>
++      <td class="container">
++        <div class="container-inner">
++          Lorem ipsum dolor sit amet
++        <div class="contained-float"></div>
++        </div>
++      </td>
++    </tr>
++  </table>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-004.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-004.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-004.html
+@@ -0,0 +1,47 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on a lone table cell should
++    result in a zero height table cell with "visible
++    overflow".</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-table-cell-004-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    border: 5px solid green;
++  }
++  td {
++    border: 3px solid blue;
++  }
++  .container {
++    contain: layout;
++  }
++  .contained-float {
++    float: right;
++    background: blue;
++    width: 20px;
++    height: 20px;
++    margin: 30px;
++  }
++  .clear-fix {
++    clear: both;
++  }
++  </style>
++</head>
++<body>
++  <table>
++    <tr>
++      <td class="container">
++        Lorem ipsum dolor sit amet
++        <div class="contained-float"></div>
++        <div class="clear-fix"></div>
++      </td>
++    </tr>
++  </table>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-005-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-005-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-005-ref.html
+@@ -0,0 +1,37 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    border: 5px solid green;
++  }
++  td {
++    border: 3px solid blue;
++  }
++  .container {
++    vertical-align: top;
++  }
++  .container-inner {
++    width: 0;
++    height: 0;
++  }
++  </style>
++</head>
++<body>
++  <table>
++    <tr>
++      <td class="container">
++        <div class="container-inner">
++          Lorem ipsum dolor sit amet
++        </div>
++      </td>
++    </tr>
++  </table>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-005.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-005.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-005.html
+@@ -0,0 +1,35 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on a lone table cell should
++    result in a zero height table cell with "visible
++    overflow".</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-table-cell-005-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    border: 5px solid green;
++  }
++  td {
++    border: 3px solid blue;
++  }
++  .container {
++    contain: layout;
++  }
++  </style>
++</head>
++<body>
++  <table>
++    <tr>
++      <td class="container">
++        Lorem ipsum dolor sit amet
++      </td>
++    </tr>
++  </table>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-006-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-006-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-006-ref.html
+@@ -0,0 +1,44 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    border: 5px solid green;
++  }
++  td {
++    vertical-align: top;
++    border: 3px solid blue;
++    width: 150px;
++    height: 115px;
++  }
++  .container {
++    vertical-align: middle;
++    font-size: 50px;
++  }
++  .container-inner {
++    position: relative;
++    top: -12.5px; /* XXX kzentner: Why is it not 12? */
++  }
++  </style>
++</head>
++<body>
++  <table>
++    <tr>
++      <td>
++        a
++      </td>
++      <td class="container">
++        <div class="container-inner">
++          Test
++        </div>
++      </td>
++    </tr>
++  </table>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-006.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-006.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-table-cell-006.html
+@@ -0,0 +1,42 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on a table cell should prevent
++    the content of that table cell from affecting its row's
++    baseline.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-table-cell-006-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  table {
++    border: 5px solid green;
++  }
++  td {
++    border: 3px solid blue;
++    width: 150px;
++    height: 100px;
++    vertical-align: baseline;
++  }
++  .container {
++    contain: layout;
++    font-size: 50px;
++  }
++  </style>
++</head>
++<body>
++  <table>
++    <tr>
++      <td>
++        a
++      </td>
++      <td class="container">
++        Test
++      </td>
++    </tr>
++  </table>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
+--- a/layout/reftests/w3c-css/submitted/contain/reftest.list
++++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
+@@ -24,11 +24,20 @@ default-preferences pref(layout.css.cont
+ == contain-layout-block-002.html contain-layout-block-002-ref.html
+ == contain-layout-block-003.html contain-layout-block-003-ref.html
+ == contain-layout-block-004.html contain-layout-block-004-ref.html
+ == contain-layout-inline-block-001.html contain-layout-inline-block-001-ref.html
+ == contain-layout-inline-block-002.html contain-layout-inline-block-002-ref.html
+ == contain-layout-inline-block-003.html contain-layout-inline-block-003-ref.html
+ == contain-layout-inline-block-004.html contain-layout-inline-block-004-ref.html
+ == contain-layout-inline-block-005.html contain-layout-inline-block-005-ref.html
++== contain-layout-table-cell-001.html contain-layout-table-cell-001-ref.html
++== contain-layout-table-cell-002.html contain-layout-table-cell-002-ref.html
++== contain-layout-table-cell-003.html contain-layout-table-cell-003-ref.html
++== contain-layout-table-cell-004.html contain-layout-table-cell-004-ref.html
++== contain-layout-table-cell-005.html contain-layout-table-cell-005-ref.html
++== contain-layout-table-cell-006.html contain-layout-table-cell-006-ref.html
++== contain-layout-inline-table-cell-001.html contain-layout-inline-table-cell-001-ref.html
++== contain-layout-inline-table-cell-002.html contain-layout-inline-table-cell-002-ref.html
++== contain-layout-inline-table-cell-003.html contain-layout-inline-table-cell-003-ref.html
+ == contain-style-quote-001.html contain-style-quote-001-ref.html
+ == contain-style-break-001.html contain-style-break-001-ref.html
+ == contain-style-break-002.html contain-style-break-001-ref.html

@@ -1,12 +1,32 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  d3a12cd455c1ecb5d1a67af7ce08f121dec89315
+# Parent  778f72bd0c72dd553f39faff60c56f5b5c651395
 Bug 1178895 - Patch 4: Implement 'contain: layout' for table cell elements.
 
 diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame.cpp
 --- a/layout/tables/nsTableCellFrame.cpp
 +++ b/layout/tables/nsTableCellFrame.cpp
-@@ -770,28 +770,36 @@ int32_t nsTableCellFrame::GetColSpan()
+@@ -723,16 +723,19 @@ nsTableCellFrame::CellHasVisibleContent(
+ 
+ nscoord
+ nsTableCellFrame::GetCellBaseline() const
+ {
+   // Ignore the position of the inner frame relative to the cell frame
+   // since we want the position as though the inner were top-aligned.
+   nsIFrame *inner = mFrames.FirstChild();
+   nscoord borderPadding = GetUsedBorderAndPadding().top;
++  if (nsLayoutUtils::IsContainLayout(this)) {
++    return borderPadding;
++  }
+   nscoord result;
+   if (nsLayoutUtils::GetFirstLineBaseline(GetWritingMode(), inner, &result))
+     return result + borderPadding;
+   return inner->GetContentRectRelativeToSelf().YMost() +
+          borderPadding;
+ }
+ 
+ int32_t nsTableCellFrame::GetRowSpan()
+@@ -770,28 +773,36 @@ int32_t nsTableCellFrame::GetColSpan()
  }
  
  /* virtual */ nscoord
@@ -43,7 +63,7 @@ diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame
  
  /* virtual */ nsIFrame::IntrinsicISizeOffsetData
  nsTableCellFrame::IntrinsicISizeOffsets()
-@@ -988,25 +996,25 @@ nsTableCellFrame::Reflow(nsPresContext* 
+@@ -988,25 +999,25 @@ nsTableCellFrame::Reflow(nsPresContext* 
                      wm, kidOrigin, containerSize, 0);
  
    nsTableFrame::InvalidateTableFrame(firstKid, origRect, origVisualOverflow,
@@ -73,3 +93,25 @@ diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame
    // set the cell's desired size and max element size
    aDesiredSize.SetSize(wm, cellSize);
  
+diff --git a/layout/tables/nsTableRowFrame.cpp b/layout/tables/nsTableRowFrame.cpp
+--- a/layout/tables/nsTableRowFrame.cpp
++++ b/layout/tables/nsTableRowFrame.cpp
+@@ -429,17 +429,17 @@ nscoord nsTableRowFrame::GetRowBaseline(
+   // bp              pb
+   // bp              pb
+   // bppppppppppppppppb
+   // bbbbbbbbbbbbbbbbbb
+ 
+   nscoord ascent = 0;
+   nsSize containerSize = GetSize();
+   for (nsIFrame* childFrame : mFrames) {
+-    if (IS_TABLE_CELL(childFrame->GetType())) {
++    if (IS_TABLE_CELL(childFrame->GetType()) && !nsLayoutUtils::IsContainLayout(childFrame)) {
+       nsIFrame* firstKid = childFrame->GetFirstPrincipalChild();
+       ascent = std::max(ascent,
+                         LogicalRect(aWM, firstKid->GetNormalRect(),
+                                     containerSize).BEnd(aWM));
+     }
+   }
+   return ascent;
+ }
