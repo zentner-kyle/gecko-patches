@@ -3,33 +3,31 @@
 # Parent  d9bee8b6b5e14ab1ff4071167c569dbadae07414
 Bug 1178895 - Patch 6: Implement 'contain: layout' for flexbox.
 
-diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
---- a/layout/base/nsLayoutUtils.cpp
-+++ b/layout/base/nsLayoutUtils.cpp
-@@ -5724,16 +5724,19 @@ nsLayoutUtils::GetLastLineBaseline(Writi
- }
- 
- static nscoord
- CalculateBlockContentBEnd(WritingMode aWM, nsBlockFrame* aFrame)
- {
-   NS_PRECONDITION(aFrame, "null ptr");
- 
-   nscoord contentBEnd = 0;
-+  if (nsLayoutUtils::IsContainLayout(aFrame)) {
-+    return contentBEnd;
-+  }
- 
-   for (nsBlockFrame::line_iterator line = aFrame->begin_lines(),
-                                    line_end = aFrame->end_lines();
-        line != line_end; ++line) {
-     if (line->IsBlock()) {
-       nsIFrame* child = line->mFirstChild;
-       const nsSize& containerSize = line->mContainerSize;
-       nscoord offset =
 diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexContainerFrame.cpp
 --- a/layout/generic/nsFlexContainerFrame.cpp
 +++ b/layout/generic/nsFlexContainerFrame.cpp
-@@ -3354,16 +3354,22 @@ nsFlexContainerFrame::ComputeCrossSize(c
+@@ -3293,16 +3293,20 @@ ResolveFlexContainerMainSize(const nsHTM
+     // our children" is just the main-size (BSize) of our longest flex line.
+     NS_FRAME_SET_INCOMPLETE(aStatus);
+     nscoord largestLineOuterSize = GetLargestLineMainSize(aFirstLine);
+ 
+     if (largestLineOuterSize <= aAvailableBSizeForContent) {
+       return aAvailableBSizeForContent;
+     }
+     return std::min(aTentativeMainSize, largestLineOuterSize);
++  } else if (nsLayoutUtils::IsContainLayout(this)) {
++    // We have no intrinsic size, and "no flex items" (because we act like we
++    // have no contents). Therefore, our main size is zero.
++    return 0;
+   }
+ 
+   // Column-oriented case, with auto BSize:
+   // Resolve auto BSize to the largest FlexLine length, clamped to our
+   // computed min/max main-size properties.
+   // XXXdholbert Handle constrained-aAvailableBSizeForContent case here.
+   nscoord largestLineOuterSize = GetLargestLineMainSize(aFirstLine);
+   return NS_CSS_MINMAX(largestLineOuterSize,
+@@ -3354,16 +3358,20 @@ nsFlexContainerFrame::ComputeCrossSize(c
      // XXXdholbert For now, we don't support pushing children to our next
      // continuation or splitting children, so "amount of BSize required by
      // our children" is just the sum of our FlexLines' BSizes (cross sizes).
@@ -41,8 +39,6 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
 +  } else if (nsLayoutUtils::IsContainLayout(this)) {
 +    // We have no intrinsic size, and "no flex items" (because we act like we
 +    // have no contents). Therefore, our cross size is zero.
-+    // This is mostly important when our cross size is used for its effect on
-+    // the baseline.
 +    return 0;
    }
  
@@ -52,7 +48,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
    // XXXdholbert Handle constrained-aAvailableBSizeForContent case here.
    *aIsDefinite = false;
    return NS_CSS_MINMAX(aSumLineCrossSizes,
-@@ -3895,24 +3901,29 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
+@@ -3895,24 +3903,29 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
    // starting w/ content-box size & growing from there:
    LogicalSize desiredSizeInFlexWM =
      aAxisTracker.LogicalSizeFromFlexRelativeSizes(aContentBoxMainSize,
@@ -89,31 +85,6 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
      // of the parent's writing mode, not ours). Clean up in bug 1155322.
      flexContainerAscent = desiredSizeInFlexWM.BSize(flexWM);
    }
- 
-@@ -3942,19 +3953,21 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
-       NS_FRAME_SET_INCOMPLETE(aStatus);
-     }
-   }
- 
-   // Convert flex container's final desired size to parent's WM, for outparam.
-   aDesiredSize.SetSize(flexWM, desiredSizeInFlexWM);
- 
-   // Overflow area = union(my overflow area, kids' overflow areas)
--  aDesiredSize.SetOverflowAreasToDesiredBounds();
--  for (nsIFrame* childFrame : mFrames) {
--    ConsiderChildOverflow(aDesiredSize.mOverflowAreas, childFrame);
-+  if (!nsLayoutUtils::IsContainLayout(this)) {
-+    aDesiredSize.SetOverflowAreasToDesiredBounds();
-+    for (nsIFrame* childFrame : mFrames) {
-+      ConsiderChildOverflow(aDesiredSize.mOverflowAreas, childFrame);
-+    }
-   }
- 
-   FinishReflowWithAbsoluteFrames(aPresContext, aDesiredSize,
-                                  aReflowState, aStatus);
- 
-   NS_FRAME_SET_TRUNCATION(aStatus, aReflowState, aDesiredSize)
- }
  
 @@ -4083,16 +4096,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
  }
