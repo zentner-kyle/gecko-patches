@@ -1,13 +1,13 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  7e211b9c1bf3cf67b658da073ddc0deba020e27a
+# Parent  a09c9c66d686ba59b3fa589b5346bed4a18dfc4a
 Bug 1178895 - Patch 7: Test 'contain: layout' for flexbox.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,24 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -21,38 +21,262 @@ new file mode 100644
 +  .container {
 +    contain: layout;
 +    background: red;
-+    border: 16px solid green;
++    border: 8px solid green;
 +    height: 0;
 +  }
 +  </style>
 +</head>
 +<body class="reftest-paint">
-+  <div class="container">Test div.</div>
++  <div class="container">
++    This text should not affect the size of the container.
++  </div>
 +</body>
 +</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001.html
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001.html
-@@ -0,0 +1,81 @@
+@@ -0,0 +1,27 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on flexbox with no intrinsic
++    height causes it to have zero height.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-flex-002-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    display: flex;
++    flex-direction: column;
++    border: 8px solid green;
++    contain: layout;
++  }
++  </style>
++</head>
++<body>
++  <div class="container">
++    This text should not affect the size of the container.
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002-ref.html
+@@ -0,0 +1,38 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on flexbox.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  .flex-box {
++    display: flex;
++    border: 5px solid green;
++    margin: 2px;
++  }
++  .container {
++    contain: layout;
++    font-size: 50px;
++  }
++  .flex-item {
++    border: 3px solid blue;
++    width: 150px;
++    height: 100px;
++    margin: 2px;
++  }
++  </style>
++</head>
++<body>
++  <div class="flex-box">
++    <div class="flex-item">
++      a
++    </div>
++    <div class="flex-item container">
++      Test
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002.html
+@@ -0,0 +1,42 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on a flex item should prevent the
++    content of the item from affecting other baselines.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <link rel="match" href="contain-layout-flex-001-ref.html">
++  <link rel="match" href="contain-layout-flex-002-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .flex-box {
++    display: flex;
++    border: 5px solid green;
++    margin: 2px;
++    align-items: baseline;
++  }
++  .container {
++    contain: layout;
++    font-size: 50px;
++  }
++  .flex-item {
++    border: 3px solid blue;
++    width: 150px;
++    height: 100px;
++    margin: 2px;
++  }
++  </style>
++</head>
++<body>
++  <div class="flex-box">
++    <div class="flex-item">
++      a
++    </div>
++    <div class="flex-item container">
++      Test
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-001-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-001-ref.html
+@@ -0,0 +1,24 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reference Reftest</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
 +  }
 +  .container {
-+    /* display: inline-block; */
 +    display: inline-flex;
-+    //display: flex;
 +    contain: layout;
-+    /* overflow: hidden; */
++    background: red;
++    border: 1em solid green;
++    width: 0;
++    height: 0;
++  }
++  </style>
++</head>
++<body>
++  <span class="container">This text should not affect the size of the container.</span>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-001.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-001.html
+@@ -0,0 +1,25 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on inline-flex should cause the element
++    to have zero size.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-inline-flex-001-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    display: inline-flex;
++    contain: layout;
++    background: red;
++    border: 1em solid green;
++  }
++  </style>
++</head>
++<body>
++  <span class="container">This text should not affect the size of the container.</span>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-002-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-002-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-002-ref.html
+@@ -0,0 +1,37 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reference Reftest</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    display: inline-flex;
++    width: 0;
++    height: 0;
++    overflow: hidden;
++    border: 8px solid green;
++    margin: 2px;
++  }
++  </style>
++</head>
++<body>
++  <div class="container"></div>
++  Word
++  <div class="container"></div>
++  Word
++  <div class="container"></div>
++  Word
++  <div class="container"></div>
++  Word
++  <div class="container"></div>
++  Word
++  <div class="container"></div>
++  Word
++  <div class="container"></div>
++  Word
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-002.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-002.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-002.html
+@@ -0,0 +1,82 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on an inline flexbox with hidden
++    contents should not move its line's baseline</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-flex-002-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    display: inline-flex;
++    contain: layout;
++    overflow: hidden;
 +    background: red;
 +    border: 8px solid green;
 +    margin: 2px;
@@ -97,9 +321,11 @@ new file mode 100644
 +  </style>
 +</head>
 +<body class="reftest-paint">
-+  All of the following green boxes should be on the same line, and the same size.
-+  All of the words should be on the same line as each other as well.
-+  <br>
++  <!--
++    Since the contents of a contained element do not move the baseline, all
++    of the following green boxes should be on the same line, and the same size.
++    All of the words should be on the same line as each other as well.
++  -->
 +  <div class="container"></div>
 +  Word
 +  <div class="container">Test text contents.</div>
@@ -116,69 +342,324 @@ new file mode 100644
 +  Word
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-003-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-003-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002-ref.html
-@@ -0,0 +1,23 @@
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-003-ref.html
+@@ -0,0 +1,77 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: layout' on flexbox.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <title>CSS Reference Reftest</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
 +  }
 +  .container {
-+    display: flex;
++    display: inline-flex;
++    width: 0;
++    height: 0;
++    vertical-align: top;
++    position: relative;
++    top: 5px;
++    background: red;
++    border: 8px solid green;
++    margin: 2px;
++  }
++
++  .right-float {
++    float: right;
 +    background: blue;
-+    border: 16px solid green;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .left-float {
++    float: left;
++    background: orange;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .big-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++  }
++
++  .block {
++    display: inline-block;
 +    width: 50px;
-+    height: 30px;
++    height: 50px;
++    background: teal;
++  }
++  .positioned-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++    position: relative;
++    top: -20px;
++    left: -20px;
 +  }
 +  </style>
 +</head>
 +<body class="reftest-paint">
-+  <div class="container">Test div.</div>
++  <div class="container"></div>
++  Word
++  <div class="container">Test text contents.</div>
++  Word
++  <div class="container"><div><div class="right-float"></div></div></div>
++  Word
++  <div class="container"><div><div class="left-float"></div></div></div>
++  Word
++  <div class="container"><div class="block"></div></div>
++  Word
++  <div class="container"><div class="big-block"></div></div>
++  Word
++  <div class="container"><div class="positioned-block"></div></div>
++  Word
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-003.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-003.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-003.html
+@@ -0,0 +1,81 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on an inline flexbox with visible
++    contents should not move its line's baseline</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-flex-003-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    display: inline-flex;
++    contain: layout;
++    background: red;
++    border: 8px solid green;
++    margin: 2px;
++  }
++
++  .right-float {
++    float: right;
++    background: blue;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .left-float {
++    float: left;
++    background: orange;
++    width: 20px;
++    height: 20px;
++    margin: 20px;
++  }
++
++  .big-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++  }
++
++  .block {
++    display: inline-block;
++    width: 50px;
++    height: 50px;
++    background: teal;
++  }
++  .positioned-block {
++    width: 100px;
++    height: 100px;
++    background: salmon;
++    position: relative;
++    top: -20px;
++    left: -20px;
++  }
++  </style>
++</head>
++<body class="reftest-paint">
++  <!--
++    Since the contents of a contained element do not move the baseline, all
++    of the following green boxes should be on the same line, and the same size.
++    All of the words should be on the same line as each other as well.
++  -->
++  <div class="container"></div>
++  Word
++  <div class="container">Test text contents.</div>
++  Word
++  <div class="container"><div><div class="right-float"></div></div></div>
++  Word
++  <div class="container"><div><div class="left-float"></div></div></div>
++  Word
++  <div class="container"><div class="block"></div></div>
++  Word
++  <div class="container"><div class="big-block"></div></div>
++  Word
++  <div class="container"><div class="positioned-block"></div></div>
++  Word
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-004-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-004-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-004-ref.html
 @@ -0,0 +1,26 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: layout' on flexbox.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
-+  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <link rel="match" href="contain-layout-flex-002-ref.html">
++  <title>CSS Reference Reftest</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
 +  }
 +  .container {
-+    display: flex;
-+    contain: layout;
-+    background: blue;
-+    border: 16px solid green;
-+    width: 50px;
++    display: inline-flex;
++    width: 30px;
 +    height: 30px;
++    border: 2px solid green;
++    margin: 2px;
++    vertical-align: bottom;
 +  }
 +  </style>
 +</head>
 +<body class="reftest-paint">
-+  <div class="container">Test div.</div>
++  Word
++  <div class="container">a</div>
++  Word
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-004.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-004.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-004.html
+@@ -0,0 +1,29 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on an inline row flexbox
++    should not affect its line's baseline</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-flex-004-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    display: inline-flex;
++    width: 30px;
++    height: 30px;
++    border: 2px solid green;
++    margin: 2px;
++    contain: layout;
++  }
++  </style>
++</head>
++<body class="reftest-paint">
++  Word
++  <div class="container">a</div>
++  Word
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-005-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-005-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-005-ref.html
+@@ -0,0 +1,34 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reference Reftest</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    display: inline-flex;
++    flex-direction: column;
++    width: 30px;
++    height: 30px;
++    border: 2px solid green;
++    margin: 2px;
++    vertical-align: bottom;
++  }
++  .flex-item {
++    border: 2px solid blue;
++    margin: 2px;
++  }
++  </style>
++</head>
++<body class="reftest-paint">
++  Word
++  <div class="container">
++    <div class="flex-item">a</div>
++    <div class="flex-item">b</div>
++  </div>
++  Word
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-005.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-005.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-005.html
+@@ -0,0 +1,37 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' on an inline column flexbox
++    should not affect its line's baseline</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-flex-005-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .container {
++    display: inline-flex;
++    flex-direction: column;
++    contain: layout;
++    width: 30px;
++    height: 30px;
++    border: 2px solid green;
++    margin: 2px;
++  }
++  .flex-item {
++    border: 2px solid blue;
++    margin: 2px;
++  }
++  </style>
++</head>
++<body class="reftest-paint">
++  Word
++  <div class="container">
++    <div class="flex-item">a</div>
++    <div class="flex-item">b</div>
++  </div>
++  Word
 +</body>
 +</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -19,16 +19,18 @@ default-preferences pref(layout.css.cont
+@@ -19,16 +19,23 @@ default-preferences pref(layout.css.cont
  == contain-style-counter-scope-006.html contain-style-counter-scope-001-ref.html
  == contain-style-counter-scope-007.html contain-style-counter-scope-001-ref.html
  == contain-style-counter-scope-008.html contain-style-counter-scope-001-ref.html
@@ -189,6 +670,11 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/ref
  == contain-layout-block-004.html contain-layout-block-004-ref.html
 +== contain-layout-flex-001.html contain-layout-flex-001-ref.html
 +== contain-layout-flex-002.html contain-layout-flex-002-ref.html
++== contain-layout-inline-flex-001.html contain-layout-inline-flex-001-ref.html
++== contain-layout-inline-flex-002.html contain-layout-inline-flex-002-ref.html
++== contain-layout-inline-flex-003.html contain-layout-inline-flex-003-ref.html
++== contain-layout-inline-flex-004.html contain-layout-inline-flex-004-ref.html
++== contain-layout-inline-flex-005.html contain-layout-inline-flex-005-ref.html
  == contain-layout-inline-block-001.html contain-layout-inline-block-001-ref.html
  == contain-layout-inline-block-002.html contain-layout-inline-block-002-ref.html
  == contain-layout-inline-block-003.html contain-layout-inline-block-003-ref.html
