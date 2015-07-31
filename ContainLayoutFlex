@@ -79,7 +79,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
    // XXXdholbert Handle constrained-aAvailableBSizeForContent case here.
    *aIsDefinite = false;
    return NS_CSS_MINMAX(aSumLineCrossSizes,
-@@ -3895,24 +3903,29 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
+@@ -3895,24 +3903,28 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
    // starting w/ content-box size & growing from there:
    LogicalSize desiredSizeInFlexWM =
      aAxisTracker.LogicalSizeFromFlexRelativeSizes(aContentBoxMainSize,
@@ -97,6 +97,8 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
 -                     "Have flex items but didn't get an ascent - that's odd "
 -                     "(or there are just gigantic sizes involved)");
 +  if (flexContainerAscent == nscoord_MIN || nsLayoutUtils::IsContainLayout(this)) {
++    // We either haven't found a baseline, or we should pretend that we don't
++    // have any children (and thus that we don't haven't found a baseline.)
 +    if (flexContainerAscent == nscoord_MIN) {
 +      // Still don't have our baseline set -- this happens if we have no
 +      // children (or if our children are huge enough that they have nscoord_MIN
@@ -105,9 +107,6 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
 +      NS_WARN_IF_FALSE(lines.getFirst()->IsEmpty(),
 +                      "Have flex items but didn't get an ascent - that's odd "
 +                      "(or there are just gigantic sizes involved)");
-+    } else {
-+      // Otherwise, we're a contain layout.
-+      flexContainerAscent = nscoord_MIN;
 +    }
      // Per spec, synthesize baseline from the flex container's content box
      // (i.e. use block-end side of content-box)
@@ -117,7 +116,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
      flexContainerAscent = desiredSizeInFlexWM.BSize(flexWM);
    }
  
-@@ -4083,16 +4096,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
+@@ -4083,16 +4095,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
  }
  
  /* virtual */ nscoord
@@ -138,7 +137,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
        nsLayoutUtils::IntrinsicForContainer(aRenderingContext, childFrame,
                                             nsLayoutUtils::MIN_ISIZE);
      // For a horizontal single-line flex container, the intrinsic min width is
-@@ -4110,16 +4127,20 @@ nsFlexContainerFrame::GetMinISize(nsRend
+@@ -4110,16 +4126,20 @@ nsFlexContainerFrame::GetMinISize(nsRend
  }
  
  /* virtual */ nscoord

@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  a09c9c66d686ba59b3fa589b5346bed4a18dfc4a
+# Parent  ef20089e183f7297e2aaed7e89a4fea4d5616d93
 Bug 1178895 - Patch 7: Test 'contain: layout' for flexbox.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html
@@ -12,8 +12,8 @@ new file mode 100644
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: layout' on flexbox.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -26,7 +26,7 @@ new file mode 100644
 +  }
 +  </style>
 +</head>
-+<body class="reftest-paint">
++<body>
 +  <div class="container">
 +    This text should not affect the size of the container.
 +  </div>
@@ -43,9 +43,9 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on flexbox with no intrinsic
 +    height causes it to have zero height.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <link rel="match" href="contain-layout-flex-002-ref.html">
++  <link rel="match" href="contain-layout-flex-001-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -74,7 +74,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <style>
 +  body {
 +    margin: 0;
@@ -118,7 +118,7 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on a flex item should prevent the
 +    content of the item from affecting other baselines.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-flex-002-ref.html">
 +  <style>
@@ -142,6 +142,101 @@ new file mode 100644
 +  }
 +  .sibling {
 +    align-self: baseline;
++  }
++  </style>
++</head>
++<body>
++  <div class="flex-box">
++    <div class="flex-item sibling">
++      a
++    </div>
++    <div class="flex-item container">
++      Test
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-003-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-003-ref.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-003-ref.html
+@@ -0,0 +1,43 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Reftest Reference</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <style>
++  body {
++    margin: 0;
++  }
++  .flex-box {
++    display: flex;
++    border: 5px solid green;
++    margin: 2px;
++    align-items: baseline;
++  }
++  .container {
++  }
++  .flex-item {
++    border: 3px solid blue;
++    width: 150px;
++    height: 100px;
++    margin: 2px;
++  }
++  .container-inner {
++    position: absolute;
++    font-size: 50px;
++  }
++  </style>
++</head>
++<body>
++  <div class="flex-box">
++    <div class="flex-item">
++      a
++    </div>
++    <div class="flex-item container">
++      <div class="container-inner">
++        Test
++      </div>
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-003.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-003.html
+new file mode 100644
+--- /dev/null
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-003.html
+@@ -0,0 +1,42 @@
++<!DOCTYPE HTML>
++<html>
++<head>
++  <meta charset="utf-8">
++  <title>CSS Test: 'contain: layout' flex items should result in the
++    item having no baseline.</title>
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
++  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
++  <link rel="match" href="contain-layout-flex-003-ref.html">
++  <style>
++  body {
++    margin: 0;
++  }
++  .flex-box {
++    display: flex;
++    border: 5px solid green;
++    margin: 2px;
++    align-items: baseline;
++  }
++  .container {
++    contain: layout;
++    font-size: 50px;
++  }
++  .flex-item {
++    border: 3px solid blue;
++    width: 150px;
++    height: 100px;
++    margin: 2px;
 +  }
 +  </style>
 +</head>
@@ -268,9 +363,9 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on an inline flexbox with hidden
 +    contents should not move its line's baseline</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <link rel="match" href="contain-layout-flex-002-ref.html">
++  <link rel="match" href="contain-layout-inline-flex-002-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -322,7 +417,7 @@ new file mode 100644
 +  }
 +  </style>
 +</head>
-+<body class="reftest-paint">
++<body>
 +  <!--
 +    Since the contents of a contained element do not move the baseline, all
 +    of the following green boxes should be on the same line, and the same size.
@@ -409,7 +504,7 @@ new file mode 100644
 +  }
 +  </style>
 +</head>
-+<body class="reftest-paint">
++<body>
 +  <div class="container"></div>
 +  Word
 +  <div class="container">Test text contents.</div>
@@ -437,9 +532,9 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on an inline flexbox with visible
 +    contents should not move its line's baseline</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <link rel="match" href="contain-layout-flex-003-ref.html">
++  <link rel="match" href="contain-layout-inline-flex-003-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -490,7 +585,7 @@ new file mode 100644
 +  }
 +  </style>
 +</head>
-+<body class="reftest-paint">
++<body>
 +  <!--
 +    Since the contents of a contained element do not move the baseline, all
 +    of the following green boxes should be on the same line, and the same size.
@@ -537,7 +632,7 @@ new file mode 100644
 +  }
 +  </style>
 +</head>
-+<body class="reftest-paint">
++<body>
 +  Word
 +  <div class="container">a</div>
 +  Word
@@ -554,9 +649,9 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on an inline row flexbox
 +    should not affect its line's baseline</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <link rel="match" href="contain-layout-flex-004-ref.html">
++  <link rel="match" href="contain-layout-inline-flex-004-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -571,7 +666,7 @@ new file mode 100644
 +  }
 +  </style>
 +</head>
-+<body class="reftest-paint">
++<body>
 +  Word
 +  <div class="container">a</div>
 +  Word
@@ -607,7 +702,7 @@ new file mode 100644
 +  }
 +  </style>
 +</head>
-+<body class="reftest-paint">
++<body>
 +  Word
 +  <div class="container">
 +    <div class="flex-item">a</div>
@@ -627,9 +722,9 @@ new file mode 100644
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on an inline column flexbox
 +    should not affect its line's baseline</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
++  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <link rel="match" href="contain-layout-flex-005-ref.html">
++  <link rel="match" href="contain-layout-inline-flex-005-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -649,7 +744,7 @@ new file mode 100644
 +  }
 +  </style>
 +</head>
-+<body class="reftest-paint">
++<body>
 +  Word
 +  <div class="container">
 +    <div class="flex-item">a</div>
