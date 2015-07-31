@@ -9,7 +9,7 @@ Add IsContainLayout helper function.
 diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
 --- a/layout/base/nsLayoutUtils.cpp
 +++ b/layout/base/nsLayoutUtils.cpp
-@@ -4122,16 +4122,30 @@ nsLayoutUtils::IsViewportScrollbarFrame(
+@@ -4122,16 +4122,34 @@ nsLayoutUtils::IsViewportScrollbarFrame(
    if (!IsProperAncestorFrame(rootScrollFrame, aFrame))
      return false;
  
@@ -19,15 +19,19 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
  }
  
 +bool
-+nsLayoutUtils::IsContainLayout(const nsIFrame* aFrame) {
++nsLayoutUtils::IsContainLayout(const nsIFrame* aFrame)
++{
 +  if (aFrame->StyleDisplay()->mContain & NS_STYLE_CONTAIN_LAYOUT) {
 +    return true;
 +  }
 +  if (aFrame->StyleContext()->GetPseudo() == nsCSSAnonBoxes::scrolledContent) {
-+    nsIFrame* parent = aFrame->GetParent();
-+    MOZ_ASSERT(parent,
++    // We need a non-const nsStyleContext* so that we can call StyleDisplay()
++    // on it.
++    nsStyleContext* parentStyle =
++      const_cast<nsStyleContext*>(aFrame->StyleContext()->GetParent());
++    MOZ_ASSERT(parentStyle,
 +               "If we're scrolled content, we should have a parent scrollframe");
-+    return parent->StyleDisplay()->mContain & NS_STYLE_CONTAIN_LAYOUT;
++    return parentStyle->StyleDisplay()->mContain & NS_STYLE_CONTAIN_LAYOUT;
 +  }
 +  return false;
 +}
@@ -40,7 +44,7 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
      // XXX Should we also consider percentages for min widths, up to a
      // limit?
      if (aPercent >= 1.0f)
-@@ -5579,16 +5593,19 @@ nsLayoutUtils::GetFirstLineBaseline(Writ
+@@ -5579,16 +5597,19 @@ nsLayoutUtils::GetFirstLineBaseline(Writ
    return true;
  }
  
@@ -60,7 +64,7 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
      if (fType == nsGkAtoms::tableOuterFrame) {
        aResult->mBStart = 0;
        aResult->mBaseline = aFrame->GetLogicalBaseline(aWM);
-@@ -5662,16 +5679,19 @@ nsLayoutUtils::GetFirstLinePosition(Writ
+@@ -5662,16 +5683,19 @@ nsLayoutUtils::GetFirstLinePosition(Writ
    }
    return false;
  }
@@ -83,7 +87,7 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
 diff --git a/layout/base/nsLayoutUtils.h b/layout/base/nsLayoutUtils.h
 --- a/layout/base/nsLayoutUtils.h
 +++ b/layout/base/nsLayoutUtils.h
-@@ -1465,16 +1465,23 @@ public:
+@@ -1465,16 +1465,29 @@ public:
              aCoord.GetCoordValue() == 0) ||
             (aCoord.GetUnit() == eStyleUnit_Percent &&
              aCoord.GetPercentValue() == 0.0f) ||
@@ -93,9 +97,15 @@ diff --git a/layout/base/nsLayoutUtils.h b/layout/base/nsLayoutUtils.h
    }
  
 +  /*
-+   * Because layout containment should be inherited from scroll frames (but not
-+   * the other portions of containment), this function is needed. Otherwise,
-+   * there would be a nsStyleDisplay::IsContainLayout().
++   * Returns true if aFrame should be treated as having "contain:layout".
++   *
++   * NOTE: In order for "contain:layout" to work on scroll framse, we need it
++   * to effectively inherit through to the scrolled frame. However, we can't
++   * _actually_ use CSS inheritance in ua.css to do this, or else other
++   * 'contain' values (e.g. "paint") would inherit through to scrolled frames
++   * as well, which would break things. So, instead of using real inheritance,
++   * we use this helper-function, which has a special case for scrolled frames.
++   * (If it weren't for this special case, this could live on nsStyleDisplay.)
 +   */
 +  static bool IsContainLayout(const nsIFrame* aFrame);
 +
@@ -110,7 +120,7 @@ diff --git a/layout/base/nsLayoutUtils.h b/layout/base/nsLayoutUtils.h
 diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 --- a/layout/style/nsRuleNode.cpp
 +++ b/layout/style/nsRuleNode.cpp
-@@ -5723,17 +5723,20 @@ nsRuleNode::ComputeDisplayData(void* aSt
+@@ -5723,17 +5723,22 @@ nsRuleNode::ComputeDisplayData(void* aSt
  
        // Note that it's OK to cache this struct in the ruletree
        // because it's fine as-is for any style context that points to
@@ -120,8 +130,10 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
      }
  
 -    if (display->IsContainPaint()) {
-+    // We can use mContain here directly, since in the case where
-+    // IsContainLayout() differs from using mContain directly, the frame is a
++    // Note: We test for 'contain:layout' here by *directly* checking mContain,
++    // instead of using the more-correct & scrollframe-aware function
++    // nsLayoutUtils::IsContainLayout(). This is OK because in the case where
++    // mContain disagrees with the nsLayoutUtils function, the frame is a
 +    // scroll frame, and thus already a formatting context.
 +    if (display->IsContainPaint() || (display->mContain & NS_STYLE_CONTAIN_LAYOUT)) {
        // An element with contain:paint or contain:layout needs to "be a
@@ -135,7 +147,7 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -2244,16 +2244,21 @@ struct nsStyleDisplay {
+@@ -2244,16 +2244,22 @@ struct nsStyleDisplay {
  
    bool IsScrollableOverflow() const {
      // mOverflowX and mOverflowY always match when one of them is
@@ -145,8 +157,9 @@ diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
    }
  
 +  /*
-+   * IsContainLayout is located in nsLayoutUtils.h, since determining whether
-+   * a frame is layout contained requires looking at the parent's style.
++   * IsContainLayout() is located in nsLayoutUtils.h, since determining whether
++   * a frame is layout-contained may require looking at the parent's style
++   * (for scrolled frames).
 +   */
 +
    bool IsContainStyle() const {

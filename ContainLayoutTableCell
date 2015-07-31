@@ -1,32 +1,53 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  778f72bd0c72dd553f39faff60c56f5b5c651395
+# Parent  e1f314312a004b9fe4f8555cb84725bfade771e6
 Bug 1178895 - Patch 4: Implement 'contain: layout' for table cell elements.
 
 diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame.cpp
 --- a/layout/tables/nsTableCellFrame.cpp
 +++ b/layout/tables/nsTableCellFrame.cpp
-@@ -723,16 +723,19 @@ nsTableCellFrame::CellHasVisibleContent(
+@@ -719,25 +719,33 @@ nsTableCellFrame::CellHasVisibleContent(
+     innerFrame = innerFrame->GetNextSibling();
+   }	
+   return false;
+ }
  
  nscoord
  nsTableCellFrame::GetCellBaseline() const
  {
++  nsIFrame *inner = mFrames.FirstChild();
++
++  // Cell's baseline is just the baseline of the inner frame, shifted down by
++  // the cell's top border/padding.
    // Ignore the position of the inner frame relative to the cell frame
    // since we want the position as though the inner were top-aligned.
-   nsIFrame *inner = mFrames.FirstChild();
-   nscoord borderPadding = GetUsedBorderAndPadding().top;
+-  nsIFrame *inner = mFrames.FirstChild();
+-  nscoord borderPadding = GetUsedBorderAndPadding().top;
+-  nscoord result;
+-  if (nsLayoutUtils::GetFirstLineBaseline(GetWritingMode(), inner, &result))
+-    return result + borderPadding;
+-  return inner->GetContentRectRelativeToSelf().YMost() +
+-         borderPadding;
++  nscoord innerBaseline;
 +  if (nsLayoutUtils::IsContainLayout(this)) {
-+    return borderPadding;
++    // If we're layout-containing, we should pretend that our children's block
++    // size is zero.
++    innerBaseline = 0;
++  } else if (!nsLayoutUtils::GetFirstLineBaseline(GetWritingMode(), inner, &innerBaseline)) {
++    // Our inner frame didn't have a baseline, so use the bottom of out inner
++    // frame's content rect.
++    innerBaseline = inner->GetContentRectRelativeToSelf().YMost();
 +  }
-   nscoord result;
-   if (nsLayoutUtils::GetFirstLineBaseline(GetWritingMode(), inner, &result))
-     return result + borderPadding;
-   return inner->GetContentRectRelativeToSelf().YMost() +
-          borderPadding;
++  return innerBaseline + GetUsedBorderAndPadding().top;
  }
  
  int32_t nsTableCellFrame::GetRowSpan()
-@@ -770,28 +773,36 @@ int32_t nsTableCellFrame::GetColSpan()
+ {
+   int32_t rowSpan=1;
+   nsGenericHTMLElement *hc = nsGenericHTMLElement::FromContent(mContent);
+ 
+   // Don't look at the content's rowspan if we're a pseudo cell
+@@ -770,28 +778,36 @@ int32_t nsTableCellFrame::GetColSpan()
  }
  
  /* virtual */ nscoord
@@ -63,7 +84,7 @@ diff --git a/layout/tables/nsTableCellFrame.cpp b/layout/tables/nsTableCellFrame
  
  /* virtual */ nsIFrame::IntrinsicISizeOffsetData
  nsTableCellFrame::IntrinsicISizeOffsets()
-@@ -988,25 +999,25 @@ nsTableCellFrame::Reflow(nsPresContext* 
+@@ -988,25 +1004,25 @@ nsTableCellFrame::Reflow(nsPresContext* 
                      wm, kidOrigin, containerSize, 0);
  
    nsTableFrame::InvalidateTableFrame(firstKid, origRect, origVisualOverflow,

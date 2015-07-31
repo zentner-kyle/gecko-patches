@@ -1,63 +1,54 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  35299add31e8500e33bc17b3640724b0da6b097c
+# Parent  8f89915e02d46d1cbfa307f1126f9e21cc1d54da
 Bug 1178895 - Patch 2: Implement 'contain: layout' for nsBlockFrame.
 
 diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 --- a/layout/generic/nsBlockFrame.cpp
 +++ b/layout/generic/nsBlockFrame.cpp
-@@ -671,16 +671,24 @@ nsBlockFrame::GetMinISize(nsRenderingCon
-   nsIFrame* firstInFlow = FirstContinuation();
-   if (firstInFlow != this)
-     return firstInFlow->GetMinISize(aRenderingContext);
+@@ -674,16 +674,20 @@ nsBlockFrame::GetMinISize(nsRenderingCon
  
    DISPLAY_MIN_WIDTH(this, mMinWidth);
  
    CheckIntrinsicCacheAgainstShrinkWrapState();
  
-+  if (nsLayoutUtils::IsContainLayout(this)) {
-+    if (mMinWidth != NS_INTRINSIC_WIDTH_UNKNOWN) {
-+      return mMinWidth;
-+    } else {
-+      return 0;
-+    }
-+  }
-+
    if (mMinWidth != NS_INTRINSIC_WIDTH_UNKNOWN)
      return mMinWidth;
  
++  if (nsLayoutUtils::IsContainLayout(this)) {
++    return 0;
++  }
++
  #ifdef DEBUG
    if (gNoisyIntrinsic) {
      IndentBy(stdout, gNoiseIndent);
      ListTag(stdout);
      printf(": GetMinISize\n");
-@@ -756,16 +764,25 @@ nsBlockFrame::GetPrefISize(nsRenderingCo
-   nsIFrame* firstInFlow = FirstContinuation();
-   if (firstInFlow != this)
-     return firstInFlow->GetPrefISize(aRenderingContext);
+   }
+   AutoNoisyIndenter indenter(gNoisyIntrinsic);
+ #endif
+@@ -759,16 +763,20 @@ nsBlockFrame::GetPrefISize(nsRenderingCo
  
    DISPLAY_PREF_WIDTH(this, mPrefWidth);
  
    CheckIntrinsicCacheAgainstShrinkWrapState();
  
-+  if (nsLayoutUtils::IsContainLayout(this)) {
-+    if (mPrefWidth != NS_INTRINSIC_WIDTH_UNKNOWN) {
-+      return mPrefWidth;
-+    } else {
-+      return 0;
-+    }
-+  }
-+
-+
    if (mPrefWidth != NS_INTRINSIC_WIDTH_UNKNOWN)
      return mPrefWidth;
  
++  if (nsLayoutUtils::IsContainLayout(this)) {
++    return 0;
++  }
++
  #ifdef DEBUG
    if (gNoisyIntrinsic) {
      IndentBy(stdout, gNoiseIndent);
      ListTag(stdout);
      printf(": GetPrefISize\n");
-@@ -1494,16 +1511,23 @@ nsBlockFrame::ComputeFinalSize(const nsH
+   }
+   AutoNoisyIndenter indenter(gNoisyIntrinsic);
+ #endif
+@@ -1494,40 +1502,48 @@ nsBlockFrame::ComputeFinalSize(const nsH
        aState.mPrevBEndMargin.Zero();
      }
      aMetrics.mCarriedOutBEndMargin = aState.mPrevBEndMargin;
@@ -66,37 +57,67 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
    }
  
    nscoord blockEndEdgeOfChildren = aState.mBCoord + nonCarriedOutBDirMargin;
+-  // Shrink wrap our height around our contents.
+-  if (aState.GetFlag(BRS_ISBENDMARGINROOT) ||
+-      NS_UNCONSTRAINEDSIZE != aReflowState.ComputedBSize()) {
+-    // When we are a block-end-margin root make sure that our last
+-    // childs block-end margin is fully applied. We also do this when
+-    // we have a computed height, since in that case the carried out
+-    // margin is not going to be applied anywhere, so we should note it
+-    // here to be included in the overflow area.
+-    // Apply the margin only if there's space for it.
+-    if (blockEndEdgeOfChildren < aState.mReflowState.AvailableBSize())
+-    {
+-      // Truncate block-end margin if it doesn't fit to our available BSize.
+-      blockEndEdgeOfChildren =
+-        std::min(blockEndEdgeOfChildren + aState.mPrevBEndMargin.get(),
+-               aState.mReflowState.AvailableBSize());
+-    }
+-  }
+-  if (aState.GetFlag(BRS_FLOAT_MGR)) {
+-    // Include the float manager's state to properly account for the
+-    // block-end margin of any floated elements; e.g., inside a table cell.
+-    nscoord floatHeight =
+-      aState.ClearFloats(blockEndEdgeOfChildren, NS_STYLE_CLEAR_BOTH,
+-                         nullptr, nsFloatManager::DONT_CLEAR_PUSHED_FLOATS);
+-    blockEndEdgeOfChildren = std::max(blockEndEdgeOfChildren, floatHeight);
 +  if (NS_UNCONSTRAINEDSIZE == aReflowState.ComputedBSize() &&
 +      nsLayoutUtils::IsContainLayout(this)) {
 +    // If we don't have a specified size, and we're layout contained, we should
 +    // pretend our children don't exist (have zero block size) when calculating
 +    // our own size.
 +    blockEndEdgeOfChildren = 0;
-+  }
-   // Shrink wrap our height around our contents.
-   if (aState.GetFlag(BRS_ISBENDMARGINROOT) ||
-       NS_UNCONSTRAINEDSIZE != aReflowState.ComputedBSize()) {
-     // When we are a block-end-margin root make sure that our last
-     // childs block-end margin is fully applied. We also do this when
-     // we have a computed height, since in that case the carried out
-     // margin is not going to be applied anywhere, so we should note it
-     // here to be included in the overflow area.
-@@ -1511,17 +1535,17 @@ nsBlockFrame::ComputeFinalSize(const nsH
-     if (blockEndEdgeOfChildren < aState.mReflowState.AvailableBSize())
-     {
-       // Truncate block-end margin if it doesn't fit to our available BSize.
-       blockEndEdgeOfChildren =
-         std::min(blockEndEdgeOfChildren + aState.mPrevBEndMargin.get(),
-                aState.mReflowState.AvailableBSize());
-     }
-   }
--  if (aState.GetFlag(BRS_FLOAT_MGR)) {
-+  if (aState.GetFlag(BRS_FLOAT_MGR) && !nsLayoutUtils::IsContainLayout(this)) {
-     // Include the float manager's state to properly account for the
-     // block-end margin of any floated elements; e.g., inside a table cell.
-     nscoord floatHeight =
-       aState.ClearFloats(blockEndEdgeOfChildren, NS_STYLE_CLEAR_BOTH,
-                          nullptr, nsFloatManager::DONT_CLEAR_PUSHED_FLOATS);
-     blockEndEdgeOfChildren = std::max(blockEndEdgeOfChildren, floatHeight);
++  } else {
++    // Shrink wrap our height around our contents.
++    if (aState.GetFlag(BRS_ISBENDMARGINROOT) ||
++        NS_UNCONSTRAINEDSIZE != aReflowState.ComputedBSize()) {
++      // When we are a block-end-margin root make sure that our last
++      // childs block-end margin is fully applied. We also do this when
++      // we have a computed height, since in that case the carried out
++      // margin is not going to be applied anywhere, so we should note it
++      // here to be included in the overflow area.
++      // Apply the margin only if there's space for it.
++      if (blockEndEdgeOfChildren < aState.mReflowState.AvailableBSize())
++      {
++        // Truncate block-end margin if it doesn't fit to our available BSize.
++        blockEndEdgeOfChildren =
++          std::min(blockEndEdgeOfChildren + aState.mPrevBEndMargin.get(),
++                aState.mReflowState.AvailableBSize());
++      }
++    }
++    if (aState.GetFlag(BRS_FLOAT_MGR)) {
++      // Include the float manager's state to properly account for the
++      // block-end margin of any floated elements; e.g., inside a table cell.
++      nscoord floatHeight =
++        aState.ClearFloats(blockEndEdgeOfChildren, NS_STYLE_CLEAR_BOTH,
++                          nullptr, nsFloatManager::DONT_CLEAR_PUSHED_FLOATS);
++      blockEndEdgeOfChildren = std::max(blockEndEdgeOfChildren, floatHeight);
++    }
    }
  
+   if (NS_UNCONSTRAINEDSIZE != aReflowState.ComputedBSize()
+       && (GetParent()->GetType() != nsGkAtoms::columnSetFrame ||
+           aReflowState.parentReflowState->AvailableBSize() == NS_UNCONSTRAINEDSIZE)) {
+     ComputeFinalBSize(aReflowState, &aState.mReflowStatus,
+                       aState.mBCoord + nonCarriedOutBDirMargin,
+                       borderPadding, finalSize, aState.mConsumedBSize);
