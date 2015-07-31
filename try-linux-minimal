@@ -1,5 +1,100 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  9c930894040429e98c6ede4eba5c1a70a22bddb4
+# Parent  a5e18c89d79184547f3f508ef425bbf22242da94
 try: -b d -p linux64 -u reftest,mochitests -t none
 
+diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
+--- a/layout/generic/nsBlockFrame.cpp
++++ b/layout/generic/nsBlockFrame.cpp
+@@ -1502,48 +1502,39 @@ nsBlockFrame::ComputeFinalSize(const nsH
+       aState.mPrevBEndMargin.Zero();
+     }
+     aMetrics.mCarriedOutBEndMargin = aState.mPrevBEndMargin;
+   } else {
+     aMetrics.mCarriedOutBEndMargin.Zero();
+   }
+ 
+   nscoord blockEndEdgeOfChildren = aState.mBCoord + nonCarriedOutBDirMargin;
+-  if (NS_UNCONSTRAINEDSIZE == aReflowState.ComputedBSize() &&
+-      nsLayoutUtils::IsContainLayout(this)) {
+-    // If we don't have a specified size, and we're layout contained, we should
+-    // pretend our children don't exist (have zero block size) when calculating
+-    // our own size.
+-    blockEndEdgeOfChildren = 0;
+-  } else {
+-    // Shrink wrap our height around our contents.
+-    if (aState.GetFlag(BRS_ISBENDMARGINROOT) ||
+-        NS_UNCONSTRAINEDSIZE != aReflowState.ComputedBSize()) {
+-      // When we are a block-end-margin root make sure that our last
+-      // childs block-end margin is fully applied. We also do this when
+-      // we have a computed height, since in that case the carried out
+-      // margin is not going to be applied anywhere, so we should note it
+-      // here to be included in the overflow area.
+-      // Apply the margin only if there's space for it.
+-      if (blockEndEdgeOfChildren < aState.mReflowState.AvailableBSize())
+-      {
+-        // Truncate block-end margin if it doesn't fit to our available BSize.
+-        blockEndEdgeOfChildren =
+-          std::min(blockEndEdgeOfChildren + aState.mPrevBEndMargin.get(),
+-                aState.mReflowState.AvailableBSize());
+-      }
+-    }
+-    if (aState.GetFlag(BRS_FLOAT_MGR)) {
+-      // Include the float manager's state to properly account for the
+-      // block-end margin of any floated elements; e.g., inside a table cell.
+-      nscoord floatHeight =
+-        aState.ClearFloats(blockEndEdgeOfChildren, NS_STYLE_CLEAR_BOTH,
+-                          nullptr, nsFloatManager::DONT_CLEAR_PUSHED_FLOATS);
+-      blockEndEdgeOfChildren = std::max(blockEndEdgeOfChildren, floatHeight);
+-    }
++  if (aState.GetFlag(BRS_ISBENDMARGINROOT) ||
++      NS_UNCONSTRAINEDSIZE != aReflowState.ComputedBSize()) {
++    // When we are a block-end-margin root make sure that our last
++    // childs block-end margin is fully applied. We also do this when
++    // we have a computed height, since in that case the carried out
++    // margin is not going to be applied anywhere, so we should note it
++    // here to be included in the overflow area.
++    // Apply the margin only if there's space for it.
++    if (blockEndEdgeOfChildren < aState.mReflowState.AvailableBSize())
++    {
++      // Truncate block-end margin if it doesn't fit to our available BSize.
++      blockEndEdgeOfChildren =
++        std::min(blockEndEdgeOfChildren + aState.mPrevBEndMargin.get(),
++              aState.mReflowState.AvailableBSize());
++    }
++  }
++  if (aState.GetFlag(BRS_FLOAT_MGR)) {
++    // Include the float manager's state to properly account for the
++    // block-end margin of any floated elements; e.g., inside a table cell.
++    nscoord floatHeight =
++      aState.ClearFloats(blockEndEdgeOfChildren, NS_STYLE_CLEAR_BOTH,
++                        nullptr, nsFloatManager::DONT_CLEAR_PUSHED_FLOATS);
++    blockEndEdgeOfChildren = std::max(blockEndEdgeOfChildren, floatHeight);
+   }
+ 
+   if (NS_UNCONSTRAINEDSIZE != aReflowState.ComputedBSize()
+       && (GetParent()->GetType() != nsGkAtoms::columnSetFrame ||
+           aReflowState.parentReflowState->AvailableBSize() == NS_UNCONSTRAINEDSIZE)) {
+     ComputeFinalBSize(aReflowState, &aState.mReflowStatus,
+                       aState.mBCoord + nonCarriedOutBDirMargin,
+                       borderPadding, finalSize, aState.mConsumedBSize);
+@@ -1607,16 +1598,19 @@ nsBlockFrame::ComputeFinalSize(const nsH
+   FrameProperties properties = Properties();
+   if (blockEndEdgeOfChildren != finalSize.BSize(wm) - borderPadding.BEnd(wm)) {
+     properties.Set(BlockEndEdgeOfChildrenProperty(),
+                    NS_INT32_TO_PTR(blockEndEdgeOfChildren));
+   } else {
+     properties.Delete(BlockEndEdgeOfChildrenProperty());
+   }
+ 
++  if (nsLayoutUtils::IsContainLayout(this) && NS_UNCONSTRAINEDSIZE == aReflowState.ComputedBSize()) {
++    finalSize.BSize(wm) = borderPadding.BStart(wm) + borderPadding.BEnd(wm);
++  }
+   aMetrics.SetSize(wm, finalSize);
+ 
+ #ifdef DEBUG_blocks
+   if (CRAZY_SIZE(aMetrics.Width()) || CRAZY_SIZE(aMetrics.Height())) {
+     ListTag(stdout);
+     printf(": WARNING: desired:%d,%d\n", aMetrics.Width(), aMetrics.Height());
+   }
+ #endif
