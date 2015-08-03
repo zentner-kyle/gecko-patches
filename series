@@ -15,6 +15,7 @@ ContainLayoutTableCellTest
 ContainLayoutFlex
 ContainLayoutFlexTest
 try-linux-minimal
+ContainStyleBase
 ContainLayoutBlockTestFixup
 ContainLayoutFlexTestFixup
 ContainLayoutMochiTest

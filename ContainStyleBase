@@ -1,0 +1,104 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  d2f7435826adf3071d3073d89d791f462288fee3
+
+diff --git a/layout/base/RestyleManager.cpp b/layout/base/RestyleManager.cpp
+--- a/layout/base/RestyleManager.cpp
++++ b/layout/base/RestyleManager.cpp
+@@ -3027,16 +3027,23 @@ ElementRestyler::ComputeRestyleResultFro
+   // propagated.
+   if (oldContext->HasTextDecorationLines() !=
+         aNewContext->HasTextDecorationLines()) {
+     LOG_RESTYLE_CONTINUE("NS_STYLE_HAS_TEXT_DECORATION_LINES differs between old"
+                          " and new style contexts");
+     return eRestyleResult_Continue;
+   }
+ 
++  if (oldContext->HasContainStyle() !=
++        aNewContext->HasContainStyle()) {
++    LOG_RESTYLE_CONTINUE("NS_STYLE_HAS_CONTAIN_STYLE differs between old"
++                         " and new style contexts");
++    return eRestyleResult_Continue;
++  }
++
+   if (oldContext->HasPseudoElementData() !=
+         aNewContext->HasPseudoElementData()) {
+     LOG_RESTYLE_CONTINUE("NS_STYLE_HAS_PSEUDO_ELEMENT_DATA differs between old"
+                          " and new style contexts");
+     return eRestyleResult_Continue;
+   }
+ 
+   if (oldContext->ShouldSuppressLineBreak() !=
+diff --git a/layout/style/nsStyleContext.cpp b/layout/style/nsStyleContext.cpp
+--- a/layout/style/nsStyleContext.cpp
++++ b/layout/style/nsStyleContext.cpp
+@@ -771,16 +771,20 @@ nsStyleContext::ApplyStyleFixups(bool aS
+     if (thisHorizontal != parentHorizontal) {
+       nsStyleDisplay *mutable_display =
+         static_cast<nsStyleDisplay*>(GetUniqueStyleData(eStyleStruct_Display));
+       mutable_display->mOriginalDisplay = mutable_display->mDisplay =
+         NS_STYLE_DISPLAY_INLINE_BLOCK;
+     }
+   }
+ 
++  if (disp->IsContainStyle() || (mParent && mParent->HasContainStyle())) {
++    mBits |= NS_STYLE_HAS_CONTAIN_STYLE;
++  }
++
+   // Compute User Interface style, to trigger loads of cursors
+   StyleUserInterface();
+ }
+ 
+ nsChangeHint
+ nsStyleContext::CalcStyleDifference(nsStyleContext* aOther,
+                                     nsChangeHint aParentHintsNotHandledForDescendants,
+                                     uint32_t* aEqualStructs)
+diff --git a/layout/style/nsStyleContext.h b/layout/style/nsStyleContext.h
+--- a/layout/style/nsStyleContext.h
++++ b/layout/style/nsStyleContext.h
+@@ -147,16 +147,20 @@ public:
+                      nsRuleNode* aRulesIfVisited,
+                      bool aRelevantLinkVisited);
+ 
+   // Does this style context or any of its ancestors have text
+   // decoration lines?
+   bool HasTextDecorationLines() const
+     { return !!(mBits & NS_STYLE_HAS_TEXT_DECORATION_LINES); }
+ 
++  // Does this style context or any of its ancestors have 'contain: style' set?
++  bool HasContainStyle() const
++    { return !!(mBits & NS_STYLE_HAS_CONTAIN_STYLE); }
++
+   // Whether any line break inside should be suppressed? If this returns
+   // true, the line should not be broken inside, which means inlines act
+   // as if nowrap is set, <br> is suppressed, and blocks are inlinized.
+   // This bit is propogated to all children of line partitipants. It is
+   // currently used by ruby to make its content frames unbreakable.
+   // NOTE: for nsTextFrame, use nsTextFrame::ShouldSuppressLineBreak()
+   // instead of this method.
+   bool ShouldSuppressLineBreak() const
+diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
+--- a/layout/style/nsStyleStruct.h
++++ b/layout/style/nsStyleStruct.h
+@@ -58,18 +58,20 @@ class imgIContainer;
+ // (This bit is currently only used in #ifdef DEBUG code.)
+ #define NS_STYLE_IS_GOING_AWAY             0x040000000
+ // See nsStyleContext::ShouldSuppressLineBreak
+ #define NS_STYLE_SUPPRESS_LINEBREAK        0x080000000
+ // See nsStyleContext::IsInDisplayNoneSubtree
+ #define NS_STYLE_IN_DISPLAY_NONE_SUBTREE   0x100000000
+ // See nsStyleContext::FindChildWithRules
+ #define NS_STYLE_INELIGIBLE_FOR_SHARING    0x200000000
++// See nsStyleContext::HasContainStyle
++#define NS_STYLE_HAS_CONTAIN_STYLE         0x400000000
+ // See nsStyleContext::GetPseudoEnum
+-#define NS_STYLE_CONTEXT_TYPE_SHIFT        34
++#define NS_STYLE_CONTEXT_TYPE_SHIFT        35
+ 
+ // Additional bits for nsRuleNode's mDependentBits:
+ #define NS_RULE_NODE_GC_MARK                0x02000000
+ #define NS_RULE_NODE_USED_DIRECTLY          0x04000000
+ #define NS_RULE_NODE_IS_IMPORTANT           0x08000000
+ #define NS_RULE_NODE_LEVEL_MASK             0xf0000000
+ #define NS_RULE_NODE_LEVEL_SHIFT            28
+ 
