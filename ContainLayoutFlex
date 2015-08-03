@@ -1,12 +1,12 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  d9bee8b6b5e14ab1ff4071167c569dbadae07414
+# Parent  082b94c768ade24c0c91752601fc71b2f06570c4
 Bug 1178895 - Patch 6: Implement 'contain: layout' for flexbox.
 
 diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexContainerFrame.cpp
 --- a/layout/generic/nsFlexContainerFrame.cpp
 +++ b/layout/generic/nsFlexContainerFrame.cpp
-@@ -3252,23 +3252,23 @@ GetLargestLineMainSize(const FlexLine* a
+@@ -3252,23 +3252,24 @@ GetLargestLineMainSize(const FlexLine* a
   * aside from cases with huge lengths which happen to compute to that value.
   * XXXdholbert (this^ isn't quite true, if we're row-oriented and in an
   * orthogonal flow, per mentions of bug 1163238 in GetMainSizeFromReflowState.)
@@ -23,12 +23,13 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
 -                             const FlexLine* aFirstLine,
 -                             nsReflowStatus& aStatus)
 +nscoord
-+nsFlexContainerFrame::ResolveFlexContainerMainSize(const nsHTMLReflowState& aReflowState,
-+                                                   const FlexboxAxisTracker& aAxisTracker,
-+                                                   nscoord aTentativeMainSize,
-+                                                   nscoord aAvailableBSizeForContent,
-+                                                   const FlexLine* aFirstLine,
-+                                                   nsReflowStatus& aStatus)
++nsFlexContainerFrame::ResolveFlexContainerMainSize(
++  const nsHTMLReflowState& aReflowState,
++  const FlexboxAxisTracker& aAxisTracker,
++  nscoord aTentativeMainSize,
++  nscoord aAvailableBSizeForContent,
++  const FlexLine* aFirstLine,
++  nsReflowStatus& aStatus)
  {
    MOZ_ASSERT(aFirstLine, "null first line pointer");
  
@@ -37,49 +38,53 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
      // is our inline size (which should already be resolved).
      return aTentativeMainSize;
    }
-@@ -3293,16 +3293,20 @@ ResolveFlexContainerMainSize(const nsHTM
-     // our children" is just the main-size (BSize) of our longest flex line.
-     NS_FRAME_SET_INCOMPLETE(aStatus);
+@@ -3295,16 +3296,22 @@ ResolveFlexContainerMainSize(const nsHTM
      nscoord largestLineOuterSize = GetLargestLineMainSize(aFirstLine);
  
      if (largestLineOuterSize <= aAvailableBSizeForContent) {
        return aAvailableBSizeForContent;
      }
      return std::min(aTentativeMainSize, largestLineOuterSize);
-+  } else if (nsLayoutUtils::IsContainLayout(this)) {
+   }
+ 
++  if (nsLayoutUtils::IsContainLayout(this)) {
 +    // We have no intrinsic size, and "no flex items" (because we act like we
 +    // have no contents). Therefore, our main size is zero.
 +    return 0;
-   }
- 
++  }
++
    // Column-oriented case, with auto BSize:
    // Resolve auto BSize to the largest FlexLine length, clamped to our
    // computed min/max main-size properties.
    // XXXdholbert Handle constrained-aAvailableBSizeForContent case here.
    nscoord largestLineOuterSize = GetLargestLineMainSize(aFirstLine);
    return NS_CSS_MINMAX(largestLineOuterSize,
-@@ -3354,16 +3358,20 @@ nsFlexContainerFrame::ComputeCrossSize(c
-     // XXXdholbert For now, we don't support pushing children to our next
-     // continuation or splitting children, so "amount of BSize required by
+                        aReflowState.ComputedMinBSize(),
+                        aReflowState.ComputedMaxBSize());
+@@ -3356,16 +3363,22 @@ nsFlexContainerFrame::ComputeCrossSize(c
      // our children" is just the sum of our FlexLines' BSizes (cross sizes).
      NS_FRAME_SET_INCOMPLETE(aStatus);
      if (aSumLineCrossSizes <= aAvailableBSizeForContent) {
        return aAvailableBSizeForContent;
      }
      return std::min(effectiveComputedBSize, aSumLineCrossSizes);
-+  } else if (nsLayoutUtils::IsContainLayout(this)) {
+   }
+ 
++  if (nsLayoutUtils::IsContainLayout(this)) {
 +    // We have no intrinsic size, and "no flex items" (because we act like we
 +    // have no contents). Therefore, our cross size is zero.
 +    return 0;
-   }
- 
++  }
++
    // Row-oriented case (cross axis is block axis), with auto BSize:
    // Shrink-wrap our line(s), subject to our min-size / max-size
    // constraints in that (block) axis.
    // XXXdholbert Handle constrained-aAvailableBSizeForContent case here.
    *aIsDefinite = false;
    return NS_CSS_MINMAX(aSumLineCrossSizes,
-@@ -3895,24 +3903,28 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
+                        aReflowState.ComputedMinBSize(),
+                        aReflowState.ComputedMaxBSize());
+@@ -3895,24 +3908,29 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
    // starting w/ content-box size & growing from there:
    LogicalSize desiredSizeInFlexWM =
      aAxisTracker.LogicalSizeFromFlexRelativeSizes(aContentBoxMainSize,
@@ -89,25 +94,20 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
    desiredSizeInFlexWM.BSize(flexWM) += containerBP.BStartEnd(flexWM);
  
 -  if (flexContainerAscent == nscoord_MIN) {
--    // Still don't have our baseline set -- this happens if we have no
--    // children (or if our children are huge enough that they have nscoord_MIN
--    // as their baseline... in which case, we'll use the wrong baseline, but no
--    // big deal)
--    NS_WARN_IF_FALSE(lines.getFirst()->IsEmpty(),
--                     "Have flex items but didn't get an ascent - that's odd "
--                     "(or there are just gigantic sizes involved)");
 +  if (flexContainerAscent == nscoord_MIN || nsLayoutUtils::IsContainLayout(this)) {
 +    // We either haven't found a baseline, or we should pretend that we don't
-+    // have any children (and thus that we don't haven't found a baseline.)
-+    if (flexContainerAscent == nscoord_MIN) {
-+      // Still don't have our baseline set -- this happens if we have no
-+      // children (or if our children are huge enough that they have nscoord_MIN
-+      // as their baseline... in which case, we'll use the wrong baseline, but no
-+      // big deal)
-+      NS_WARN_IF_FALSE(lines.getFirst()->IsEmpty(),
-+                      "Have flex items but didn't get an ascent - that's odd "
-+                      "(or there are just gigantic sizes involved)");
-+    }
++    // have any children (and thus that we haven't found a baseline.)
++
+     // Still don't have our baseline set -- this happens if we have no
+     // children (or if our children are huge enough that they have nscoord_MIN
+     // as their baseline... in which case, we'll use the wrong baseline, but no
+     // big deal)
+-    NS_WARN_IF_FALSE(lines.getFirst()->IsEmpty(),
++    NS_WARN_IF_FALSE(flexContainerAscent != nscoord_MIN ||
++                     lines.getFirst()->IsEmpty(),
+                      "Have flex items but didn't get an ascent - that's odd "
+                      "(or there are just gigantic sizes involved)");
++
      // Per spec, synthesize baseline from the flex container's content box
      // (i.e. use block-end side of content-box)
      // XXXdholbert This only makes sense if parent's writing mode is
@@ -116,7 +116,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
      flexContainerAscent = desiredSizeInFlexWM.BSize(flexWM);
    }
  
-@@ -4083,16 +4095,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
+@@ -4083,16 +4101,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
  }
  
  /* virtual */ nscoord
@@ -137,7 +137,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
        nsLayoutUtils::IntrinsicForContainer(aRenderingContext, childFrame,
                                             nsLayoutUtils::MIN_ISIZE);
      // For a horizontal single-line flex container, the intrinsic min width is
-@@ -4110,16 +4126,20 @@ nsFlexContainerFrame::GetMinISize(nsRend
+@@ -4110,16 +4132,20 @@ nsFlexContainerFrame::GetMinISize(nsRend
  }
  
  /* virtual */ nscoord
