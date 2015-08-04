@@ -1,0 +1,641 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  32d4c7ccddf633d6ff9c87f79a721138d381840e
+
+diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
+--- a/layout/base/nsCSSFrameConstructor.cpp
++++ b/layout/base/nsCSSFrameConstructor.cpp
+@@ -1512,17 +1512,17 @@ nsCSSFrameConstructor::NotifyDestroyingF
+   NS_PRECONDITION(mUpdateCount != 0,
+                   "Should be in an update while destroying frames");
+ 
+   if (aFrame->GetStateBits() & NS_FRAME_GENERATED_CONTENT) {
+     if (mQuoteList.DestroyNodesFor(aFrame))
+       QuotesDirty();
+   }
+ 
+-  if (mCounterManager.DestroyNodesFor(aFrame)) {
++  if (mCounterManager.DestroyNodesFor(GetStyleRoot(aFrame), aFrame)) {
+     // Technically we don't need to update anything if we destroyed only
+     // USE nodes.  However, this is unlikely to happen in the real world
+     // since USE nodes generally go along with INCREMENT nodes.
+     CountersDirty();
+   }
+ 
+   RestyleManager()->NotifyDestroyingFrame(aFrame);
+ 
+@@ -1632,17 +1632,17 @@ nsCSSFrameConstructor::CreateGeneratedCo
+                              attrNameSpace, attrName, getter_AddRefs(content));
+       return content.forget();
+     }
+ 
+   case eStyleContentType_Counter:
+   case eStyleContentType_Counters:
+     {
+       nsCSSValue::Array* counters = data.mContent.mCounters;
+-      nsCounterList* counterList = mCounterManager.CounterListFor(
++      nsCounterList* counterList = mCounterManager.CounterListFor(GetStyleRoot(),
+           nsDependentString(counters->Item(0).GetStringBufferValue()));
+ 
+       nsCounterUseNode* node =
+         new nsCounterUseNode(mPresShell->GetPresContext(),
+                              counters, aContentIndex,
+                              type == eStyleContentType_Counters);
+ 
+       nsGenConInitializer* initializer =
+@@ -4763,20 +4763,23 @@ nsCSSFrameConstructor::InitAndRestoreFra
+   aNewFrame->Init(aContent, aParentFrame, nullptr);
+   aNewFrame->AddStateBits(aState.mAdditionalStateBits);
+ 
+   if (aState.mFrameState) {
+     // Restore frame state for just the newly created frame.
+     RestoreFrameStateFor(aNewFrame, aState.mFrameState);
+   }
+ 
++  MaybePushStyleRoot(aNewFrame);
+   if (aAllowCounters &&
+-      mCounterManager.AddCounterResetsAndIncrements(aNewFrame)) {
++      mCounterManager.AddCounterResetsAndIncrements(GetStyleRoot(aNewFrame),
++        aNewFrame)) {
+     CountersDirty();
+   }
++  MaybePopStyleRoot(aNewFrame);
+ }
+ 
+ already_AddRefed<nsStyleContext>
+ nsCSSFrameConstructor::ResolveStyleContext(nsIFrame*         aParentFrame,
+                                            nsIContent*       aContainer,
+                                            nsIContent*       aChild,
+                                            nsFrameConstructorState* aState)
+ {
+@@ -6862,16 +6865,17 @@ void
+ nsCSSFrameConstructor::CreateNeededFrames(nsIContent* aContent)
+ {
+   NS_ASSERTION(!aContent->HasFlag(NODE_NEEDS_FRAME),
+     "shouldn't get here with a content node that has needs frame bit set");
+   NS_ASSERTION(aContent->HasFlag(NODE_DESCENDANTS_NEED_FRAMES),
+     "should only get here with a content node that has descendants needing frames");
+ 
+   aContent->UnsetFlags(NODE_DESCENDANTS_NEED_FRAMES);
++  MaybePushStyleRoot(aContent->GetPrimaryFrame());
+ 
+   // We could either descend first (on nodes that don't have NODE_NEEDS_FRAME
+   // set) or issue content notifications for our kids first. In absence of
+   // anything definitive either way we'll go with the latter.
+ 
+   // It might be better to use GetChildArray and scan it completely first and
+   // then issue all notifications. (We have to scan it completely first because
+   // constructing frames can set attributes, which can change the storage of
+@@ -6910,16 +6914,18 @@ nsCSSFrameConstructor::CreateNeededFrame
+ 
+   // Now descend.
+   FlattenedChildIterator iter(aContent);
+   for (nsIContent* child = iter.GetNextChild(); child; child = iter.GetNextChild()) {
+     if (child->HasFlag(NODE_DESCENDANTS_NEED_FRAMES)) {
+       CreateNeededFrames(child);
+     }
+   }
++
++  MaybePopStyleRoot(aContent->GetPrimaryFrame());
+ }
+ 
+ void nsCSSFrameConstructor::CreateNeededFrames()
+ {
+   NS_ASSERTION(!nsContentUtils::IsSafeToRunScript(),
+                "Someone forgot a script blocker");
+ 
+   Element* rootElement = mDocument->GetRootElement();
+@@ -8338,17 +8344,19 @@ nsCSSFrameConstructor::EnsureFrameForTex
+       !mAlwaysCreateFramesForIgnorableWhitespace) {
+     // Text frame may have been suppressed. Disable suppression and signal
+     // that a flush should be performed. We do this on a document-wide
+     // basis so that pages that repeatedly query metrics for
+     // collapsed-whitespace text nodes don't trigger pathological behavior.
+     mAlwaysCreateFramesForIgnorableWhitespace = true;
+     nsAutoScriptBlocker blocker;
+     BeginUpdate();
++    MaybePushStyleRoot(aContent->GetPrimaryFrame());
+     ReconstructDocElementHierarchy();
++    MaybePopStyleRoot(aContent->GetPrimaryFrame());
+     EndUpdate();
+   }
+   return aContent->GetPrimaryFrame();
+ }
+ 
+ nsresult
+ nsCSSFrameConstructor::CharacterDataChanged(nsIContent* aContent,
+                                             CharacterDataChangeInfo* aInfo)
+@@ -8456,28 +8464,29 @@ nsCSSFrameConstructor::RecalcQuotesAndCo
+ {
+   if (mQuotesDirty) {
+     mQuotesDirty = false;
+     mQuoteList.RecalcAll();
+   }
+ 
+   if (mCountersDirty) {
+     mCountersDirty = false;
+-    mCounterManager.RecalcAll();
++    // XXX kzentner: Do we always already have the style root set correctly?
++    mCounterManager.RecalcDirty();
+   }
+ 
+   NS_ASSERTION(!mQuotesDirty, "Quotes updates will be lost");
+   NS_ASSERTION(!mCountersDirty, "Counter updates will be lost");
+ }
+ 
+ void
+ nsCSSFrameConstructor::NotifyCounterStylesAreDirty()
+ {
+   NS_PRECONDITION(mUpdateCount != 0, "Should be in an update");
+-  mCounterManager.SetAllCounterStylesDirty();
++  mCounterManager.SetAllCounterStylesDirty(GetStyleRoot());
+   CountersDirty();
+ }
+ 
+ void
+ nsCSSFrameConstructor::WillDestroyFrameTree()
+ {
+ #if defined(DEBUG_dbaron_off)
+   mCounterManager.Dump();
+@@ -10343,16 +10352,18 @@ nsCSSFrameConstructor::ProcessChildren(n
+                   "content insertion frame");
+   const uint32_t kMaxDepth = 2 * MAX_REFLOW_DEPTH;
+   static_assert(kMaxDepth <= UINT16_MAX, "mCurrentDepth type is too narrow");
+   AutoRestore<uint16_t> savedDepth(mCurrentDepth);
+   if (mCurrentDepth != UINT16_MAX) {
+     ++mCurrentDepth;
+   }
+ 
++  MaybePushStyleRoot(aFrame);
++
+   if (!aPossiblyLeafFrame) {
+     aPossiblyLeafFrame = aFrame;
+   }
+ 
+   // XXXbz ideally, this would do all the pushing of various
+   // containing blocks as needed, so callers don't have to do it...
+ 
+   bool haveFirstLetterStyle = false, haveFirstLineStyle = false;
+@@ -10526,16 +10537,18 @@ nsCSSFrameConstructor::ProcessChildren(n
+ 
+     blockFrame->SetInitialChildList(kPrincipalList, aFrameItems);
+     NS_ASSERTION(aFrameItems.IsEmpty(), "How did that happen?");
+     aFrameItems.Clear();
+     aFrameItems.AddChild(blockFrame);
+ 
+     aFrame->AddStateBits(NS_STATE_BOX_WRAPS_KIDS_IN_BLOCK);
+   }
++
++  MaybePopStyleRoot(aFrame);
+ }
+ 
+ //----------------------------------------------------------------------
+ 
+ // Support for :first-line style
+ 
+ // Special routine to handle placing a list of frames into a block
+ // frame that has first-line style. The routine ensures that the first
+@@ -11374,16 +11387,17 @@ nsCSSFrameConstructor::CreateListBoxCont
+     const nsStyleDisplay* display = styleContext->StyleDisplay();
+ 
+     if (NS_STYLE_DISPLAY_NONE == display->mDisplay) {
+       *aNewFrame = nullptr;
+       return NS_OK;
+     }
+ 
+     BeginUpdate();
++    MaybePushStyleRoot(aParentFrame);
+ 
+     FrameConstructionItemList items;
+     AddFrameConstructionItemsInternal(state, aChild, aParentFrame,
+                                       aChild->NodeInfo()->NameAtom(),
+                                       aChild->GetNameSpaceID(),
+                                       true, styleContext,
+                                       ITEM_ALLOW_XBL_BASE, nullptr, items);
+     ConstructFramesFromItemList(state, items, aParentFrame, frameItems);
+@@ -11394,16 +11408,17 @@ nsCSSFrameConstructor::CreateListBoxCont
+     if (newFrame) {
+       // Notify the parent frame
+       if (aIsAppend)
+         rv = ((nsListBoxBodyFrame*)aParentFrame)->ListBoxAppendFrames(frameItems);
+       else
+         rv = ((nsListBoxBodyFrame*)aParentFrame)->ListBoxInsertFrames(aPrevFrame, frameItems);
+     }
+ 
++    MaybePopStyleRoot(aParentFrame);
+     EndUpdate();
+ 
+ #ifdef ACCESSIBILITY
+     if (newFrame) {
+       nsAccessibilityService* accService = nsIPresShell::AccService();
+       if (accService) {
+         accService->ContentRangeInserted(mPresShell, aChild->GetParent(),
+                                          aChild, aChild->GetNextSibling());
+@@ -12240,28 +12255,30 @@ nsCSSFrameConstructor::ReframeContaining
+ }
+ 
+ nsresult
+ nsCSSFrameConstructor::GenerateChildFrames(nsContainerFrame* aFrame)
+ {
+   {
+     nsAutoScriptBlocker scriptBlocker;
+     BeginUpdate();
++    MaybePushStyleRoot(aFrame);
+ 
+     nsFrameItems childItems;
+     nsFrameConstructorState state(mPresShell, nullptr, nullptr, nullptr);
+     // We don't have a parent frame with a pending binding constructor here,
+     // so no need to worry about ordering of the kids' constructors with it.
+     // Pass null for the PendingBinding.
+     ProcessChildren(state, aFrame->GetContent(), aFrame->StyleContext(),
+                     aFrame, false, childItems, false,
+                     nullptr);
+ 
+     aFrame->SetInitialChildList(kPrincipalList, childItems);
+ 
++    MaybePopStyleRoot(aFrame);
+     EndUpdate();
+   }
+ 
+ #ifdef ACCESSIBILITY
+   nsAccessibilityService* accService = nsIPresShell::AccService();
+   if (accService) {
+     nsIContent* container = aFrame->GetContent();
+     nsIContent* child = container->GetFirstChild();
+diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstructor.h
+--- a/layout/base/nsCSSFrameConstructor.h
++++ b/layout/base/nsCSSFrameConstructor.h
+@@ -2015,16 +2015,46 @@ private:
+   // see if aContent and aSibling are legitimate siblings due to restrictions
+   // imposed by table columns
+   // XXXbz this code is generally wrong, since the frame for aContent
+   // may be constructed based on tag, not based on aDisplay!
+   bool IsValidSibling(nsIFrame*              aSibling,
+                         nsIContent*            aContent,
+                         uint8_t&               aDisplay);
+ 
++  nsIFrame* FindStyleRoot(nsIFrame* aDescendant) {
++    nsIFrame* ancestor = aDescendant;
++    while (ancestor && !ancestor->StyleDisplay()->IsContainStyle()) {
++      ancestor = ancestor->GetParent();
++    }
++    return ancestor;
++  }
++
++  nsIFrame* GetStyleRoot(nsIFrame* aDescendant = nullptr) {
++    if (mStyleRoots.Length() < 1) {
++      return nullptr;
++    }
++    return mStyleRoots.LastElement();
++  }
++
++  void MaybePushStyleRoot(nsIFrame* aPotentialRoot) {
++    //if (aPotentialRoot->StyleDisplay()->IsContainStyle()) {
++    if (FindStyleRoot(aPotentialRoot) != GetStyleRoot()) {
++      printf("CONTAIN: Adding new style root %p\n", static_cast<void*>(FindStyleRoot(aPotentialRoot)));
++      mStyleRoots.AppendElement(FindStyleRoot(aPotentialRoot));
++    }
++  }
++
++  void MaybePopStyleRoot(nsIFrame* aPotentialRoot) {
++    if (GetStyleRoot() == aPotentialRoot) {
++      printf("CONTAIN: Removing style root %p\n", static_cast<void*>(aPotentialRoot));
++      mStyleRoots.RemoveElementAt(mStyleRoots.Length() - 1);
++    }
++  }
++
+   void QuotesDirty() {
+     NS_PRECONDITION(mUpdateCount != 0, "Instant quote updates are bad news");
+     mQuotesDirty = true;
+     mDocument->SetNeedLayoutFlush();
+   }
+ 
+   void CountersDirty() {
+     NS_PRECONDITION(mUpdateCount != 0, "Instant counter updates are bad news");
+@@ -2047,16 +2077,17 @@ private:
+   // Create touch caret frame.
+   void ConstructAnonymousContentForCanvas(nsFrameConstructorState& aState,
+                                           nsIFrame* aFrame,
+                                           nsIContent* aDocElement);
+ 
+ public:
+ 
+   friend class nsFrameConstructorState;
++  friend class nsStyleScopePush;
+ 
+ private:
+ 
+   nsIDocument*        mDocument;  // Weak ref
+ 
+   // See the comment at the start of ConstructRootFrame for more details
+   // about the following frames.
+ 
+@@ -2066,16 +2097,17 @@ private:
+   nsIFrame*           mRootElementStyleFrame;
+   // This is the containing block that contains the root element ---
+   // the real "initial containing block" according to CSS 2.1.
+   nsContainerFrame*   mDocElementContainingBlock;
+   nsIFrame*           mGfxScrollFrame;
+   nsIFrame*           mPageSequenceFrame;
+   nsQuoteList         mQuoteList;
+   nsCounterManager    mCounterManager;
++  nsTArray<nsIFrame*> mStyleRoots;
+   // Current ProcessChildren depth.
+   uint16_t            mCurrentDepth;
+   uint16_t            mUpdateCount;
+   bool                mQuotesDirty : 1;
+   bool                mCountersDirty : 1;
+   bool                mIsDestroyingFrameTree : 1;
+   // This is true if mDocElementContainingBlock supports absolute positioning
+   bool                mHasRootAbsPosContainingBlock : 1;
+diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
+--- a/layout/base/nsCounterManager.cpp
++++ b/layout/base/nsCounterManager.cpp
+@@ -163,19 +163,20 @@ nsCounterList::SetScope(nsCounterNode *a
+                      "is for the root, startContent (which is before it) "
+                      "must be too");
+ 
+              // A reset's outer scope can't be a scope created by a sibling.
+         if (!(aNode->mType == nsCounterNode::RESET &&
+               nodeContent == startContent) &&
+               // everything is inside the root (except the case above,
+               // a second reset on the root)
+-            (!startContent ||
++            ((!startContent ||
+              nsContentUtils::ContentIsDescendantOf(nodeContent,
+-                                                   startContent))) {
++                                                   startContent)) ||
++             !start->mScopePrev)) {
+             aNode->mScopeStart = start;
+             aNode->mScopePrev  = prev;
+             return;
+         }
+     }
+ 
+     aNode->mScopeStart = nullptr;
+     aNode->mScopePrev  = nullptr;
+@@ -204,94 +205,107 @@ nsCounterList::RecalcAll()
+                 useNode->GetText(text);
+                 useNode->mText->SetData(text);
+             }
+         }
+     } while ((node = Next(node)) != First());
+ }
+ 
+ nsCounterManager::nsCounterManager()
+-    : mNames()
++    : mRoots()
+ {
+ }
+ 
+ bool
+-nsCounterManager::AddCounterResetsAndIncrements(nsIFrame *aFrame)
++nsCounterManager::AddCounterResetsAndIncrements(
++    nsIFrame* aRoot,
++    nsIFrame* aFrame)
+ {
+     const nsStyleContent *styleContent = aFrame->StyleContent();
+     if (!styleContent->CounterIncrementCount() &&
+         !styleContent->CounterResetCount())
+         return false;
+ 
+     // Add in order, resets first, so all the comparisons will be optimized
+     // for addition at the end of the list.
+     int32_t i, i_end;
+     bool dirty = false;
+     for (i = 0, i_end = styleContent->CounterResetCount(); i != i_end; ++i)
+-        dirty |= AddResetOrIncrement(aFrame, i,
++        dirty |= AddResetOrIncrement(aRoot, aFrame, i,
+                                      styleContent->GetCounterResetAt(i),
+                                      nsCounterChangeNode::RESET);
+     for (i = 0, i_end = styleContent->CounterIncrementCount(); i != i_end; ++i)
+-        dirty |= AddResetOrIncrement(aFrame, i,
++        dirty |= AddResetOrIncrement(aRoot, aFrame, i,
+                                      styleContent->GetCounterIncrementAt(i),
+                                      nsCounterChangeNode::INCREMENT);
+     return dirty;
+ }
+ 
+ bool
+-nsCounterManager::AddResetOrIncrement(nsIFrame *aFrame, int32_t aIndex,
++nsCounterManager::AddResetOrIncrement(nsIFrame *aRoot, nsIFrame *aFrame,
++                                      int32_t aIndex,
+                                       const nsStyleCounterData *aCounterData,
+                                       nsCounterNode::Type aType)
+ {
++    Dump();
+     nsCounterChangeNode *node =
+         new nsCounterChangeNode(aFrame, aType, aCounterData->mValue, aIndex);
+ 
+-    nsCounterList *counterList = CounterListFor(aCounterData->mCounter);
++    nsCounterList *counterList = CounterListFor(aRoot, aCounterData->mCounter);
+ 
+     counterList->Insert(node);
+     if (!counterList->IsLast(node)) {
+         // Tell the caller it's responsible for recalculating the entire
+         // list.
+         counterList->SetDirty();
++        Dump();
+         return true;
+     }
+ 
+     // Don't call Calc() if the list is already dirty -- it'll be recalculated
+     // anyway, and trying to calculate with a dirty list doesn't work.
+     if (MOZ_LIKELY(!counterList->IsDirty())) {
+         node->Calc(counterList);
+     }
++    Dump();
+     return false;
+ }
+ 
+ nsCounterList*
+-nsCounterManager::CounterListFor(const nsSubstring& aCounterName)
++nsCounterManager::CounterListFor(nsIFrame *aRoot, const nsSubstring& aCounterName)
+ {
++    nsCounterManager::NameTable* names = GetNames(aRoot);
+     // XXX Why doesn't nsTHashtable provide an API that allows us to use
+     // get/put in one hashtable lookup?
+     nsCounterList *counterList;
+-    if (!mNames.Get(aCounterName, &counterList)) {
++    if (!names->Get(aCounterName, &counterList)) {
+         counterList = new nsCounterList();
+-        mNames.Put(aCounterName, counterList);
++        names->Put(aCounterName, counterList);
+     }
+     return counterList;
+ }
+ 
+ static PLDHashOperator
+ RecalcDirtyLists(const nsAString& aKey, nsCounterList* aList, void* aClosure)
+ {
+     if (aList->IsDirty())
+         aList->RecalcAll();
+     return PL_DHASH_NEXT;
+ }
+ 
++static PLDHashOperator
++RecalcAllDirtyLists(const nsIFrame* aKey, nsCounterManager::NameTable* aNames, void* aClosure) {
++    aNames->EnumerateRead(RecalcDirtyLists, nullptr);
++    return PL_DHASH_NEXT;
++}
++
+ void
+-nsCounterManager::RecalcAll()
++nsCounterManager::RecalcDirty()
+ {
+-    mNames.EnumerateRead(RecalcDirtyLists, nullptr);
++    mRoots.EnumerateRead(RecalcAllDirtyLists, nullptr);
+ }
+ 
+ static PLDHashOperator
+ SetCounterStylesDirty(const nsAString& aKey,
+                       nsCounterList* aList,
+                       void* aClosure)
+ {
+     nsCounterNode* first = aList->First();
+@@ -307,19 +321,19 @@ SetCounterStylesDirty(const nsAString& a
+         if (changed) {
+             aList->SetDirty();
+         }
+     }
+     return PL_DHASH_NEXT;
+ }
+ 
+ void
+-nsCounterManager::SetAllCounterStylesDirty()
++nsCounterManager::SetAllCounterStylesDirty(nsIFrame* aRoot)
+ {
+-    mNames.EnumerateRead(SetCounterStylesDirty, nullptr);
++    GetNames(aRoot)->EnumerateRead(SetCounterStylesDirty, nullptr);
+ }
+ 
+ struct DestroyNodesData {
+     explicit DestroyNodesData(nsIFrame *aFrame)
+         : mFrame(aFrame)
+         , mDestroyedAny(false)
+     {
+     }
+@@ -335,20 +349,20 @@ DestroyNodesInList(const nsAString& aKey
+     if (aList->DestroyNodesFor(data->mFrame)) {
+         data->mDestroyedAny = true;
+         aList->SetDirty();
+     }
+     return PL_DHASH_NEXT;
+ }
+ 
+ bool
+-nsCounterManager::DestroyNodesFor(nsIFrame *aFrame)
++nsCounterManager::DestroyNodesFor(nsIFrame *aRoot, nsIFrame *aFrame)
+ {
+     DestroyNodesData data(aFrame);
+-    mNames.EnumerateRead(DestroyNodesInList, &data);
++    GetNames(aRoot)->EnumerateRead(DestroyNodesInList, &data);
+     return data.mDestroyedAny;
+ }
+ 
+ #ifdef DEBUG
+ static PLDHashOperator
+ DumpList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
+ {
+     printf("Counter named \"%s\":\n", NS_ConvertUTF16toUTF8(aKey).get());
+@@ -369,16 +383,23 @@ DumpList(const nsAString& aKey, nsCounte
+                 printf(" text=%s", NS_ConvertUTF16toUTF8(text).get());
+             }
+             printf("\n");
+         } while ((node = aList->Next(node)) != aList->First());
+     }
+     return PL_DHASH_NEXT;
+ }
+ 
++static PLDHashOperator
++DumpNames(const nsIFrame* aKey, nsCounterManager::NameTable* aNames, void* aClosure) {
++    printf("\nroot: %p\n", static_cast<const void *>(aKey));
++    aNames->EnumerateRead(DumpList, nullptr);
++    return PL_DHASH_NEXT;
++}
++
+ void
+ nsCounterManager::Dump()
+ {
+     printf("\n\nCounter Manager Lists:\n");
+-    mNames.EnumerateRead(DumpList, nullptr);
++    mRoots.EnumerateRead(DumpNames, nullptr);
+     printf("\n\n");
+ }
+ #endif
+diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
+--- a/layout/base/nsCounterManager.h
++++ b/layout/base/nsCounterManager.h
+@@ -218,34 +218,34 @@ private:
+ /**
+  * The counter manager maintains an |nsCounterList| for each named
+  * counter to keep track of all scopes with that name.
+  */
+ class nsCounterManager {
+ public:
+     nsCounterManager();
+     // Returns true if dirty
+-    bool AddCounterResetsAndIncrements(nsIFrame *aFrame);
++    bool AddCounterResetsAndIncrements(nsIFrame *aRoot, nsIFrame *aFrame);
+ 
+     // Gets the appropriate counter list, creating it if necessary.
+     // Guaranteed to return non-null. (Uses an infallible hashtable API.)
+-    nsCounterList* CounterListFor(const nsSubstring& aCounterName);
++    nsCounterList* CounterListFor(nsIFrame* aRoot, const nsSubstring& aCounterName);
+ 
+     // Clean up data in any dirty counter lists.
+-    void RecalcAll();
++    void RecalcDirty();
+ 
+     // Set all counter styles dirty
+-    void SetAllCounterStylesDirty();
++    void SetAllCounterStylesDirty(nsIFrame* aRoot);
+ 
+     // Destroy nodes for the frame in any lists, and return whether any
+     // nodes were destroyed.
+-    bool DestroyNodesFor(nsIFrame *aFrame);
++    bool DestroyNodesFor(nsIFrame* aRoot, nsIFrame *aFrame);
+ 
+     // Clear all data.
+-    void Clear() { mNames.Clear(); }
++    void Clear() { mRoots.Clear(); }
+ 
+ #ifdef DEBUG
+     void Dump();
+ #endif
+ 
+     static int32_t IncrementCounter(int32_t aOldValue, int32_t aIncrement)
+     {
+         // Addition of unsigned values is defined to be arithmetic
+@@ -265,18 +265,29 @@ public:
+         // counter will get stuck at the largest multiple of 5 less than
+         // the maximum 32-bit integer.)
+         if ((aIncrement > 0) != (newValue > aOldValue)) {
+           newValue = aOldValue;
+         }
+         return newValue;
+     }
+ 
++    typedef nsClassHashtable<nsStringHashKey, nsCounterList> NameTable;
++
+ private:
+     // for |AddCounterResetsAndIncrements| only
+-    bool AddResetOrIncrement(nsIFrame *aFrame, int32_t aIndex,
++    bool AddResetOrIncrement(nsIFrame *aRoot, nsIFrame *aFrame, int32_t aIndex,
+                                const nsStyleCounterData *aCounterData,
+                                nsCounterNode::Type aType);
+ 
+-    nsClassHashtable<nsStringHashKey, nsCounterList> mNames;
++    NameTable* GetNames(nsIFrame* aRoot) {
++        //return mRoots.Get(nsPtrHashKey<const nsIFrame>(aRoot));
++        NameTable* names = mRoots.Get(aRoot);
++        if (!names) {
++            names = new NameTable();
++            mRoots.Put(aRoot, names);
++        }
++        return names;
++    }
++    nsClassHashtable<nsPtrHashKey<const nsIFrame>, NameTable> mRoots;
+ };
+ 
+ #endif /* nsCounterManager_h_ */

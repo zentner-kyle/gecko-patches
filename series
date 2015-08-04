@@ -1,12 +1,12 @@
 TableCellContentClipping
 ContainPaint
 ContainPaintTest
-ContainStyleCounters
+ContainStyleBase
 ContainStyleCountersTest
-ContainStyleQuotes
 ContainStyleQuotesTest
-ContainStyleBreak
 ContainStyleBreakTest
+ContainStyleBreakV2
+ContainStyleCountersV2
 ContainLayoutBase
 ContainLayoutBlock
 ContainLayoutBlockTest
@@ -15,7 +15,9 @@ ContainLayoutTableCellTest
 ContainLayoutFlex
 ContainLayoutFlexTest
 try-linux-minimal
-ContainStyleBase
+ContainStyleCounters
+ContainStyleQuotes
+ContainStyleBreak
 ContainLayoutBlockTestFixup
 ContainLayoutFlexTestFixup
 ContainLayoutMochiTest

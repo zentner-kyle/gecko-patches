@@ -102,3 +102,24 @@ diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
  #define NS_RULE_NODE_LEVEL_MASK             0xf0000000
  #define NS_RULE_NODE_LEVEL_SHIFT            28
  
+@@ -2244,16 +2244,20 @@ struct nsStyleDisplay {
+ 
+   bool IsScrollableOverflow() const {
+     // mOverflowX and mOverflowY always match when one of them is
+     // NS_STYLE_OVERFLOW_VISIBLE or NS_STYLE_OVERFLOW_CLIP.
+     return mOverflowX != NS_STYLE_OVERFLOW_VISIBLE &&
+            mOverflowX != NS_STYLE_OVERFLOW_CLIP;
+   }
+ 
++  bool IsContainStyle() const {
++    return NS_STYLE_CONTAIN_STYLE & mContain;
++  }
++
+   bool IsContainPaint() const {
+     return NS_STYLE_CONTAIN_PAINT & mContain;
+   }
+ 
+   /* Returns whether the element has the -moz-transform property
+    * or a related property. */
+   bool HasTransformStyle() const {
+     return mSpecifiedTransform != nullptr ||

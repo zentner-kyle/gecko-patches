@@ -1,0 +1,94 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  98d253d2a733fd67151623af6ba75c50657f2957
+
+diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
+--- a/layout/base/nsCSSFrameConstructor.cpp
++++ b/layout/base/nsCSSFrameConstructor.cpp
+@@ -5650,17 +5650,18 @@ nsCSSFrameConstructor::AddFrameConstruct
+ 
+   bool canHavePageBreak =
+     (aFlags & ITEM_ALLOW_PAGE_BREAK) &&
+     aState.mPresContext->IsPaginated() &&
+     !display->IsAbsolutelyPositionedStyle() &&
+     !(bits & FCDATA_IS_TABLE_PART) &&
+     !(bits & FCDATA_IS_SVG_TEXT);
+ 
+-  if (canHavePageBreak && display->mBreakBefore) {
++  if (canHavePageBreak && display->mBreakBefore &&
++      !styleContext->HasContainStyle()) {
+     AddPageBreakItem(aContent, aStyleContext, aItems);
+   }
+ 
+   if (MOZ_UNLIKELY(bits & FCDATA_IS_CONTENTS)) {
+     if (!GetDisplayContentsStyleFor(aContent)) {
+       MOZ_ASSERT(styleContext->GetPseudo() || !isGeneratedContent,
+                  "Should have had pseudo type");
+       aState.mFrameManager->SetDisplayContents(aContent, styleContext);
+diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexContainerFrame.cpp
+--- a/layout/generic/nsFlexContainerFrame.cpp
++++ b/layout/generic/nsFlexContainerFrame.cpp
+@@ -3152,17 +3152,18 @@ nsFlexContainerFrame::GenerateFlexLines(
+ 
+   // Overall index of the current flex item in the flex container. (This gets
+   // checked against entries in aStruts.)
+   uint32_t itemIdxInContainer = 0;
+ 
+   for (nsIFrame* childFrame : mFrames) {
+     // Honor "page-break-before", if we're multi-line and this line isn't empty:
+     if (!isSingleLine && !curLine->IsEmpty() &&
+-        childFrame->StyleDisplay()->mBreakBefore) {
++        childFrame->StyleDisplay()->mBreakBefore &&
++        !childFrame->StyleContext()->HasContainStyle()) {
+       curLine = AddNewFlexLineToList(aLines, shouldInsertAtFront);
+     }
+ 
+     nsAutoPtr<FlexItem> item;
+     if (nextStrutIdx < aStruts.Length() &&
+         aStruts[nextStrutIdx].mItemIdx == itemIdxInContainer) {
+ 
+       // Use the simplified "strut" FlexItem constructor:
+diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
+--- a/layout/tables/nsTableFrame.cpp
++++ b/layout/tables/nsTableFrame.cpp
+@@ -229,17 +229,17 @@ nsTableFrame::PageBreakAfter(nsIFrame* a
+       !IsRepeatedFrame(aSourceFrame)) {
+     return !(aNextFrame && IsRepeatedFrame(aNextFrame)); // or before
+   }
+ 
+   if (aNextFrame) {
+     display = aNextFrame->StyleDisplay();
+     // don't allow a page break before a repeated element ...
+      nsTableRowGroupFrame* nextRg = do_QueryFrame(aNextFrame);
+-    if ((display->mBreakBefore ||
++    if (((display->mBreakBefore && !aNextFrame->StyleContext()->HasContainStyle()) ||
+         (nextRg && nextRg->HasInternalBreakBefore())) &&
+         !IsRepeatedFrame(aNextFrame)) {
+       return !IsRepeatedFrame(aSourceFrame); // or after
+     }
+   }
+   return false;
+ }
+ 
+diff --git a/layout/tables/nsTableRowGroupFrame.cpp b/layout/tables/nsTableRowGroupFrame.cpp
+--- a/layout/tables/nsTableRowGroupFrame.cpp
++++ b/layout/tables/nsTableRowGroupFrame.cpp
+@@ -1603,17 +1603,17 @@ nsTableRowGroupFrame::GetType() const
+ 
+ /** find page break before the first row **/
+ bool
+ nsTableRowGroupFrame::HasInternalBreakBefore() const
+ {
+  nsIFrame* firstChild = mFrames.FirstChild();
+   if (!firstChild)
+     return false;
+-  return firstChild->StyleDisplay()->mBreakBefore;
++  return firstChild->StyleDisplay()->mBreakBefore && !StyleContext()->HasContainStyle();
+ }
+ 
+ /** find page break after the last row **/
+ bool
+ nsTableRowGroupFrame::HasInternalBreakAfter() const
+ {
+   nsIFrame* lastChild = mFrames.LastChild();
+   if (!lastChild)
