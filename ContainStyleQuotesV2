@@ -1,0 +1,184 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  bb670915e9ec82449069725c72bf539b2b53ca1b
+Bug 1172087 - Patch 4: Contain quote depth with CSS 'contain: style'.
+
+diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
+--- a/layout/base/nsCSSFrameConstructor.cpp
++++ b/layout/base/nsCSSFrameConstructor.cpp
+@@ -1507,23 +1507,25 @@ nsCSSFrameConstructor::nsCSSFrameConstru
+ }
+ 
+ void
+ nsCSSFrameConstructor::NotifyDestroyingFrame(nsIFrame* aFrame)
+ {
+   NS_PRECONDITION(mUpdateCount != 0,
+                   "Should be in an update while destroying frames");
+ 
++  // XXX kzentner: Can we already know our style root here?
++  nsIFrame *styleRoot = FindStyleRoot(aFrame);
++
+   if (aFrame->GetStateBits() & NS_FRAME_GENERATED_CONTENT) {
+-    if (mQuoteList.DestroyNodesFor(aFrame))
++    if (mQuotesManager.DestroyNodesFor(styleRoot, aFrame))
+       QuotesDirty();
+   }
+ 
+-  // XXX kzentner: Can we already know our style root here?
+-  if (mCounterManager.DestroyNodesFor(FindStyleRoot(aFrame), aFrame)) {
++  if (mCounterManager.DestroyNodesFor(styleRoot, aFrame)) {
+     // Technically we don't need to update anything if we destroyed only
+     // USE nodes.  However, this is unlikely to happen in the real world
+     // since USE nodes generally go along with INCREMENT nodes.
+     CountersDirty();
+   }
+ 
+   RestyleManager()->NotifyDestroyingFrame(aFrame);
+ 
+@@ -1661,17 +1663,17 @@ nsCSSFrameConstructor::CreateGeneratedCo
+   case eStyleContentType_CloseQuote:
+   case eStyleContentType_NoOpenQuote:
+   case eStyleContentType_NoCloseQuote:
+     {
+       nsQuoteNode* node =
+         new nsQuoteNode(type, aContentIndex);
+ 
+       nsGenConInitializer* initializer =
+-        new nsGenConInitializer(node, &mQuoteList,
++        new nsGenConInitializer(node, mQuotesManager.GetList(GetStyleRoot()),
+                                 &nsCSSFrameConstructor::QuotesDirty);
+       return CreateGenConTextNode(aState, EmptyString(), &node->mText,
+                                   initializer);
+     }
+ 
+   case eStyleContentType_AltContent:
+     {
+       // Use the "alt" attribute; if that fails and the node is an HTML
+@@ -8462,17 +8464,17 @@ nsCSSFrameConstructor::EndUpdate()
+   --mUpdateCount;
+ }
+ 
+ void
+ nsCSSFrameConstructor::RecalcQuotesAndCounters()
+ {
+   if (mQuotesDirty) {
+     mQuotesDirty = false;
+-    mQuoteList.RecalcAll();
++    mQuotesManager.RecalcDirty(GetStyleRoot());
+   }
+ 
+   if (mCountersDirty) {
+     mCountersDirty = false;
+     // XXX kzentner: Is the style root always correct here?
+     mCounterManager.RecalcDirty(GetStyleRoot());
+   }
+ 
+@@ -8493,17 +8495,17 @@ nsCSSFrameConstructor::WillDestroyFrameT
+ {
+ #if defined(DEBUG_dbaron_off)
+   mCounterManager.Dump();
+ #endif
+ 
+   mIsDestroyingFrameTree = true;
+ 
+   // Prevent frame tree destruction from being O(N^2)
+-  mQuoteList.Clear();
++  mQuotesManager.Clear();
+   mCounterManager.Clear();
+ 
+   // Remove our presshell as a style flush observer.  But leave
+   // RestyleManager::mObservingRefreshDriver true so we don't readd to
+   // it even if someone tries to post restyle events on us from this
+   // point on for some reason.
+   mPresShell->GetPresContext()->RefreshDriver()->
+     RemoveStyleFlushObserver(mPresShell);
+diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstructor.h
+--- a/layout/base/nsCSSFrameConstructor.h
++++ b/layout/base/nsCSSFrameConstructor.h
+@@ -2097,17 +2097,17 @@ private:
+   nsContainerFrame*   mRootElementFrame;
+   // This is the frame for the root element that has no pseudo-element style.
+   nsIFrame*           mRootElementStyleFrame;
+   // This is the containing block that contains the root element ---
+   // the real "initial containing block" according to CSS 2.1.
+   nsContainerFrame*   mDocElementContainingBlock;
+   nsIFrame*           mGfxScrollFrame;
+   nsIFrame*           mPageSequenceFrame;
+-  nsQuoteList         mQuoteList;
++  nsQuotesManager     mQuotesManager;
+   nsCounterManager    mCounterManager;
+   nsTArray<nsIFrame*> mStyleRoots;
+   // Current ProcessChildren depth.
+   uint16_t            mCurrentDepth;
+   uint16_t            mUpdateCount;
+   bool                mQuotesDirty : 1;
+   bool                mCountersDirty : 1;
+   bool                mIsDestroyingFrameTree : 1;
+diff --git a/layout/base/nsQuoteList.cpp b/layout/base/nsQuoteList.cpp
+--- a/layout/base/nsQuoteList.cpp
++++ b/layout/base/nsQuoteList.cpp
+@@ -122,8 +122,19 @@ nsQuoteList::PrintChain()
+       node->mText->GetData(data);
+       printf(" \"%s\",", NS_ConvertUTF16toUTF8(data).get());
+     }
+     printf("\n");
+     node = Next(node);
+   } while (node != FirstNode());
+ }
+ #endif
++
++static PLDHashOperator
++ClearList(const nsIFrame* aKey, nsQuoteList* aList, void* aClosure) {
++    aList->Clear();
++    return PL_DHASH_NEXT;
++}
++
++void
++nsQuotesManager::Clear() {
++  mLists.EnumerateRead(ClearList, nullptr);
++}
+diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
+--- a/layout/base/nsQuoteList.h
++++ b/layout/base/nsQuoteList.h
+@@ -84,9 +84,41 @@ public:
+   }
+   
+   void RecalcAll();
+ #ifdef DEBUG
+   void PrintChain();
+ #endif
+ };
+ 
++class nsQuotesManager {
++public:
++
++  bool DestroyNodesFor(nsIFrame* aRoot, nsIFrame* aFrame) {
++    nsQuoteList* list = GetList(aRoot, false);
++    if (list) {
++      return list->DestroyNodesFor(aFrame);
++    }
++    return false;
++  }
++
++  nsQuoteList* GetList(nsIFrame* aRoot, bool aShouldCreate = true) {
++      nsQuoteList* list = mLists.Get(aRoot);
++      if (!list && aShouldCreate) {
++          list = new nsQuoteList();
++          mLists.Put(aRoot, list);
++      }
++      return list;
++  }
++
++  void RecalcDirty(nsIFrame* aRoot) {
++    nsQuoteList* list = GetList(aRoot, false);
++    if (list) {
++      list->RecalcAll();
++    }
++  }
++
++  void Clear();
++private:
++  nsClassHashtable<nsPtrHashKey<const nsIFrame>, nsQuoteList> mLists;
++};
++
+ #endif /* nsQuoteList_h___ */
