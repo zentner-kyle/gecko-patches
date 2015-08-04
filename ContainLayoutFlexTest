@@ -1,13 +1,13 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  c060c1dc6255fcd22a5c2e2e99186a982db0365f
-Bug 1178895 - Patch 7: Test 'contain: layout' for flexbox.
+# Parent  a2657840e6fb9b2f332a8c72a377f793fe31c530
+Bug 1178895 - Patch 5: Test 'contain: layout' for flexbox.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html
-@@ -0,0 +1,24 @@
+@@ -0,0 +1,23 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -19,7 +19,6 @@ new file mode 100644
 +    margin: 0;
 +  }
 +  .container {
-+    contain: layout;
 +    background: red;
 +    border: 8px solid green;
 +    height: 0;
@@ -42,7 +41,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on flexbox with no intrinsic
-+    height causes it to have zero height.</title>
++    height should cause it to have zero height.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-flex-001-ref.html">
@@ -68,7 +67,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002-r
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002-ref.html
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,42 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -83,16 +82,18 @@ new file mode 100644
 +    display: flex;
 +    border: 5px solid green;
 +    margin: 2px;
-+  }
-+  .container {
-+    contain: layout;
-+    font-size: 50px;
++    align-items: baseline;
 +  }
 +  .flex-item {
 +    border: 3px solid blue;
 +    width: 150px;
 +    height: 100px;
 +    margin: 2px;
++  }
++  .container-inner {
++    /* To avoid participating in baseline alignment. */
++    position: absolute;
++    font-size: 50px;
 +  }
 +  </style>
 +</head>
@@ -101,8 +102,10 @@ new file mode 100644
 +    <div class="flex-item">
 +      a
 +    </div>
-+    <div class="flex-item container">
-+      Test
++    <div class="flex-item">
++      <div class="container-inner">
++        Test
++      </div>
 +    </div>
 +  </div>
 +</body>
@@ -111,13 +114,13 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002.h
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-002.html
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,42 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: layout' on a flex item should prevent the
-+    content of the item from affecting other baselines.</title>
++  <title>CSS Test: 'contain: layout' on a flex item should result in the item
++    having no baseline.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-flex-002-ref.html">
@@ -129,6 +132,7 @@ new file mode 100644
 +    display: flex;
 +    border: 5px solid green;
 +    margin: 2px;
++    align-items: baseline;
 +  }
 +  .container {
 +    contain: layout;
@@ -139,110 +143,12 @@ new file mode 100644
 +    width: 150px;
 +    height: 100px;
 +    margin: 2px;
-+  }
-+  .sibling {
-+    align-self: baseline;
-+  }
-+  </style>
-+</head>
-+<body>
-+  <div class="flex-box">
-+    <div class="flex-item sibling">
-+      a
-+    </div>
-+    <div class="flex-item container">
-+      Test
-+    </div>
-+  </div>
-+</body>
-+</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-003-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-003-ref.html
-new file mode 100644
---- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-003-ref.html
-@@ -0,0 +1,43 @@
-+<!DOCTYPE HTML>
-+<html>
-+<head>
-+  <meta charset="utf-8">
-+  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
-+  <style>
-+  body {
-+    margin: 0;
-+  }
-+  .flex-box {
-+    display: flex;
-+    border: 5px solid green;
-+    margin: 2px;
-+    align-items: baseline;
-+  }
-+  .container {
-+  }
-+  .flex-item {
-+    border: 3px solid blue;
-+    width: 150px;
-+    height: 100px;
-+    margin: 2px;
-+  }
-+  .container-inner {
-+    position: absolute;
-+    font-size: 50px;
 +  }
 +  </style>
 +</head>
 +<body>
 +  <div class="flex-box">
 +    <div class="flex-item">
-+      a
-+    </div>
-+    <div class="flex-item container">
-+      <div class="container-inner">
-+        Test
-+      </div>
-+    </div>
-+  </div>
-+</body>
-+</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-003.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-003.html
-new file mode 100644
---- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-003.html
-@@ -0,0 +1,42 @@
-+<!DOCTYPE HTML>
-+<html>
-+<head>
-+  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: layout' flex items should result in the
-+    item having no baseline.</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
-+  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <link rel="match" href="contain-layout-flex-003-ref.html">
-+  <style>
-+  body {
-+    margin: 0;
-+  }
-+  .flex-box {
-+    display: flex;
-+    border: 5px solid green;
-+    margin: 2px;
-+    align-items: baseline;
-+  }
-+  .container {
-+    contain: layout;
-+    font-size: 50px;
-+  }
-+  .flex-item {
-+    border: 3px solid blue;
-+    width: 150px;
-+    height: 100px;
-+    margin: 2px;
-+  }
-+  </style>
-+</head>
-+<body>
-+  <div class="flex-box">
-+    <div class="flex-item sibling">
 +      a
 +    </div>
 +    <div class="flex-item container">
@@ -255,7 +161,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-fle
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-001-ref.html
-@@ -0,0 +1,24 @@
+@@ -0,0 +1,23 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -268,7 +174,6 @@ new file mode 100644
 +  }
 +  .container {
 +    display: inline-flex;
-+    contain: layout;
 +    background: red;
 +    border: 1em solid green;
 +    width: 0;
@@ -289,8 +194,8 @@ new file mode 100644
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: layout' on inline-flex should cause the element
-+    to have zero size.</title>
++  <title>CSS Test: 'contain: layout' on auto-sized inline-flex element should
++    cause the element to have zero size.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-inline-flex-001-ref.html">
@@ -356,7 +261,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-fle
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-002.html
-@@ -0,0 +1,82 @@
+@@ -0,0 +1,81 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -421,7 +326,6 @@ new file mode 100644
 +  <!--
 +    Since the contents of a contained element do not move the baseline, all
 +    of the following green boxes should be on the same line, and the same size.
-+    All of the words should be on the same line as each other as well.
 +  -->
 +  <div class="container"></div>
 +  Word
@@ -443,7 +347,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-fle
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-003-ref.html
-@@ -0,0 +1,77 @@
+@@ -0,0 +1,37 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -458,66 +362,26 @@ new file mode 100644
 +    display: inline-flex;
 +    width: 0;
 +    height: 0;
-+    vertical-align: top;
-+    position: relative;
-+    top: 5px;
-+    background: red;
 +    border: 8px solid green;
 +    margin: 2px;
 +  }
 +
-+  .right-float {
-+    float: right;
-+    background: blue;
-+    width: 20px;
-+    height: 20px;
-+    margin: 20px;
-+  }
-+
-+  .left-float {
-+    float: left;
-+    background: orange;
-+    width: 20px;
-+    height: 20px;
-+    margin: 20px;
-+  }
-+
-+  .big-block {
-+    width: 100px;
-+    height: 100px;
-+    background: salmon;
-+  }
-+
-+  .block {
-+    display: inline-block;
-+    width: 50px;
-+    height: 50px;
-+    background: teal;
-+  }
-+  .positioned-block {
-+    width: 100px;
-+    height: 100px;
-+    background: salmon;
-+    position: relative;
-+    top: -20px;
-+    left: -20px;
-+  }
 +  </style>
 +</head>
 +<body>
 +  <div class="container"></div>
 +  Word
-+  <div class="container">Test text contents.</div>
++  <div class="container"></div>
 +  Word
-+  <div class="container"><div><div class="right-float"></div></div></div>
++  <div class="container"></div>
 +  Word
-+  <div class="container"><div><div class="left-float"></div></div></div>
++  <div class="container"></div>
 +  Word
-+  <div class="container"><div class="block"></div></div>
++  <div class="container"></div>
 +  Word
-+  <div class="container"><div class="big-block"></div></div>
++  <div class="container"></div>
 +  Word
-+  <div class="container"><div class="positioned-block"></div></div>
++  <div class="container"></div>
 +  Word
 +</body>
 +</html>
@@ -525,13 +389,13 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-fle
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-003.html
-@@ -0,0 +1,81 @@
+@@ -0,0 +1,85 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: layout' on an inline flexbox with visible
-+    contents should not move its line's baseline</title>
++  <title>CSS Test: 'contain: layout' on an inline flexbox with invisible
++    contents should prevent contents from influencing baseline</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-inline-flex-003-ref.html">
@@ -545,6 +409,11 @@ new file mode 100644
 +    background: red;
 +    border: 8px solid green;
 +    margin: 2px;
++    color: transparent;
++  }
++
++  .container * {
++    visibility: hidden;
 +  }
 +
 +  .right-float {
@@ -589,7 +458,6 @@ new file mode 100644
 +  <!--
 +    Since the contents of a contained element do not move the baseline, all
 +    of the following green boxes should be on the same line, and the same size.
-+    All of the words should be on the same line as each other as well.
 +  -->
 +  <div class="container"></div>
 +  Word
@@ -647,8 +515,8 @@ new file mode 100644
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: 'contain: layout' on an inline row flexbox
-+    should not affect its line's baseline</title>
++  <title>CSS Test: 'contain: layout' on an inline row flexbox should prevent
++    contents from influencing baseline</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-inline-flex-004-ref.html">
@@ -721,7 +589,7 @@ new file mode 100644
 +<head>
 +  <meta charset="utf-8">
 +  <title>CSS Test: 'contain: layout' on an inline column flexbox
-+    should not affect its line's baseline</title>
++    should prevent contents from influencing baseline</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
 +  <link rel="match" href="contain-layout-inline-flex-005-ref.html">
@@ -757,7 +625,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-fle
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-006-ref.html
-@@ -0,0 +1,31 @@
+@@ -0,0 +1,30 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -770,7 +638,6 @@ new file mode 100644
 +  }
 +  .container {
 +    display: inline-flex;
-+    contain: layout;
 +    background: red;
 +    border: 1em solid green;
 +    width: 0;
@@ -829,29 +696,23 @@ new file mode 100644
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -25,16 +25,25 @@ default-preferences pref(layout.css.cont
+@@ -25,11 +25,19 @@ default-preferences pref(layout.css.cont
  == contain-layout-block-003.html contain-layout-block-003-ref.html
  == contain-layout-block-004.html contain-layout-block-004-ref.html
  == contain-layout-block-005.html contain-layout-block-005-ref.html
  == contain-layout-inline-block-001.html contain-layout-inline-block-001-ref.html
  == contain-layout-inline-block-002.html contain-layout-inline-block-002-ref.html
  == contain-layout-inline-block-003.html contain-layout-inline-block-003-ref.html
- == contain-layout-inline-block-004.html contain-layout-inline-block-004-ref.html
+ == contain-layout-inline-block-004.html contain-layout-inline-block-003-ref.html
  == contain-layout-inline-block-005.html contain-layout-inline-block-005-ref.html
 +== contain-layout-flex-001.html contain-layout-flex-001-ref.html
 +== contain-layout-flex-002.html contain-layout-flex-002-ref.html
-+== contain-layout-flex-003.html contain-layout-flex-003-ref.html
 +== contain-layout-inline-flex-001.html contain-layout-inline-flex-001-ref.html
 +== contain-layout-inline-flex-002.html contain-layout-inline-flex-002-ref.html
 +== contain-layout-inline-flex-003.html contain-layout-inline-flex-003-ref.html
 +== contain-layout-inline-flex-004.html contain-layout-inline-flex-004-ref.html
 +== contain-layout-inline-flex-005.html contain-layout-inline-flex-005-ref.html
 +== contain-layout-inline-flex-006.html contain-layout-inline-flex-006-ref.html
- == contain-layout-table-cell-001.html contain-layout-table-cell-001-ref.html
- == contain-layout-table-cell-002.html contain-layout-table-cell-002-ref.html
- == contain-layout-table-cell-003.html contain-layout-table-cell-003-ref.html
- == contain-layout-table-cell-004.html contain-layout-table-cell-004-ref.html
- == contain-layout-table-cell-005.html contain-layout-table-cell-005-ref.html
- == contain-layout-table-cell-006.html contain-layout-table-cell-006-ref.html
- == contain-layout-table-cell-007.html contain-layout-table-cell-007-ref.html
- == contain-layout-inline-table-cell-001.html contain-layout-inline-table-cell-001-ref.html
+ == contain-style-quote-001.html contain-style-quote-001-ref.html
+ == contain-style-break-001.html contain-style-break-001-ref.html
+ == contain-style-break-002.html contain-style-break-001-ref.html

@@ -1,12 +1,12 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  082b94c768ade24c0c91752601fc71b2f06570c4
-Bug 1178895 - Patch 6: Implement 'contain: layout' for flexbox.
+# Parent  c7072267b848e15eb811509456a28f7f3df888ba
+Bug 1178895 - Patch 4: Implement 'contain: layout' for flexbox.
 
 diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexContainerFrame.cpp
 --- a/layout/generic/nsFlexContainerFrame.cpp
 +++ b/layout/generic/nsFlexContainerFrame.cpp
-@@ -3252,23 +3252,24 @@ GetLargestLineMainSize(const FlexLine* a
+@@ -3253,23 +3253,24 @@ GetLargestLineMainSize(const FlexLine* a
   * aside from cases with huge lengths which happen to compute to that value.
   * XXXdholbert (this^ isn't quite true, if we're row-oriented and in an
   * orthogonal flow, per mentions of bug 1163238 in GetMainSizeFromReflowState.)
@@ -38,7 +38,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
      // is our inline size (which should already be resolved).
      return aTentativeMainSize;
    }
-@@ -3295,16 +3296,22 @@ ResolveFlexContainerMainSize(const nsHTM
+@@ -3296,16 +3297,22 @@ ResolveFlexContainerMainSize(const nsHTM
      nscoord largestLineOuterSize = GetLargestLineMainSize(aFirstLine);
  
      if (largestLineOuterSize <= aAvailableBSizeForContent) {
@@ -61,7 +61,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
    return NS_CSS_MINMAX(largestLineOuterSize,
                         aReflowState.ComputedMinBSize(),
                         aReflowState.ComputedMaxBSize());
-@@ -3356,16 +3363,22 @@ nsFlexContainerFrame::ComputeCrossSize(c
+@@ -3357,16 +3364,22 @@ nsFlexContainerFrame::ComputeCrossSize(c
      // our children" is just the sum of our FlexLines' BSizes (cross sizes).
      NS_FRAME_SET_INCOMPLETE(aStatus);
      if (aSumLineCrossSizes <= aAvailableBSizeForContent) {
@@ -84,7 +84,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
    return NS_CSS_MINMAX(aSumLineCrossSizes,
                         aReflowState.ComputedMinBSize(),
                         aReflowState.ComputedMaxBSize());
-@@ -3895,24 +3908,29 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
+@@ -3896,24 +3909,29 @@ nsFlexContainerFrame::DoFlexLayout(nsPre
    // starting w/ content-box size & growing from there:
    LogicalSize desiredSizeInFlexWM =
      aAxisTracker.LogicalSizeFromFlexRelativeSizes(aContentBoxMainSize,
@@ -116,7 +116,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
      flexContainerAscent = desiredSizeInFlexWM.BSize(flexWM);
    }
  
-@@ -4083,16 +4101,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
+@@ -4084,16 +4102,20 @@ nsFlexContainerFrame::ReflowFlexItem(nsP
  }
  
  /* virtual */ nscoord
@@ -137,7 +137,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
        nsLayoutUtils::IntrinsicForContainer(aRenderingContext, childFrame,
                                             nsLayoutUtils::MIN_ISIZE);
      // For a horizontal single-line flex container, the intrinsic min width is
-@@ -4110,16 +4132,20 @@ nsFlexContainerFrame::GetMinISize(nsRend
+@@ -4111,16 +4133,20 @@ nsFlexContainerFrame::GetMinISize(nsRend
  }
  
  /* virtual */ nscoord

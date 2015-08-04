@@ -405,48 +405,6 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html
-deleted file mode 100644
---- a/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001-ref.html
-+++ /dev/null
-@@ -1,37 +0,0 @@
--<!DOCTYPE HTML>
--<html>
--<head>
--  <meta charset="utf-8">
--  <title>CSS Reftest Reference</title>
--  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
--  <style>
--  body {
--    margin: 0;
--  }
--  .container {
--    background: red;
--    border: 1em solid green;
--    width: 100px;
--    height: 0;
--  }
--  </style>
--</head>
--<body class="reftest-paint">
--  <div class="fun">
--    <div>
--      This is some content before the contained element.
--    </div>
--    <div>
--      This is a parent of the contained element.
--      <div class="container">
--        <div>
--          Lorem ipsum dolor sit amet
--        </div>
--      </div>
--    </div>
--    <div>
--      This is some content after the contained element.
--    </div>
--  </div>
--</body>
--</html>
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001.html
 deleted file mode 100644
 --- a/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001.html
