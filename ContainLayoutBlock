@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  8f89915e02d46d1cbfa307f1126f9e21cc1d54da
+# Parent  c0dd68bcf28abbdd1bc780f9e4c76d4a6606af66
 Bug 1178895 - Patch 2: Implement 'contain: layout' for nsBlockFrame.
 
 diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
@@ -48,28 +48,31 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
    }
    AutoNoisyIndenter indenter(gNoisyIntrinsic);
  #endif
-@@ -1591,16 +1599,24 @@ nsBlockFrame::ComputeFinalSize(const nsH
-   FrameProperties properties = Properties();
-   if (blockEndEdgeOfChildren != finalSize.BSize(wm) - borderPadding.BEnd(wm)) {
-     properties.Set(BlockEndEdgeOfChildrenProperty(),
-                    NS_INT32_TO_PTR(blockEndEdgeOfChildren));
-   } else {
-     properties.Delete(BlockEndEdgeOfChildrenProperty());
-   }
+@@ -1548,16 +1556,27 @@ nsBlockFrame::ComputeFinalSize(const nsH
+       // on its own on the last-in-flow, even if we ran out of height
+       // here. We need GetSkipSides to check whether we ran out of content
+       // height in the current frame, not whether it's last-in-flow.
+     }
  
-+  if (nsLayoutUtils::IsContainLayout(this) && NS_UNCONSTRAINEDSIZE == aReflowState.ComputedBSize()) {
+     // Don't carry out a block-end margin when our BSize is fixed.
+     aMetrics.mCarriedOutBEndMargin.Zero();
+   }
++  else if (nsLayoutUtils::IsContainLayout(this)) {
 +    // If we're layout-containing and we don't have a specified size, then our
 +    // final size should actually be computed from only our border and padding,
 +    // as though we were empty.
-+    // However, we still need the code above to run in order to calculate
-+    // overflow regions.
-+    finalSize.BSize(wm) = borderPadding.BStart(wm) + borderPadding.BEnd(wm);
++    // Hence this case is a simplified version of the case below.
++    nscoord contentBSize = 0;
++    nscoord autoBSize = aReflowState.ApplyMinMaxBSize(contentBSize);
++    aMetrics.mCarriedOutBEndMargin.Zero();
++    autoBSize += borderPadding.BStart(wm) + borderPadding.BEnd(wm);
++    finalSize.BSize(wm) = autoBSize;
 +  }
-   aMetrics.SetSize(wm, finalSize);
- 
- #ifdef DEBUG_blocks
-   if (CRAZY_SIZE(aMetrics.Width()) || CRAZY_SIZE(aMetrics.Height())) {
-     ListTag(stdout);
-     printf(": WARNING: desired:%d,%d\n", aMetrics.Width(), aMetrics.Height());
-   }
- #endif
+   else if (NS_FRAME_IS_COMPLETE(aState.mReflowStatus)) {
+     nscoord contentBSize = blockEndEdgeOfChildren - borderPadding.BStart(wm);
+     nscoord autoBSize = aReflowState.ApplyMinMaxBSize(contentBSize);
+     if (autoBSize != contentBSize) {
+       // Our min- or max-bsize value made our bsize change.  Don't carry out
+       // our kids' block-end margins.
+       aMetrics.mCarriedOutBEndMargin.Zero();
+     }
