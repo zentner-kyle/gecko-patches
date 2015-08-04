@@ -265,7 +265,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstructor.h
 --- a/layout/base/nsCSSFrameConstructor.h
 +++ b/layout/base/nsCSSFrameConstructor.h
-@@ -2015,16 +2015,46 @@ private:
+@@ -2015,16 +2015,43 @@ private:
    // see if aContent and aSibling are legitimate siblings due to restrictions
    // imposed by table columns
    // XXXbz this code is generally wrong, since the frame for aContent
@@ -290,16 +290,13 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
 +  }
 +
 +  void MaybePushStyleRoot(nsIFrame* aPotentialRoot) {
-+    //if (aPotentialRoot->StyleDisplay()->IsContainStyle()) {
-+    if (FindStyleRoot(aPotentialRoot) != GetStyleRoot()) {
-+      printf("CONTAIN: Adding new style root %p\n", static_cast<void*>(FindStyleRoot(aPotentialRoot)));
-+      mStyleRoots.AppendElement(FindStyleRoot(aPotentialRoot));
++    if (aPotentialRoot->StyleDisplay()->IsContainStyle()) {
++      mStyleRoots.AppendElement(aPotentialRoot);
 +    }
 +  }
 +
 +  void MaybePopStyleRoot(nsIFrame* aPotentialRoot) {
 +    if (GetStyleRoot() == aPotentialRoot) {
-+      printf("CONTAIN: Removing style root %p\n", static_cast<void*>(aPotentialRoot));
 +      mStyleRoots.RemoveElementAt(mStyleRoots.Length() - 1);
 +    }
 +  }
@@ -312,7 +309,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
  
    void CountersDirty() {
      NS_PRECONDITION(mUpdateCount != 0, "Instant counter updates are bad news");
-@@ -2047,16 +2077,17 @@ private:
+@@ -2047,16 +2074,17 @@ private:
    // Create touch caret frame.
    void ConstructAnonymousContentForCanvas(nsFrameConstructorState& aState,
                                            nsIFrame* aFrame,
@@ -330,7 +327,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
    // See the comment at the start of ConstructRootFrame for more details
    // about the following frames.
  
-@@ -2066,16 +2097,17 @@ private:
+@@ -2066,16 +2094,17 @@ private:
    nsIFrame*           mRootElementStyleFrame;
    // This is the containing block that contains the root element ---
    // the real "initial containing block" according to CSS 2.1.
@@ -374,7 +371,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  
      aNode->mScopeStart = nullptr;
      aNode->mScopePrev  = nullptr;
-@@ -204,94 +205,107 @@ nsCounterList::RecalcAll()
+@@ -204,52 +205,55 @@ nsCounterList::RecalcAll()
                  useNode->GetText(text);
                  useNode->mText->SetData(text);
              }
@@ -423,7 +420,6 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
                                        const nsStyleCounterData *aCounterData,
                                        nsCounterNode::Type aType)
  {
-+    Dump();
      nsCounterChangeNode *node =
          new nsCounterChangeNode(aFrame, aType, aCounterData->mValue, aIndex);
  
@@ -435,16 +431,13 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
          // Tell the caller it's responsible for recalculating the entire
          // list.
          counterList->SetDirty();
-+        Dump();
          return true;
      }
- 
-     // Don't call Calc() if the list is already dirty -- it'll be recalculated
+@@ -258,40 +262,47 @@ nsCounterManager::AddResetOrIncrement(ns
      // anyway, and trying to calculate with a dirty list doesn't work.
      if (MOZ_LIKELY(!counterList->IsDirty())) {
          node->Calc(counterList);
      }
-+    Dump();
      return false;
  }
  
@@ -493,7 +486,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
                        void* aClosure)
  {
      nsCounterNode* first = aList->First();
-@@ -307,19 +321,19 @@ SetCounterStylesDirty(const nsAString& a
+@@ -307,19 +318,19 @@ SetCounterStylesDirty(const nsAString& a
          if (changed) {
              aList->SetDirty();
          }
@@ -515,7 +508,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
          , mDestroyedAny(false)
      {
      }
-@@ -335,20 +349,20 @@ DestroyNodesInList(const nsAString& aKey
+@@ -335,20 +346,20 @@ DestroyNodesInList(const nsAString& aKey
      if (aList->DestroyNodesFor(data->mFrame)) {
          data->mDestroyedAny = true;
          aList->SetDirty();
@@ -538,7 +531,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  DumpList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
  {
      printf("Counter named \"%s\":\n", NS_ConvertUTF16toUTF8(aKey).get());
-@@ -369,16 +383,23 @@ DumpList(const nsAString& aKey, nsCounte
+@@ -369,16 +380,23 @@ DumpList(const nsAString& aKey, nsCounte
                  printf(" text=%s", NS_ConvertUTF16toUTF8(text).get());
              }
              printf("\n");
