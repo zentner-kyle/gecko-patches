@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  32d4c7ccddf633d6ff9c87f79a721138d381840e
+# Parent  55a61b65b88e6be2a3433238ce931aee31a3eeb4
 Bug 1172087 - Patch 3: Implement counter-* for CSS 'contain: style'.
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -203,7 +203,8 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  
  // Special routine to handle placing a list of frames into a block
  // frame that has first-line style. The routine ensures that the first
-@@ -11374,16 +11390,17 @@ nsCSSFrameConstructor::CreateListBoxCont
+@@ -11373,16 +11389,17 @@ nsCSSFrameConstructor::CreateListBoxCont
+     // any frame at all
      const nsStyleDisplay* display = styleContext->StyleDisplay();
  
      if (NS_STYLE_DISPLAY_NONE == display->mDisplay) {
@@ -211,8 +212,8 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
        return NS_OK;
      }
  
-     BeginUpdate();
 +    MaybePushStyleRoot(aParentFrame);
+     BeginUpdate();
  
      FrameConstructionItemList items;
      AddFrameConstructionItemsInternal(state, aChild, aParentFrame,
@@ -220,7 +221,6 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
                                        aChild->GetNameSpaceID(),
                                        true, styleContext,
                                        ITEM_ALLOW_XBL_BASE, nullptr, items);
-     ConstructFramesFromItemList(state, items, aParentFrame, frameItems);
 @@ -11395,16 +11412,17 @@ nsCSSFrameConstructor::CreateListBoxCont
        // Notify the parent frame
        if (aIsAppend)
@@ -239,7 +239,8 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
          accService->ContentRangeInserted(mPresShell, aChild->GetParent(),
                                           aChild, aChild->GetNextSibling());
        }
-@@ -12240,29 +12258,31 @@ nsCSSFrameConstructor::ReframeContaining
+@@ -12239,30 +12257,32 @@ nsCSSFrameConstructor::ReframeContaining
+                                   true, aFlags, nullptr);
  }
  
  nsresult
@@ -247,8 +248,8 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  {
    {
      nsAutoScriptBlocker scriptBlocker;
-     BeginUpdate();
 +    MaybePushStyleRoot(aFrame);
+     BeginUpdate();
  
      nsFrameItems childItems;
      nsFrameConstructorState state(mPresShell, nullptr, nullptr, nullptr);
@@ -274,7 +275,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstructor.h
 --- a/layout/base/nsCSSFrameConstructor.h
 +++ b/layout/base/nsCSSFrameConstructor.h
-@@ -2015,16 +2015,43 @@ private:
+@@ -2015,16 +2015,48 @@ private:
    // see if aContent and aSibling are legitimate siblings due to restrictions
    // imposed by table columns
    // XXXbz this code is generally wrong, since the frame for aContent
@@ -299,13 +300,18 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
 +  }
 +
 +  void MaybePushStyleRoot(nsIFrame* aPotentialRoot) {
-+    if (aPotentialRoot->StyleDisplay()->IsContainStyle()) {
-+      mStyleRoots.AppendElement(aPotentialRoot);
++    if (aPotentialRoot) {
++      if (aPotentialRoot->StyleDisplay()->IsContainStyle()) {
++        mStyleRoots.AppendElement(aPotentialRoot);
++      } else if (aPotentialRoot->StyleContext()->HasContainStyle() &&
++                !GetStyleRoot()) {
++        mStyleRoots.AppendElement(FindStyleRoot(aPotentialRoot));
++      }
 +    }
 +  }
 +
 +  void MaybePopStyleRoot(nsIFrame* aPotentialRoot) {
-+    if (GetStyleRoot() == aPotentialRoot) {
++    if (aPotentialRoot && GetStyleRoot() == aPotentialRoot) {
 +      mStyleRoots.RemoveElementAt(mStyleRoots.Length() - 1);
 +    }
 +  }
@@ -318,7 +324,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
  
    void CountersDirty() {
      NS_PRECONDITION(mUpdateCount != 0, "Instant counter updates are bad news");
-@@ -2047,16 +2074,17 @@ private:
+@@ -2047,16 +2079,17 @@ private:
    // Create touch caret frame.
    void ConstructAnonymousContentForCanvas(nsFrameConstructorState& aState,
                                            nsIFrame* aFrame,
@@ -336,7 +342,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
    // See the comment at the start of ConstructRootFrame for more details
    // about the following frames.
  
-@@ -2066,16 +2094,17 @@ private:
+@@ -2066,16 +2099,17 @@ private:
    nsIFrame*           mRootElementStyleFrame;
    // This is the containing block that contains the root element ---
    // the real "initial containing block" according to CSS 2.1.
@@ -357,7 +363,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
 diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 --- a/layout/base/nsCounterManager.cpp
 +++ b/layout/base/nsCounterManager.cpp
-@@ -163,19 +163,20 @@ nsCounterList::SetScope(nsCounterNode *a
+@@ -163,19 +163,23 @@ nsCounterList::SetScope(nsCounterNode *a
                       "is for the root, startContent (which is before it) "
                       "must be too");
  
@@ -371,6 +377,9 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
               nsContentUtils::ContentIsDescendantOf(nodeContent,
 -                                                   startContent))) {
 +                                                   startContent)) ||
++             // We hit the beginning of the list, but not necessarily the top
++             // of the frame tree. This case should only be hit from using
++             // style containment.
 +             !start->mScopePrev)) {
              aNode->mScopeStart = start;
              aNode->mScopePrev  = prev;
@@ -380,7 +389,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  
      aNode->mScopeStart = nullptr;
      aNode->mScopePrev  = nullptr;
-@@ -204,52 +205,55 @@ nsCounterList::RecalcAll()
+@@ -204,52 +208,55 @@ nsCounterList::RecalcAll()
                  useNode->GetText(text);
                  useNode->mText->SetData(text);
              }
@@ -442,7 +451,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
          counterList->SetDirty();
          return true;
      }
-@@ -258,40 +262,51 @@ nsCounterManager::AddResetOrIncrement(ns
+@@ -258,40 +265,51 @@ nsCounterManager::AddResetOrIncrement(ns
      // anyway, and trying to calculate with a dirty list doesn't work.
      if (MOZ_LIKELY(!counterList->IsDirty())) {
          node->Calc(counterList);
@@ -499,7 +508,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
                        void* aClosure)
  {
      nsCounterNode* first = aList->First();
-@@ -306,20 +321,26 @@ SetCounterStylesDirty(const nsAString& a
+@@ -306,20 +324,26 @@ SetCounterStylesDirty(const nsAString& a
          } while ((node = aList->Next(node)) != first);
          if (changed) {
              aList->SetDirty();
@@ -527,7 +536,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
          , mDestroyedAny(false)
      {
      }
-@@ -335,20 +356,20 @@ DestroyNodesInList(const nsAString& aKey
+@@ -335,20 +359,20 @@ DestroyNodesInList(const nsAString& aKey
      if (aList->DestroyNodesFor(data->mFrame)) {
          data->mDestroyedAny = true;
          aList->SetDirty();
@@ -550,7 +559,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  DumpList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
  {
      printf("Counter named \"%s\":\n", NS_ConvertUTF16toUTF8(aKey).get());
-@@ -369,16 +390,23 @@ DumpList(const nsAString& aKey, nsCounte
+@@ -369,16 +393,23 @@ DumpList(const nsAString& aKey, nsCounte
                  printf(" text=%s", NS_ConvertUTF16toUTF8(text).get());
              }
              printf("\n");
@@ -618,7 +627,7 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
      static int32_t IncrementCounter(int32_t aOldValue, int32_t aIncrement)
      {
          // Addition of unsigned values is defined to be arithmetic
-@@ -265,18 +265,29 @@ public:
+@@ -265,18 +265,28 @@ public:
          // counter will get stuck at the largest multiple of 5 less than
          // the maximum 32-bit integer.)
          if ((aIncrement > 0) != (newValue > aOldValue)) {
@@ -637,10 +646,9 @@ diff --git a/layout/base/nsCounterManager.h b/layout/base/nsCounterManager.h
                                 nsCounterNode::Type aType);
  
 -    nsClassHashtable<nsStringHashKey, nsCounterList> mNames;
-+    NameTable* GetNames(nsIFrame* aRoot) {
-+        //return mRoots.Get(nsPtrHashKey<const nsIFrame>(aRoot));
++    NameTable* GetNames(nsIFrame* aRoot, bool aShouldCreate = true) {
 +        NameTable* names = mRoots.Get(aRoot);
-+        if (!names) {
++        if (!names && aShouldCreate) {
 +            names = new NameTable();
 +            mRoots.Put(aRoot, names);
 +        }

@@ -7,9 +7,8 @@ ContainStyleQuotesTest
 ContainStyleBreakTest
 ContainStyleBreakV2
 ContainStyleCountersV2
-try-linux-minimal
-ContainStyleCountersV2Fixup
 ContainStyleQuotesV2
+try-linux-minimal
 ContainLayoutBase
 ContainLayoutBlock
 ContainLayoutBlockTest
