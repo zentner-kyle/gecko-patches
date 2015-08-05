@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  bb670915e9ec82449069725c72bf539b2b53ca1b
+# Parent  7e3c75e7b56191c3b1e159b40048bcf972d88de9
 Bug 1172087 - Patch 4: Contain quote depth with CSS 'contain: style'.
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -54,26 +54,37 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    case eStyleContentType_AltContent:
      {
        // Use the "alt" attribute; if that fails and the node is an HTML
-@@ -8462,17 +8464,17 @@ nsCSSFrameConstructor::EndUpdate()
+@@ -8460,25 +8462,26 @@ nsCSSFrameConstructor::EndUpdate()
+   }
+   NS_ASSERTION(mUpdateCount, "Negative mUpdateCount!");
    --mUpdateCount;
  }
  
  void
  nsCSSFrameConstructor::RecalcQuotesAndCounters()
  {
++  // XXX kzentner: Is the style root always correct here?
++  nsIFrame* styleRoot = GetStyleRoot();
    if (mQuotesDirty) {
      mQuotesDirty = false;
 -    mQuoteList.RecalcAll();
-+    mQuotesManager.RecalcDirty(GetStyleRoot());
++    mQuotesManager.RecalcDirty(styleRoot);
    }
  
    if (mCountersDirty) {
      mCountersDirty = false;
-     // XXX kzentner: Is the style root always correct here?
-     mCounterManager.RecalcDirty(GetStyleRoot());
+-    // XXX kzentner: Is the style root always correct here?
+-    mCounterManager.RecalcDirty(GetStyleRoot());
++    mCounterManager.RecalcDirty(styleRoot);
    }
  
-@@ -8493,17 +8495,17 @@ nsCSSFrameConstructor::WillDestroyFrameT
+   NS_ASSERTION(!mQuotesDirty, "Quotes updates will be lost");
+   NS_ASSERTION(!mCountersDirty, "Counter updates will be lost");
+ }
+ 
+ void
+ nsCSSFrameConstructor::NotifyCounterStylesAreDirty()
+@@ -8493,17 +8496,17 @@ nsCSSFrameConstructor::WillDestroyFrameT
  {
  #if defined(DEBUG_dbaron_off)
    mCounterManager.Dump();
@@ -95,7 +106,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstructor.h
 --- a/layout/base/nsCSSFrameConstructor.h
 +++ b/layout/base/nsCSSFrameConstructor.h
-@@ -2097,17 +2097,17 @@ private:
+@@ -2103,17 +2103,17 @@ private:
    nsContainerFrame*   mRootElementFrame;
    // This is the frame for the root element that has no pseudo-element style.
    nsIFrame*           mRootElementStyleFrame;

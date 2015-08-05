@@ -8,14 +8,15 @@ ContainStyleBreakTest
 ContainStyleBreakV2
 ContainStyleCountersV2
 ContainStyleQuotesV2
+try-linux-minimal
 ContainLayoutBase
 ContainLayoutBlock
 ContainLayoutBlockTest
 ContainLayoutFlex
 ContainLayoutFlexTest
-try-linux-minimal
 ContainLayoutTableCell
 ContainLayoutTableCellTest
+ContainStyleCountersV2Fixup
 ContainStyleCounters
 ContainStyleQuotes
 ContainStyleBreak

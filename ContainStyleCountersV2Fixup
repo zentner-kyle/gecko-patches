@@ -1,0 +1,111 @@
+# HG changeset patch
+# User Kyle Zentner <kzentner@mozilla.com>
+# Parent  50b9fbf34637f2a15f2a2c540ceefd9b5b77d822
+
+diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
+--- a/layout/base/nsCSSFrameConstructor.cpp
++++ b/layout/base/nsCSSFrameConstructor.cpp
+@@ -8462,25 +8462,26 @@ nsCSSFrameConstructor::EndUpdate()
+   }
+   NS_ASSERTION(mUpdateCount, "Negative mUpdateCount!");
+   --mUpdateCount;
+ }
+ 
+ void
+ nsCSSFrameConstructor::RecalcQuotesAndCounters()
+ {
++  nsIFrame* styleRoot = GetStyleRoot();
+   if (mQuotesDirty) {
+     mQuotesDirty = false;
+-    mQuotesManager.RecalcDirty(GetStyleRoot());
++    mQuotesManager.RecalcDirty(styleRoot);
+   }
+ 
+   if (mCountersDirty) {
+     mCountersDirty = false;
+     // XXX kzentner: Is the style root always correct here?
+-    mCounterManager.RecalcDirty(GetStyleRoot());
++    mCounterManager.RecalcDirty(styleRoot);
+   }
+ 
+   NS_ASSERTION(!mQuotesDirty, "Quotes updates will be lost");
+   NS_ASSERTION(!mCountersDirty, "Counter updates will be lost");
+ }
+ 
+ void
+ nsCSSFrameConstructor::NotifyCounterStylesAreDirty()
+diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstructor.h
+--- a/layout/base/nsCSSFrameConstructor.h
++++ b/layout/base/nsCSSFrameConstructor.h
+@@ -2024,36 +2024,42 @@ private:
+     nsIFrame* ancestor = aDescendant;
+     while (ancestor && !ancestor->StyleDisplay()->IsContainStyle()) {
+       ancestor = ancestor->GetParent();
+     }
+     return ancestor;
+   }
+ 
+   nsIFrame* GetStyleRoot() {
+-    if (mStyleRoots.Length() < 1) {
++    if (!mStyleRoots.Length()) {
+       return nullptr;
+     }
+     return mStyleRoots.LastElement();
+   }
+ 
+   void MaybePushStyleRoot(nsIFrame* aPotentialRoot) {
+     if (aPotentialRoot) {
+       if (aPotentialRoot->StyleDisplay()->IsContainStyle()) {
+         mStyleRoots.AppendElement(aPotentialRoot);
+       } else if (aPotentialRoot->StyleContext()->HasContainStyle() &&
+-                !GetStyleRoot()) {
++                !mStyleRoots.Length()) {
+         mStyleRoots.AppendElement(FindStyleRoot(aPotentialRoot));
+       }
+     }
+   }
+ 
+   void MaybePopStyleRoot(nsIFrame* aPotentialRoot) {
+     if (aPotentialRoot && GetStyleRoot() == aPotentialRoot) {
+       mStyleRoots.RemoveElementAt(mStyleRoots.Length() - 1);
++      NS_ASSERTION(aPotentialRoot->StyleDisplay()->IsContainStyle(),
++                   "Style root should have been style containing");
++    }
++    if (!mUpdateCount) {
++      NS_ASSERTION(!mStyleRoots.Length(),
++                   "Should have no more style roots when done updating");
+     }
+   }
+ 
+   void QuotesDirty() {
+     NS_PRECONDITION(mUpdateCount != 0, "Instant quote updates are bad news");
+     mQuotesDirty = true;
+     mDocument->SetNeedLayoutFlush();
+   }
+diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
+--- a/layout/base/nsCounterManager.cpp
++++ b/layout/base/nsCounterManager.cpp
+@@ -167,19 +167,20 @@ nsCounterList::SetScope(nsCounterNode *a
+         if (!(aNode->mType == nsCounterNode::RESET &&
+               nodeContent == startContent) &&
+               // everything is inside the root (except the case above,
+               // a second reset on the root)
+             ((!startContent ||
+              nsContentUtils::ContentIsDescendantOf(nodeContent,
+                                                    startContent)) ||
+              // We hit the beginning of the list, but not necessarily the top
+-             // of the frame tree. This case should only be hit from using
+-             // style containment.
+-             !start->mScopePrev)) {
++             // of the frame tree. If we're not starting a new scope ourselves,
++             // we should use this as the start of scope. This case should only
++             // be hit from using style containment.
++             (start == First() && (aNode->mType != nsCounterNode::RESET)))) {
+             aNode->mScopeStart = start;
+             aNode->mScopePrev  = prev;
+             return;
+         }
+     }
+ 
+     aNode->mScopeStart = nullptr;
+     aNode->mScopePrev  = nullptr;
