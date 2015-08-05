@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  5b472dd3e97fe54c88233375d1d8cf7c867726fb
+# Parent  25931e423c471f5ff057ef29fad32a080f304839
 Bug 1178895 - Patch 3: Test CSS 'contain: layout' on blocks.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-block-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-block-001-ref.html
@@ -271,7 +271,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-block-004.
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-block-004.html
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,43 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -306,6 +306,11 @@ new file mode 100644
 +<body>
 +  <div class="container">
 +    <div class="contained"></div>
++      <!--
++      We need a clear-fix here, since we want to try to "push" the block size
++      using the float's margin. Of course, if this test passes the block size
++      will actually be ignoring all of this.
++      -->
 +    <div class="clear-fix"></div>
 +  </div>
 +</body>
@@ -594,10 +599,10 @@ new file mode 100644
 +  Word
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003a.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003a.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003a.html
 @@ -0,0 +1,82 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -681,16 +686,16 @@ new file mode 100644
 +  Word
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003b.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003b.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-003b.html
 @@ -0,0 +1,86 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
 +  <meta charset="utf-8">
-+  <title>CSS Test: invisible contents of an 'contain: layout' inline-block
++  <title>CSS Test: invisible contents of a 'contain: layout' inline-block
 +    should not cause the baseline to move.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
@@ -772,10 +777,10 @@ new file mode 100644
 +  Word
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-005-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-005-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-005-ref.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004-ref.html
 @@ -0,0 +1,23 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -800,10 +805,10 @@ new file mode 100644
 +  Word
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-005.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-005.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-005.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-block-004.html
 @@ -0,0 +1,27 @@
 +<!DOCTYPE HTML>
 +<html>
@@ -813,7 +818,7 @@ new file mode 100644
 +    cause the baseline to move.</title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
-+  <link rel="match" href="contain-layout-inline-block-005-ref.html">
++  <link rel="match" href="contain-layout-inline-block-004-ref.html">
 +  <style>
 +  .container {
 +    display: inline-block;
@@ -851,9 +856,9 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/ref
 +== contain-layout-block-005.html contain-layout-block-005-ref.html
 +== contain-layout-inline-block-001.html contain-layout-inline-block-001-ref.html
 +== contain-layout-inline-block-002.html contain-layout-inline-block-002-ref.html
-+== contain-layout-inline-block-003.html contain-layout-inline-block-003-ref.html
-+== contain-layout-inline-block-004.html contain-layout-inline-block-003-ref.html
-+== contain-layout-inline-block-005.html contain-layout-inline-block-005-ref.html
++== contain-layout-inline-block-003a.html contain-layout-inline-block-003-ref.html
++== contain-layout-inline-block-003b.html contain-layout-inline-block-003-ref.html
++== contain-layout-inline-block-004.html contain-layout-inline-block-004-ref.html
  == contain-style-quote-001.html contain-style-quote-001-ref.html
  == contain-style-break-001.html contain-style-break-001-ref.html
  == contain-style-break-002.html contain-style-break-001-ref.html
