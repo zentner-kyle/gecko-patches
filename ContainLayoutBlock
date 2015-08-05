@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  c0dd68bcf28abbdd1bc780f9e4c76d4a6606af66
+# Parent  5cc598e1251c173d0a44b989da85fa4555661577
 Bug 1178895 - Patch 2: Implement 'contain: layout' for nsBlockFrame.
 
 diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
@@ -48,7 +48,7 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
    }
    AutoNoisyIndenter indenter(gNoisyIntrinsic);
  #endif
-@@ -1548,16 +1556,27 @@ nsBlockFrame::ComputeFinalSize(const nsH
+@@ -1548,25 +1556,36 @@ nsBlockFrame::ComputeFinalSize(const nsH
        // on its own on the last-in-flow, even if we ran out of height
        // here. We need GetSkipSides to check whether we ran out of content
        // height in the current frame, not whether it's last-in-flow.
@@ -65,7 +65,7 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 +    nscoord contentBSize = 0;
 +    nscoord autoBSize = aReflowState.ApplyMinMaxBSize(contentBSize);
 +    aMetrics.mCarriedOutBEndMargin.Zero();
-+    autoBSize += borderPadding.BStart(wm) + borderPadding.BEnd(wm);
++    autoBSize += borderPadding.BStartEnd(wm);
 +    finalSize.BSize(wm) = autoBSize;
 +  }
    else if (NS_FRAME_IS_COMPLETE(aState.mReflowStatus)) {
@@ -76,3 +76,13 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
        // our kids' block-end margins.
        aMetrics.mCarriedOutBEndMargin.Zero();
      }
+-    autoBSize += borderPadding.BStart(wm) + borderPadding.BEnd(wm);
++    autoBSize += borderPadding.BStartEnd(wm);
+     finalSize.BSize(wm) = autoBSize;
+   }
+   else {
+     NS_ASSERTION(aReflowState.AvailableBSize() != NS_UNCONSTRAINEDSIZE,
+       "Shouldn't be incomplete if availableBSize is UNCONSTRAINED.");
+     finalSize.BSize(wm) = std::max(aState.mBCoord,
+                                    aReflowState.AvailableBSize());
+     if (aReflowState.AvailableBSize() == NS_UNCONSTRAINEDSIZE) {
