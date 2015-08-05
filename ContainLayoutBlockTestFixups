@@ -2,28 +2,6 @@
 # User Kyle Zentner <kzentner@mozilla.com>
 # Parent  19eca4b9f860952fbdd515962245718b26b2db2b
 
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001.html
---- a/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001.html
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-empty-001.html
-@@ -1,17 +1,17 @@
- <!DOCTYPE HTML>
- <html class="reftest-wait">
- <head>
-   <meta charset="utf-8">
-   <title>CSS Test: 'contain: layout' on various elements causes them to act as
-     though they are empty</title>
-   <link rel="author" title="Kyle Zentner" href="mailto:kzentner@mozilla.com">
-   <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-layout">
--  <link rel="match" href="layout-zero-001-ref.html">
-+  <link rel="match" href="contain-layout-zero-001-ref.html">
-   <style>
-   .container {
-     background: green;
-     contain: layout;
-     margin: 15px;
-   }
-   .contained {
-     width: 10px;
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001.html
 --- a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001.html
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zero-001.html
