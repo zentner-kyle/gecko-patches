@@ -35,7 +35,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zer
    }
    </style>
  </head>
- <body class="reftest-paint">
+ <body>
 -  <span class="container-ref"><span class="inner-ref">Test span.</span></span>
 -  <!--<div class="container-ref"><span class="inner-ref">Test span.</span></div>-->
 +  <span class="container-ref"></span>
@@ -59,7 +59,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-zer
    }
    </style>
  </head>
- <body class="reftest-paint">
+ <body>
    <span class="container">Test span.</span>
  </body>
  </html>

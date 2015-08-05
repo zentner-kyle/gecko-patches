@@ -32,7 +32,7 @@ new file mode 100644
 +  }
 +  </style>
 +</head>
-+<body class="reftest-paint">
++<body>
 +  <div class="container">
 +    <div class="b-before"> </div>
 +  </div>
@@ -102,7 +102,7 @@ new file mode 100644
 +  }
 +  </style>
 +</head>
-+<body class="reftest-paint">
++<body>
 +  <div class="container">
 +    <div class="b-before"> </div>
 +  </div>
@@ -189,7 +189,7 @@ new file mode 100644
 +    }
 +  </script>
 +</head>
-+<body class="reftest-paint" onload="doTest()">
++<body onload="doTest()">
 +  <div class="container"> </div>
 +  <div class="container"> </div>
 +  <div class="container"> </div>
