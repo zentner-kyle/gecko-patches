@@ -9,6 +9,7 @@ ContainStyleBreakV2
 ContainStyleCountersV2
 ContainStyleQuotesV2
 try-linux-minimal
+ContainStyleCounterV2Fixup2
 ContainLayoutBase
 ContainLayoutBlock
 ContainLayoutBlockTest
