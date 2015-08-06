@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  bc6f3adee45d491854f7260e65d2532f6e7e7742
+# Parent  4fef832a757ec4554adf2aef0f5fb4821e68ad2a
 Bug 1172087 - Patch 4: Contain quote depth with CSS 'contain: style'.
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -151,7 +151,7 @@ diff --git a/layout/base/nsQuoteList.cpp b/layout/base/nsQuoteList.cpp
 diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
 --- a/layout/base/nsQuoteList.h
 +++ b/layout/base/nsQuoteList.h
-@@ -84,9 +84,47 @@ public:
+@@ -84,9 +84,42 @@ public:
    }
    
    void RecalcAll();
@@ -164,15 +164,10 @@ diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
 +public:
 +
 +  bool DestroyNodesFor(nsIFrame* aRoot, nsIFrame* aFrame) {
++    mLists.Remove(aFrame);
 +    nsQuoteList* rootList = GetList(aRoot, false);
 +    if (rootList) {
-+      bool dirty = rootList->DestroyNodesFor(aFrame);
-+      nsQuoteList* frameList = GetList(aFrame, false);
-+      if (frameList) {
-+        delete frameList;
-+        mLists.Remove(aFrame);
-+      }
-+      return dirty;
++      return rootList->DestroyNodesFor(aFrame);
 +    }
 +    return false;
 +  }

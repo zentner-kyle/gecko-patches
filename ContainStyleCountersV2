@@ -507,7 +507,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
          , mDestroyedAny(false)
      {
      }
-@@ -335,20 +363,28 @@ DestroyNodesInList(const nsAString& aKey
+@@ -335,20 +363,24 @@ DestroyNodesInList(const nsAString& aKey
      if (aList->DestroyNodesFor(data->mFrame)) {
          data->mDestroyedAny = true;
          aList->SetDirty();
@@ -525,11 +525,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
 +    if (rootNames) {
 +      rootNames->EnumerateRead(DestroyNodesInList, &data);
 +    }
-+    NameTable* frameNames = GetNames(aFrame, false);
-+    if (frameNames) {
-+      mRoots.Remove(aFrame);
-+      delete frameNames;
-+    }
++    mRoots.Remove(aFrame);
      return data.mDestroyedAny;
  }
  
@@ -538,7 +534,7 @@ diff --git a/layout/base/nsCounterManager.cpp b/layout/base/nsCounterManager.cpp
  DumpList(const nsAString& aKey, nsCounterList* aList, void* aClosure)
  {
      printf("Counter named \"%s\":\n", NS_ConvertUTF16toUTF8(aKey).get());
-@@ -369,16 +405,23 @@ DumpList(const nsAString& aKey, nsCounte
+@@ -369,16 +401,23 @@ DumpList(const nsAString& aKey, nsCounte
                  printf(" text=%s", NS_ConvertUTF16toUTF8(text).get());
              }
              printf("\n");
