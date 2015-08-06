@@ -1,12 +1,12 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  7e3c75e7b56191c3b1e159b40048bcf972d88de9
+# Parent  bc6f3adee45d491854f7260e65d2532f6e7e7742
 Bug 1172087 - Patch 4: Contain quote depth with CSS 'contain: style'.
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
 --- a/layout/base/nsCSSFrameConstructor.cpp
 +++ b/layout/base/nsCSSFrameConstructor.cpp
-@@ -1507,23 +1507,25 @@ nsCSSFrameConstructor::nsCSSFrameConstru
+@@ -1539,23 +1539,25 @@ nsCSSFrameConstructor::nsCSSFrameConstru
  }
  
  void
@@ -35,7 +35,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  
    RestyleManager()->NotifyDestroyingFrame(aFrame);
  
-@@ -1661,17 +1663,17 @@ nsCSSFrameConstructor::CreateGeneratedCo
+@@ -1693,17 +1695,17 @@ nsCSSFrameConstructor::CreateGeneratedCo
    case eStyleContentType_CloseQuote:
    case eStyleContentType_NoOpenQuote:
    case eStyleContentType_NoCloseQuote:
@@ -54,7 +54,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    case eStyleContentType_AltContent:
      {
        // Use the "alt" attribute; if that fails and the node is an HTML
-@@ -8460,25 +8462,26 @@ nsCSSFrameConstructor::EndUpdate()
+@@ -8488,25 +8490,26 @@ nsCSSFrameConstructor::EndUpdate()
    }
    NS_ASSERTION(mUpdateCount, "Negative mUpdateCount!");
    --mUpdateCount;
@@ -84,7 +84,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  
  void
  nsCSSFrameConstructor::NotifyCounterStylesAreDirty()
-@@ -8493,17 +8496,17 @@ nsCSSFrameConstructor::WillDestroyFrameT
+@@ -8521,17 +8524,17 @@ nsCSSFrameConstructor::WillDestroyFrameT
  {
  #if defined(DEBUG_dbaron_off)
    mCounterManager.Dump();
@@ -106,7 +106,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstructor.h
 --- a/layout/base/nsCSSFrameConstructor.h
 +++ b/layout/base/nsCSSFrameConstructor.h
-@@ -2103,17 +2103,17 @@ private:
+@@ -2079,17 +2079,17 @@ private:
    nsContainerFrame*   mRootElementFrame;
    // This is the frame for the root element that has no pseudo-element style.
    nsIFrame*           mRootElementStyleFrame;
@@ -118,7 +118,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
 -  nsQuoteList         mQuoteList;
 +  nsQuotesManager     mQuotesManager;
    nsCounterManager    mCounterManager;
-   nsTArray<nsIFrame*> mStyleRoots;
+   nsIFrame*           mStyleRoot;
    // Current ProcessChildren depth.
    uint16_t            mCurrentDepth;
    uint16_t            mUpdateCount;
@@ -151,7 +151,7 @@ diff --git a/layout/base/nsQuoteList.cpp b/layout/base/nsQuoteList.cpp
 diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
 --- a/layout/base/nsQuoteList.h
 +++ b/layout/base/nsQuoteList.h
-@@ -84,9 +84,41 @@ public:
+@@ -84,9 +84,47 @@ public:
    }
    
    void RecalcAll();
@@ -164,9 +164,15 @@ diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
 +public:
 +
 +  bool DestroyNodesFor(nsIFrame* aRoot, nsIFrame* aFrame) {
-+    nsQuoteList* list = GetList(aRoot, false);
-+    if (list) {
-+      return list->DestroyNodesFor(aFrame);
++    nsQuoteList* rootList = GetList(aRoot, false);
++    if (rootList) {
++      bool dirty = rootList->DestroyNodesFor(aFrame);
++      nsQuoteList* frameList = GetList(aFrame, false);
++      if (frameList) {
++        delete frameList;
++        mLists.Remove(aFrame);
++      }
++      return dirty;
 +    }
 +    return false;
 +  }
