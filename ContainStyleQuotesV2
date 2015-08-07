@@ -1,12 +1,12 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  4fef832a757ec4554adf2aef0f5fb4821e68ad2a
+# Parent  bbdc6620f2df8f148c0dc75682b9cb0f46204a72
 Bug 1172087 - Patch 4: Contain quote depth with CSS 'contain: style'.
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
 --- a/layout/base/nsCSSFrameConstructor.cpp
 +++ b/layout/base/nsCSSFrameConstructor.cpp
-@@ -1539,23 +1539,25 @@ nsCSSFrameConstructor::nsCSSFrameConstru
+@@ -1541,23 +1541,26 @@ nsCSSFrameConstructor::nsCSSFrameConstru
  }
  
  void
@@ -16,16 +16,19 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
                    "Should be in an update while destroying frames");
  
 +  // XXX kzentner: Can we already know our style root here?
-+  nsIFrame *styleRoot = FindStyleRoot(aFrame);
++  nsIFrame *styleRoot = FindContainStyleRoot(aFrame);
 +
    if (aFrame->GetStateBits() & NS_FRAME_GENERATED_CONTENT) {
 -    if (mQuoteList.DestroyNodesFor(aFrame))
 +    if (mQuotesManager.DestroyNodesFor(styleRoot, aFrame))
        QuotesDirty();
-   }
- 
+-  }
+-
 -  // XXX kzentner: Can we already know our style root here?
--  if (mCounterManager.DestroyNodesFor(FindStyleRoot(aFrame), aFrame)) {
+-  if (mCounterManager.DestroyNodesFor(FindContainStyleRoot(aFrame), aFrame)) {
++      mQuotesManager.MarkContainStyleRootDirty(styleRoot);
++  }
++
 +  if (mCounterManager.DestroyNodesFor(styleRoot, aFrame)) {
      // Technically we don't need to update anything if we destroyed only
      // USE nodes.  However, this is unlikely to happen in the real world
@@ -35,7 +38,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  
    RestyleManager()->NotifyDestroyingFrame(aFrame);
  
-@@ -1693,17 +1695,17 @@ nsCSSFrameConstructor::CreateGeneratedCo
+@@ -1697,18 +1700,20 @@ nsCSSFrameConstructor::CreateGeneratedCo
    case eStyleContentType_CloseQuote:
    case eStyleContentType_NoOpenQuote:
    case eStyleContentType_NoCloseQuote:
@@ -45,8 +48,10 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  
        nsGenConInitializer* initializer =
 -        new nsGenConInitializer(node, &mQuoteList,
-+        new nsGenConInitializer(node, mQuotesManager.GetList(GetStyleRoot()),
++        new nsGenConInitializer(node,
++                                mQuotesManager.GetList(GetContainStyleRoot(aParentFrame)),
                                  &nsCSSFrameConstructor::QuotesDirty);
++      mQuotesManager.MarkContainStyleRootDirty(GetContainStyleRoot(aParentFrame));
        return CreateGenConTextNode(aState, EmptyString(), &node->mText,
                                    initializer);
      }
@@ -54,37 +59,27 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    case eStyleContentType_AltContent:
      {
        // Use the "alt" attribute; if that fails and the node is an HTML
-@@ -8488,25 +8490,26 @@ nsCSSFrameConstructor::EndUpdate()
-   }
-   NS_ASSERTION(mUpdateCount, "Negative mUpdateCount!");
+       // <input>, try the value attribute and then fall back to some default
+@@ -8494,17 +8499,17 @@ nsCSSFrameConstructor::EndUpdate()
    --mUpdateCount;
  }
  
  void
  nsCSSFrameConstructor::RecalcQuotesAndCounters()
  {
-+  // XXX kzentner: Is the style root always correct here?
-+  nsIFrame* styleRoot = GetStyleRoot();
    if (mQuotesDirty) {
      mQuotesDirty = false;
 -    mQuoteList.RecalcAll();
-+    mQuotesManager.RecalcDirty(styleRoot);
++    mQuotesManager.RecalcDirty();
    }
  
    if (mCountersDirty) {
      mCountersDirty = false;
--    // XXX kzentner: Is the style root always correct here?
--    mCounterManager.RecalcDirty(GetStyleRoot());
-+    mCounterManager.RecalcDirty(styleRoot);
+     mCounterManager.RecalcDirty();
    }
  
    NS_ASSERTION(!mQuotesDirty, "Quotes updates will be lost");
-   NS_ASSERTION(!mCountersDirty, "Counter updates will be lost");
- }
- 
- void
- nsCSSFrameConstructor::NotifyCounterStylesAreDirty()
-@@ -8521,17 +8524,17 @@ nsCSSFrameConstructor::WillDestroyFrameT
+@@ -8524,17 +8529,17 @@ nsCSSFrameConstructor::WillDestroyFrameT
  {
  #if defined(DEBUG_dbaron_off)
    mCounterManager.Dump();
@@ -106,7 +101,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
 diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstructor.h
 --- a/layout/base/nsCSSFrameConstructor.h
 +++ b/layout/base/nsCSSFrameConstructor.h
-@@ -2079,17 +2079,17 @@ private:
+@@ -2086,17 +2086,17 @@ private:
    nsContainerFrame*   mRootElementFrame;
    // This is the frame for the root element that has no pseudo-element style.
    nsIFrame*           mRootElementStyleFrame;
@@ -118,40 +113,17 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
 -  nsQuoteList         mQuoteList;
 +  nsQuotesManager     mQuotesManager;
    nsCounterManager    mCounterManager;
-   nsIFrame*           mStyleRoot;
+   nsIFrame*           mContainStyleRoot;
    // Current ProcessChildren depth.
    uint16_t            mCurrentDepth;
    uint16_t            mUpdateCount;
    bool                mQuotesDirty : 1;
    bool                mCountersDirty : 1;
    bool                mIsDestroyingFrameTree : 1;
-diff --git a/layout/base/nsQuoteList.cpp b/layout/base/nsQuoteList.cpp
---- a/layout/base/nsQuoteList.cpp
-+++ b/layout/base/nsQuoteList.cpp
-@@ -122,8 +122,19 @@ nsQuoteList::PrintChain()
-       node->mText->GetData(data);
-       printf(" \"%s\",", NS_ConvertUTF16toUTF8(data).get());
-     }
-     printf("\n");
-     node = Next(node);
-   } while (node != FirstNode());
- }
- #endif
-+
-+static PLDHashOperator
-+ClearList(const nsIFrame* aKey, nsQuoteList* aList, void* aClosure) {
-+    aList->Clear();
-+    return PL_DHASH_NEXT;
-+}
-+
-+void
-+nsQuotesManager::Clear() {
-+  mLists.EnumerateRead(ClearList, nullptr);
-+}
 diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
 --- a/layout/base/nsQuoteList.h
 +++ b/layout/base/nsQuoteList.h
-@@ -84,9 +84,42 @@ public:
+@@ -84,9 +84,55 @@ public:
    }
    
    void RecalcAll();
@@ -160,37 +132,50 @@ diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
  #endif
  };
  
++
 +class nsQuotesManager {
++private:
++  nsClassHashtable<nsPtrHashKey<const nsIFrame>, nsQuoteList> mContainStyleRootLists;
++  nsTArray<const nsIFrame*> mDirtyContainStyleRoots;
++
 +public:
 +
-+  bool DestroyNodesFor(nsIFrame* aRoot, nsIFrame* aFrame) {
-+    mLists.Remove(aFrame);
-+    nsQuoteList* rootList = GetList(aRoot, false);
++  bool DestroyNodesFor(nsIFrame* aContainStyleRoot, nsIFrame* aFrame) {
++    mContainStyleRootLists.Remove(aFrame);
++    nsQuoteList* rootList = GetList(aContainStyleRoot, false);
 +    if (rootList) {
 +      return rootList->DestroyNodesFor(aFrame);
 +    }
 +    return false;
 +  }
 +
-+  nsQuoteList* GetList(nsIFrame* aRoot, bool aShouldCreate = true) {
-+      nsQuoteList* list = mLists.Get(aRoot);
-+      if (!list && aShouldCreate) {
-+          list = new nsQuoteList();
-+          mLists.Put(aRoot, list);
-+      }
-+      return list;
++  nsQuoteList* GetList(const nsIFrame* aContainStyleRoot, bool aShouldCreate = true) {
++    nsQuoteList* list = mContainStyleRootLists.Get(aContainStyleRoot);
++    if (!list && aShouldCreate) {
++      list = new nsQuoteList();
++      mContainStyleRootLists.Put(aContainStyleRoot, list);
++    }
++    return list;
 +  }
 +
-+  void RecalcDirty(nsIFrame* aRoot) {
-+    nsQuoteList* list = GetList(aRoot, false);
-+    if (list) {
-+      list->RecalcAll();
++  void MarkContainStyleRootDirty(const nsIFrame* aContainStyleRoot) {
++    mDirtyContainStyleRoots.AppendElement(aContainStyleRoot);
++  }
++
++  void RecalcDirty() {
++    for (auto iter = mDirtyContainStyleRoots.begin(); iter != mDirtyContainStyleRoots.end(); iter++) {
++      nsQuoteList* list = GetList(*iter, false);
++      if (list) {
++        list->RecalcAll();
++      }
 +    }
 +  }
 +
-+  void Clear();
-+private:
-+  nsClassHashtable<nsPtrHashKey<const nsIFrame>, nsQuoteList> mLists;
++  void Clear() {
++    for (auto iter = mContainStyleRootLists.ConstIter(); !iter.Done(); iter.Next()) {
++      iter.Data()->Clear();
++    }
++  }
 +};
 +
  #endif /* nsQuoteList_h___ */
