@@ -123,7 +123,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
 diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
 --- a/layout/base/nsQuoteList.h
 +++ b/layout/base/nsQuoteList.h
-@@ -84,9 +84,59 @@ public:
+@@ -84,9 +84,65 @@ public:
    }
    
    void RecalcAll();
@@ -154,9 +154,12 @@ diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
 +  }
 +
 +  nsQuoteList* GetList(const nsIFrame* aContainStyleRoot, bool aShouldCreate = true) {
-+    nsQuoteList* list = &mContainStyleRootLists.Get(aContainStyleRoot)->mList;
-+    if (!list && aShouldCreate) {
-+      RootTableEntry* entry = new RootTableEntry();
++    RootTableEntry* entry = mContainStyleRootLists.Get(aContainStyleRoot);
++    nsQuoteList* list = nullptr;
++    if (entry) {
++      list = &mContainStyleRootLists.Get(aContainStyleRoot)->mList;
++    } else if (aShouldCreate) {
++      entry = new RootTableEntry();
 +      list = &entry->mList;
 +      mContainStyleRootLists.Put(aContainStyleRoot, entry);
 +    }
@@ -164,7 +167,10 @@ diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
 +  }
 +
 +  void MarkContainStyleRootDirty(const nsIFrame* aContainStyleRoot) {
-+    mContainStyleRootLists.Get(aContainStyleRoot)->mDirty = true;
++    RootTableEntry* entry = mContainStyleRootLists.Get(aContainStyleRoot);
++    if (entry) {
++      entry->mDirty = true;
++    }
 +  }
 +
 +  void RecalcDirty() {
