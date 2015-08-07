@@ -1,12 +1,12 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  95a40a305e1b71d7ac4be260bcc6cce4a15424cb
+# Parent  93a4417a7ede61f30e0ec9a3c1f8d74308e6c21b
 Bug 1170781 - Patch 1: Implement CSS 'contain: paint'.
 
 diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 --- a/layout/generic/nsBlockFrame.cpp
 +++ b/layout/generic/nsBlockFrame.cpp
-@@ -6642,18 +6642,21 @@ nsBlockFrame::Init(nsIContent*       aCo
+@@ -6641,18 +6641,21 @@ nsBlockFrame::Init(nsIContent*       aCo
      AddStateBits(NS_BLOCK_NEEDS_BIDI_RESOLUTION);
    }
  
@@ -33,14 +33,14 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 --- a/layout/style/nsRuleNode.cpp
 +++ b/layout/style/nsRuleNode.cpp
-@@ -5540,16 +5540,31 @@ nsRuleNode::ComputeDisplayData(void* aSt
- 
-   // overflow-y: enum, inherit, initial
-   SetDiscrete(*aRuleData->ValueForOverflowY(),
-               display->mOverflowY, conditions,
-               SETDSC_ENUMERATED | SETDSC_UNSET_INITIAL,
-               parentDisplay->mOverflowY,
-               NS_STYLE_OVERFLOW_VISIBLE, 0, 0, 0, 0);
+@@ -5567,16 +5567,31 @@ nsRuleNode::ComputeDisplayData(void* aSt
+     // If 'visible' is specified but doesn't match the other dimension, it
+     // turns into 'auto'.
+     if (display->mOverflowX == NS_STYLE_OVERFLOW_VISIBLE)
+       display->mOverflowX = NS_STYLE_OVERFLOW_AUTO;
+     if (display->mOverflowY == NS_STYLE_OVERFLOW_VISIBLE)
+       display->mOverflowY = NS_STYLE_OVERFLOW_AUTO;
+   }
  
 +  // When 'contain: paint', update overflow from 'visible' to 'clip'.
 +  if (display->IsContainPaint()) {
@@ -57,14 +57,14 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 +    }
 +  }
 +
-   // CSS3 overflow-x and overflow-y require some fixup as well in some
-   // cases.  NS_STYLE_OVERFLOW_VISIBLE and NS_STYLE_OVERFLOW_CLIP are
-   // meaningful only when used in both dimensions.
-   if (display->mOverflowX != display->mOverflowY &&
-       (display->mOverflowX == NS_STYLE_OVERFLOW_VISIBLE ||
-        display->mOverflowX == NS_STYLE_OVERFLOW_CLIP ||
-        display->mOverflowY == NS_STYLE_OVERFLOW_VISIBLE ||
-        display->mOverflowY == NS_STYLE_OVERFLOW_CLIP)) {
+   SetDiscrete(*aRuleData->ValueForOverflowClipBox(), display->mOverflowClipBox,
+               conditions,
+               SETDSC_ENUMERATED | SETDSC_UNSET_INITIAL,
+               parentDisplay->mOverflowClipBox,
+               NS_STYLE_OVERFLOW_CLIP_BOX_PADDING_BOX, 0, 0, 0, 0);
+ 
+   SetDiscrete(*aRuleData->ValueForResize(), display->mResize, conditions,
+               SETDSC_ENUMERATED | SETDSC_UNSET_INITIAL,
 @@ -5708,16 +5723,28 @@ nsRuleNode::ComputeDisplayData(void* aSt
  
        // Note that it's OK to cache this struct in the ruletree

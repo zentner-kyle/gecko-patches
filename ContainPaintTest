@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  617659b22fb284e117e6d66cb5b185d9a4e033c3
+# Parent  8679c96cd245db8f13f7e4459581226292538deb
 Bug 1170781 - Patch 2: Test CSS 'contain: paint'.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-001-ref.html
@@ -200,7 +200,7 @@ new file mode 100644
 +    margin: 0;
 +  }
 +  .root {
-+    overflow-x: hidden;
++    overflow-x: scroll;
 +    overflow-y: scroll;
 +    width: 100px;
 +    height: 100px;
@@ -280,7 +280,7 @@ new file mode 100644
 +    margin: 0;
 +  }
 +  .root {
-+    overflow-y: hidden;
++    overflow-y: scroll;
 +    overflow-x: scroll;
 +    width: 100px;
 +    height: 100px;

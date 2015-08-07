@@ -1,31 +1,31 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  98d253d2a733fd67151623af6ba75c50657f2957
+# Parent  5086261438337fd2dd4127884bac90782beacc11
 Bug 1172087 - Patch 2: Implement break-* for CSS 'contain: style'.
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
 --- a/layout/base/nsCSSFrameConstructor.cpp
 +++ b/layout/base/nsCSSFrameConstructor.cpp
-@@ -5650,17 +5650,18 @@ nsCSSFrameConstructor::AddFrameConstruct
+@@ -5648,17 +5648,18 @@ nsCSSFrameConstructor::AddFrameConstruct
+     return;
+   }
  
    bool canHavePageBreak =
      (aFlags & ITEM_ALLOW_PAGE_BREAK) &&
      aState.mPresContext->IsPaginated() &&
      !display->IsAbsolutelyPositionedStyle() &&
      !(bits & FCDATA_IS_TABLE_PART) &&
-     !(bits & FCDATA_IS_SVG_TEXT);
+-    !(bits & FCDATA_IS_SVG_TEXT);
++    !(bits & FCDATA_IS_SVG_TEXT) &&
++    !styleContext->HasContainStyle();
  
--  if (canHavePageBreak && display->mBreakBefore) {
-+  if (canHavePageBreak && display->mBreakBefore &&
-+      !styleContext->HasContainStyle()) {
+   if (canHavePageBreak && display->mBreakBefore) {
      AddPageBreakItem(aContent, aStyleContext, aItems);
    }
  
    if (MOZ_UNLIKELY(bits & FCDATA_IS_CONTENTS)) {
      if (!GetDisplayContentsStyleFor(aContent)) {
        MOZ_ASSERT(styleContext->GetPseudo() || !isGeneratedContent,
-                  "Should have had pseudo type");
-       aState.mFrameManager->SetDisplayContents(aContent, styleContext);
 diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexContainerFrame.cpp
 --- a/layout/generic/nsFlexContainerFrame.cpp
 +++ b/layout/generic/nsFlexContainerFrame.cpp
@@ -49,10 +49,41 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
          aStruts[nextStrutIdx].mItemIdx == itemIdxInContainer) {
  
        // Use the simplified "strut" FlexItem constructor:
+@@ -3191,17 +3192,18 @@ nsFlexContainerFrame::GenerateFlexLines(
+     // Add item to current flex line (and update the line's bookkeeping about
+     // how large its items collectively are).
+     curLine->AddItem(item.forget(), shouldInsertAtFront,
+                      itemInnerHypotheticalMainSize,
+                      itemOuterHypotheticalMainSize);
+ 
+     // Honor "page-break-after", if we're multi-line and have more children:
+     if (!isSingleLine && childFrame->GetNextSibling() &&
+-        childFrame->StyleDisplay()->mBreakAfter) {
++        childFrame->StyleDisplay()->mBreakAfter &&
++        !childFrame->StyleContext()->HasContainStyle()) {
+       curLine = AddNewFlexLineToList(aLines, shouldInsertAtFront);
+     }
+     itemIdxInContainer++;
+   }
+ }
+ 
+ // Retrieves the content-box main-size of our flex container from the
+ // reflow state (specifically, the main-size of *this continuation* of the
 diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
 --- a/layout/tables/nsTableFrame.cpp
 +++ b/layout/tables/nsTableFrame.cpp
-@@ -229,17 +229,17 @@ nsTableFrame::PageBreakAfter(nsIFrame* a
+@@ -220,26 +220,27 @@ IsRepeatedFrame(nsIFrame* kidFrame)
+ 
+ bool
+ nsTableFrame::PageBreakAfter(nsIFrame* aSourceFrame,
+                              nsIFrame* aNextFrame)
+ {
+   const nsStyleDisplay* display = aSourceFrame->StyleDisplay();
+   nsTableRowGroupFrame* prevRg = do_QueryFrame(aSourceFrame);
+   // don't allow a page break after a repeated element ...
+-  if ((display->mBreakAfter || (prevRg && prevRg->HasInternalBreakAfter())) &&
++  if (((display->mBreakAfter && !aSourceFrame->StyleContext()->HasContainStyle()) || 
++       (prevRg && prevRg->HasInternalBreakAfter())) &&
        !IsRepeatedFrame(aSourceFrame)) {
      return !(aNextFrame && IsRepeatedFrame(aNextFrame)); // or before
    }
@@ -74,7 +105,7 @@ diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
 diff --git a/layout/tables/nsTableRowGroupFrame.cpp b/layout/tables/nsTableRowGroupFrame.cpp
 --- a/layout/tables/nsTableRowGroupFrame.cpp
 +++ b/layout/tables/nsTableRowGroupFrame.cpp
-@@ -1603,17 +1603,17 @@ nsTableRowGroupFrame::GetType() const
+@@ -1603,27 +1603,27 @@ nsTableRowGroupFrame::GetType() const
  
  /** find page break before the first row **/
  bool
@@ -93,3 +124,14 @@ diff --git a/layout/tables/nsTableRowGroupFrame.cpp b/layout/tables/nsTableRowGr
  {
    nsIFrame* lastChild = mFrames.LastChild();
    if (!lastChild)
+     return false;
+-  return lastChild->StyleDisplay()->mBreakAfter;
++  return lastChild->StyleDisplay()->mBreakAfter && !StyleContext()->HasContainStyle();
+ }
+ /* ----- global methods ----- */
+ 
+ nsTableRowGroupFrame*
+ NS_NewTableRowGroupFrame(nsIPresShell* aPresShell, nsStyleContext* aContext)
+ {
+   return new (aPresShell) nsTableRowGroupFrame(aContext);
+ }
