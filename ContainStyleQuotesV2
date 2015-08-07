@@ -123,7 +123,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
 diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
 --- a/layout/base/nsQuoteList.h
 +++ b/layout/base/nsQuoteList.h
-@@ -84,9 +84,55 @@ public:
+@@ -84,9 +84,59 @@ public:
    }
    
    void RecalcAll();
@@ -135,8 +135,12 @@ diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
 +
 +class nsQuotesManager {
 +private:
-+  nsClassHashtable<nsPtrHashKey<const nsIFrame>, nsQuoteList> mContainStyleRootLists;
-+  nsTArray<const nsIFrame*> mDirtyContainStyleRoots;
++  struct RootTableEntry {
++    nsQuoteList mList;
++    bool        mDirty;
++  };
++
++  nsClassHashtable<nsPtrHashKey<const nsIFrame>, RootTableEntry> mContainStyleRootLists;
 +
 +public:
 +
@@ -150,31 +154,31 @@ diff --git a/layout/base/nsQuoteList.h b/layout/base/nsQuoteList.h
 +  }
 +
 +  nsQuoteList* GetList(const nsIFrame* aContainStyleRoot, bool aShouldCreate = true) {
-+    nsQuoteList* list = mContainStyleRootLists.Get(aContainStyleRoot);
++    nsQuoteList* list = &mContainStyleRootLists.Get(aContainStyleRoot)->mList;
 +    if (!list && aShouldCreate) {
-+      list = new nsQuoteList();
-+      mContainStyleRootLists.Put(aContainStyleRoot, list);
++      RootTableEntry* entry = new RootTableEntry();
++      list = &entry->mList;
++      mContainStyleRootLists.Put(aContainStyleRoot, entry);
 +    }
 +    return list;
 +  }
 +
 +  void MarkContainStyleRootDirty(const nsIFrame* aContainStyleRoot) {
-+    mDirtyContainStyleRoots.AppendElement(aContainStyleRoot);
++    mContainStyleRootLists.Get(aContainStyleRoot)->mDirty = true;
 +  }
 +
 +  void RecalcDirty() {
-+    for (auto iter = mDirtyContainStyleRoots.begin(); iter != mDirtyContainStyleRoots.end(); iter++) {
-+      nsQuoteList* list = GetList(*iter, false);
-+      if (list) {
-+        list->RecalcAll();
++    for (auto iter = mContainStyleRootLists.ConstIter(); !iter.Done(); iter.Next()) {
++      RootTableEntry* entry = iter.Data();
++      if (entry->mDirty) {
++        entry->mDirty = false;
++        entry->mList.RecalcAll();
 +      }
 +    }
 +  }
 +
 +  void Clear() {
-+    for (auto iter = mContainStyleRootLists.ConstIter(); !iter.Done(); iter.Next()) {
-+      iter.Data()->Clear();
-+    }
++    mContainStyleRootLists.Clear();
 +  }
 +};
 +
