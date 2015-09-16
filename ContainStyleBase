@@ -1,40 +1,42 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  d2f7435826adf3071d3073d89d791f462288fee3
+# Parent  884ff7b5a462c19e1037e2dd2c8da0ea9087ccde
 Bug 1172087 - Patch 1: Implement common functionality for CSS 'contain: style'.
 
 diff --git a/layout/base/RestyleManager.cpp b/layout/base/RestyleManager.cpp
 --- a/layout/base/RestyleManager.cpp
 +++ b/layout/base/RestyleManager.cpp
-@@ -3027,16 +3027,23 @@ ElementRestyler::ComputeRestyleResultFro
-   // propagated.
-   if (oldContext->HasTextDecorationLines() !=
+@@ -3636,16 +3636,25 @@ ElementRestyler::ComputeRestyleResultFro
          aNewContext->HasTextDecorationLines()) {
      LOG_RESTYLE_CONTINUE("NS_STYLE_HAS_TEXT_DECORATION_LINES differs between old"
                           " and new style contexts");
-     return eRestyleResult_Continue;
+     aRestyleResult = eRestyleResult_Continue;
+     aCanStopWithStyleChange = false;
+     return;
    }
  
 +  if (oldContext->HasContainStyle() !=
 +        aNewContext->HasContainStyle()) {
 +    LOG_RESTYLE_CONTINUE("NS_STYLE_HAS_CONTAIN_STYLE differs between old"
 +                         " and new style contexts");
-+    return eRestyleResult_Continue;
++    aRestyleResult = eRestyleResult_Continue;
++    aCanStopWithStyleChange = false;
++    return;
 +  }
 +
    if (oldContext->HasPseudoElementData() !=
          aNewContext->HasPseudoElementData()) {
      LOG_RESTYLE_CONTINUE("NS_STYLE_HAS_PSEUDO_ELEMENT_DATA differs between old"
                           " and new style contexts");
-     return eRestyleResult_Continue;
+     aRestyleResult = eRestyleResult_Continue;
+     aCanStopWithStyleChange = false;
+     return;
    }
- 
-   if (oldContext->ShouldSuppressLineBreak() !=
 diff --git a/layout/style/nsStyleContext.cpp b/layout/style/nsStyleContext.cpp
 --- a/layout/style/nsStyleContext.cpp
 +++ b/layout/style/nsStyleContext.cpp
-@@ -771,16 +771,20 @@ nsStyleContext::ApplyStyleFixups(bool aS
-     if (thisHorizontal != parentHorizontal) {
+@@ -790,16 +790,20 @@ nsStyleContext::ApplyStyleFixups(bool aS
+         mParent->StyleVisibility()->mWritingMode) {
        nsStyleDisplay *mutable_display =
          static_cast<nsStyleDisplay*>(GetUniqueStyleData(eStyleStruct_Display));
        mutable_display->mOriginalDisplay = mutable_display->mDisplay =
@@ -53,7 +55,7 @@ diff --git a/layout/style/nsStyleContext.cpp b/layout/style/nsStyleContext.cpp
  nsChangeHint
  nsStyleContext::CalcStyleDifference(nsStyleContext* aOther,
                                      nsChangeHint aParentHintsNotHandledForDescendants,
-                                     uint32_t* aEqualStructs)
+                                     uint32_t* aEqualStructs,
 diff --git a/layout/style/nsStyleContext.h b/layout/style/nsStyleContext.h
 --- a/layout/style/nsStyleContext.h
 +++ b/layout/style/nsStyleContext.h
@@ -81,29 +83,29 @@ diff --git a/layout/style/nsStyleContext.h b/layout/style/nsStyleContext.h
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -58,18 +58,20 @@ class imgIContainer;
- // (This bit is currently only used in #ifdef DEBUG code.)
- #define NS_STYLE_IS_GOING_AWAY             0x040000000
+@@ -68,18 +68,20 @@ class imgIContainer;
  // See nsStyleContext::ShouldSuppressLineBreak
  #define NS_STYLE_SUPPRESS_LINEBREAK        0x080000000
  // See nsStyleContext::IsInDisplayNoneSubtree
  #define NS_STYLE_IN_DISPLAY_NONE_SUBTREE   0x100000000
  // See nsStyleContext::FindChildWithRules
  #define NS_STYLE_INELIGIBLE_FOR_SHARING    0x200000000
+ // See nsStyleContext::HasChildThatUsesResetStyle
+ #define NS_STYLE_HAS_CHILD_THAT_USES_RESET_STYLE 0x400000000
 +// See nsStyleContext::HasContainStyle
-+#define NS_STYLE_HAS_CONTAIN_STYLE         0x400000000
++#define NS_STYLE_HAS_CONTAIN_STYLE         0x800000000
  // See nsStyleContext::GetPseudoEnum
--#define NS_STYLE_CONTEXT_TYPE_SHIFT        34
-+#define NS_STYLE_CONTEXT_TYPE_SHIFT        35
+-#define NS_STYLE_CONTEXT_TYPE_SHIFT        35
++#define NS_STYLE_CONTEXT_TYPE_SHIFT        36
  
  // Additional bits for nsRuleNode's mDependentBits:
+ #define NS_RULE_NODE_IS_ANIMATION_RULE      0x01000000
  #define NS_RULE_NODE_GC_MARK                0x02000000
  #define NS_RULE_NODE_USED_DIRECTLY          0x04000000
  #define NS_RULE_NODE_IS_IMPORTANT           0x08000000
  #define NS_RULE_NODE_LEVEL_MASK             0xf0000000
  #define NS_RULE_NODE_LEVEL_SHIFT            28
- 
-@@ -2244,16 +2244,20 @@ struct nsStyleDisplay {
+@@ -2265,16 +2267,20 @@ struct nsStyleDisplay {
  
    bool IsScrollableOverflow() const {
      // mOverflowX and mOverflowY always match when one of them is

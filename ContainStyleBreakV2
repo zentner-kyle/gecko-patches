@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  5086261438337fd2dd4127884bac90782beacc11
+# Parent  de12d098df2b2d3f8294b4833efd016786eb61c1
 Bug 1172087 - Patch 2: Implement break-* for CSS 'contain: style'.
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -72,7 +72,7 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
 diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
 --- a/layout/tables/nsTableFrame.cpp
 +++ b/layout/tables/nsTableFrame.cpp
-@@ -220,26 +220,27 @@ IsRepeatedFrame(nsIFrame* kidFrame)
+@@ -220,26 +220,29 @@ IsRepeatedFrame(nsIFrame* kidFrame)
  
  bool
  nsTableFrame::PageBreakAfter(nsIFrame* aSourceFrame,
@@ -82,7 +82,8 @@ diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
    nsTableRowGroupFrame* prevRg = do_QueryFrame(aSourceFrame);
    // don't allow a page break after a repeated element ...
 -  if ((display->mBreakAfter || (prevRg && prevRg->HasInternalBreakAfter())) &&
-+  if (((display->mBreakAfter && !aSourceFrame->StyleContext()->HasContainStyle()) || 
++  if (((display->mBreakAfter &&
++        !aSourceFrame->StyleContext()->HasContainStyle()) || 
 +       (prevRg && prevRg->HasInternalBreakAfter())) &&
        !IsRepeatedFrame(aSourceFrame)) {
      return !(aNextFrame && IsRepeatedFrame(aNextFrame)); // or before
@@ -93,7 +94,8 @@ diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
      // don't allow a page break before a repeated element ...
       nsTableRowGroupFrame* nextRg = do_QueryFrame(aNextFrame);
 -    if ((display->mBreakBefore ||
-+    if (((display->mBreakBefore && !aNextFrame->StyleContext()->HasContainStyle()) ||
++    if (((display->mBreakBefore &&
++          !aNextFrame->StyleContext()->HasContainStyle()) ||
          (nextRg && nextRg->HasInternalBreakBefore())) &&
          !IsRepeatedFrame(aNextFrame)) {
        return !IsRepeatedFrame(aSourceFrame); // or after
@@ -105,7 +107,7 @@ diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
 diff --git a/layout/tables/nsTableRowGroupFrame.cpp b/layout/tables/nsTableRowGroupFrame.cpp
 --- a/layout/tables/nsTableRowGroupFrame.cpp
 +++ b/layout/tables/nsTableRowGroupFrame.cpp
-@@ -1603,27 +1603,27 @@ nsTableRowGroupFrame::GetType() const
+@@ -1603,27 +1603,29 @@ nsTableRowGroupFrame::GetType() const
  
  /** find page break before the first row **/
  bool
@@ -115,7 +117,8 @@ diff --git a/layout/tables/nsTableRowGroupFrame.cpp b/layout/tables/nsTableRowGr
    if (!firstChild)
      return false;
 -  return firstChild->StyleDisplay()->mBreakBefore;
-+  return firstChild->StyleDisplay()->mBreakBefore && !StyleContext()->HasContainStyle();
++  return firstChild->StyleDisplay()->mBreakBefore &&
++         !StyleContext()->HasContainStyle();
  }
  
  /** find page break after the last row **/
@@ -126,7 +129,8 @@ diff --git a/layout/tables/nsTableRowGroupFrame.cpp b/layout/tables/nsTableRowGr
    if (!lastChild)
      return false;
 -  return lastChild->StyleDisplay()->mBreakAfter;
-+  return lastChild->StyleDisplay()->mBreakAfter && !StyleContext()->HasContainStyle();
++  return lastChild->StyleDisplay()->mBreakAfter &&
++         !StyleContext()->HasContainStyle();
  }
  /* ----- global methods ----- */
  

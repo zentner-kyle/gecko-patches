@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  4570b8da08524aae39ca49a04797301abd5483e0
+# Parent  0a13d9aa9b5a86700f72157df218c69b76af5c4b
 Bug 1178895 - Patch 1: Basic changes needed for all 'contain: layout' elements.
 
 Turns 'contain: layout' elements into formatting contexts.
@@ -9,13 +9,13 @@ Add IsContainLayout helper function.
 diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
 --- a/layout/base/nsLayoutUtils.cpp
 +++ b/layout/base/nsLayoutUtils.cpp
-@@ -4122,16 +4122,34 @@ nsLayoutUtils::IsViewportScrollbarFrame(
-   if (!IsProperAncestorFrame(rootScrollFrame, aFrame))
-     return false;
+@@ -4888,16 +4888,34 @@ nsLayoutUtils::ComputeBSizeDependentValu
+   }
  
-   nsIFrame* rootScrolledFrame = rootScrollableFrame->GetScrolledFrame();
-   return !(rootScrolledFrame == aFrame ||
-            IsProperAncestorFrame(rootScrolledFrame, aFrame));
+   NS_ASSERTION(aCoord.GetUnit() == eStyleUnit_None ||
+                aCoord.GetUnit() == eStyleUnit_Auto,
+                "unexpected block-size value");
+   return 0;
  }
  
 +bool
@@ -36,15 +36,15 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
 +  return false;
 +}
 +
- static nscoord AddPercents(nsLayoutUtils::IntrinsicISizeType aType,
-                            nscoord aCurrent, float aPercent)
+ /* static */ void
+ nsLayoutUtils::MarkDescendantsDirty(nsIFrame *aSubtreeRoot)
  {
-   nscoord result = aCurrent;
-   if (aPercent > 0.0f && aType == nsLayoutUtils::PREF_ISIZE) {
-     // XXX Should we also consider percentages for min widths, up to a
-     // limit?
-     if (aPercent >= 1.0f)
-@@ -5579,16 +5597,19 @@ nsLayoutUtils::GetFirstLineBaseline(Writ
+   nsAutoTArray<nsIFrame*, 4> subtrees;
+   subtrees.AppendElement(aSubtreeRoot);
+ 
+   // dirty descendants, iterating over subtrees that may include
+   // additional subtrees associated with placeholders
+@@ -5671,16 +5689,19 @@ nsLayoutUtils::GetFirstLineBaseline(Writ
    return true;
  }
  
@@ -64,7 +64,7 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
      if (fType == nsGkAtoms::tableOuterFrame) {
        aResult->mBStart = 0;
        aResult->mBaseline = aFrame->GetLogicalBaseline(aWM);
-@@ -5662,16 +5683,19 @@ nsLayoutUtils::GetFirstLinePosition(Writ
+@@ -5754,16 +5775,19 @@ nsLayoutUtils::GetFirstLinePosition(Writ
    }
    return false;
  }
@@ -87,7 +87,7 @@ diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
 diff --git a/layout/base/nsLayoutUtils.h b/layout/base/nsLayoutUtils.h
 --- a/layout/base/nsLayoutUtils.h
 +++ b/layout/base/nsLayoutUtils.h
-@@ -1465,16 +1465,29 @@ public:
+@@ -1498,16 +1498,29 @@ public:
              aCoord.GetCoordValue() == 0) ||
             (aCoord.GetUnit() == eStyleUnit_Percent &&
              aCoord.GetPercentValue() == 0.0f) ||
@@ -120,7 +120,7 @@ diff --git a/layout/base/nsLayoutUtils.h b/layout/base/nsLayoutUtils.h
 diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 --- a/layout/style/nsRuleNode.cpp
 +++ b/layout/style/nsRuleNode.cpp
-@@ -5723,17 +5723,22 @@ nsRuleNode::ComputeDisplayData(void* aSt
+@@ -5732,17 +5732,22 @@ nsRuleNode::ComputeDisplayData(void* aSt
  
        // Note that it's OK to cache this struct in the ruletree
        // because it's fine as-is for any style context that points to
@@ -147,7 +147,7 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -2244,16 +2244,22 @@ struct nsStyleDisplay {
+@@ -2267,16 +2267,22 @@ struct nsStyleDisplay {
  
    bool IsScrollableOverflow() const {
      // mOverflowX and mOverflowY always match when one of them is

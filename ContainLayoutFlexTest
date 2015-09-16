@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  c3e6002c96dc58a68fb59d3e36eb8805eada6589
+# Parent  9b1fef806bb71911fe70dac0e4fe06a8e1962177
 Bug 1178895 - Patch 5: Test 'contain: layout' for flexbox.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-flex-001-ref.html
@@ -479,7 +479,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-fle
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-004-ref.html
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,25 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -496,13 +496,12 @@ new file mode 100644
 +    height: 30px;
 +    border: 2px solid green;
 +    margin: 2px;
-+    vertical-align: bottom;
 +  }
 +  </style>
 +</head>
 +<body>
 +  Word
-+  <div class="container">a</div>
++  <div class="container"></div>
 +  Word
 +</body>
 +</html>
@@ -510,7 +509,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-fle
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-004.html
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,30 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -530,6 +529,7 @@ new file mode 100644
 +    height: 30px;
 +    border: 2px solid green;
 +    margin: 2px;
++    color: transparent;
 +    contain: layout;
 +  }
 +  </style>
@@ -544,7 +544,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-fle
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-005-ref.html
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,32 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -562,10 +562,10 @@ new file mode 100644
 +    height: 30px;
 +    border: 2px solid green;
 +    margin: 2px;
-+    vertical-align: bottom;
 +  }
 +  .flex-item {
-+    border: 2px solid blue;
++    width: 10px;
++    height: 10px;
 +    margin: 2px;
 +  }
 +  </style>
@@ -573,8 +573,6 @@ new file mode 100644
 +<body>
 +  Word
 +  <div class="container">
-+    <div class="flex-item">a</div>
-+    <div class="flex-item">b</div>
 +  </div>
 +  Word
 +</body>
@@ -583,7 +581,7 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-fle
 new file mode 100644
 --- /dev/null
 +++ b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-flex-005.html
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,39 @@
 +<!DOCTYPE HTML>
 +<html>
 +<head>
@@ -600,15 +598,17 @@ new file mode 100644
 +  .container {
 +    display: inline-flex;
 +    flex-direction: column;
-+    contain: layout;
 +    width: 30px;
 +    height: 30px;
 +    border: 2px solid green;
 +    margin: 2px;
++    contain: layout;
 +  }
 +  .flex-item {
-+    border: 2px solid blue;
++    width: 10px;
++    height: 10px;
 +    margin: 2px;
++    color: transparent;
 +  }
 +  </style>
 +</head>
@@ -696,7 +696,7 @@ new file mode 100644
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -25,11 +25,19 @@ default-preferences pref(layout.css.cont
+@@ -25,12 +25,20 @@ default-preferences pref(layout.css.cont
  == contain-layout-block-003.html contain-layout-block-003-ref.html
  == contain-layout-block-004.html contain-layout-block-004-ref.html
  == contain-layout-block-005.html contain-layout-block-005-ref.html
@@ -716,3 +716,4 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/ref
  == contain-style-quote-001.html contain-style-quote-001-ref.html
  == contain-style-break-001.html contain-style-break-001-ref.html
  == contain-style-break-002.html contain-style-break-001-ref.html
+ == contain-style-quote-002.html contain-style-quote-002-ref.html

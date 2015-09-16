@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  8679c96cd245db8f13f7e4459581226292538deb
+# Parent  02f6f111187b0aa59dddc353f509a6428f0b8916
 Bug 1170781 - Patch 2: Test CSS 'contain: paint'.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-paint-clip-001-ref.html
@@ -721,18 +721,18 @@ diff --git a/layout/reftests/w3c-css/submitted/reftest.list b/layout/reftests/w3
 +# Containment
 +include contain/reftest.list
 +
+ # Filter Effects Module
+ include filters/reftest.list
+ 
  # Flexible Box Layout Module
  include flexbox/reftest.list
  
  # Fonts Level 3
  include fonts3/reftest.list
- 
- # Image Values and Replaced Content Level 3
- include images3/reftest.list
 diff --git a/layout/style/test/mochitest.ini b/layout/style/test/mochitest.ini
 --- a/layout/style/test/mochitest.ini
 +++ b/layout/style/test/mochitest.ini
-@@ -120,16 +120,17 @@ support-files = file_bug1089417_iframe.h
+@@ -132,16 +132,17 @@ support-files = file_bug1089417_iframe.h
  [test_ch_ex_no_infloops.html]
  [test_compute_data_with_start_struct.html]
  skip-if = toolkit == 'android'
@@ -742,14 +742,14 @@ diff --git a/layout/style/test/mochitest.ini b/layout/style/test/mochitest.ini
  [test_condition_text.html]
  [test_condition_text_assignment.html]
 +[test_contain_formatting_context.html]
- [test_default_computed_style.html]
+ [test_counter_descriptor_storage.html]
+ [test_counter_style.html]
  [test_css_cross_domain.html]
  skip-if = toolkit == 'android' #bug 536603
  [test_css_eof_handling.html]
  [test_css_escape_api.html]
  [test_css_function_mismatched_parenthesis.html]
- [test_css_supports.html]
- [test_css_supports_variables.html]
+ [test_css_loader_crossorigin_data_url.html]
 diff --git a/layout/style/test/test_contain_formatting_context.html b/layout/style/test/test_contain_formatting_context.html
 new file mode 100644
 --- /dev/null

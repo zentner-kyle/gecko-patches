@@ -1,12 +1,12 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  93a4417a7ede61f30e0ec9a3c1f8d74308e6c21b
+# Parent  9e6dbdb7634002c375ead31016a4dededcce55e6
 Bug 1170781 - Patch 1: Implement CSS 'contain: paint'.
 
 diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 --- a/layout/generic/nsBlockFrame.cpp
 +++ b/layout/generic/nsBlockFrame.cpp
-@@ -6641,18 +6641,21 @@ nsBlockFrame::Init(nsIContent*       aCo
+@@ -6740,18 +6740,21 @@ nsBlockFrame::Init(nsIContent*       aCo
      AddStateBits(NS_BLOCK_NEEDS_BIDI_RESOLUTION);
    }
  
@@ -33,7 +33,7 @@ diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
 diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 --- a/layout/style/nsRuleNode.cpp
 +++ b/layout/style/nsRuleNode.cpp
-@@ -5567,16 +5567,31 @@ nsRuleNode::ComputeDisplayData(void* aSt
+@@ -5576,16 +5576,31 @@ nsRuleNode::ComputeDisplayData(void* aSt
      // If 'visible' is specified but doesn't match the other dimension, it
      // turns into 'auto'.
      if (display->mOverflowX == NS_STYLE_OVERFLOW_VISIBLE)
@@ -65,7 +65,7 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
  
    SetDiscrete(*aRuleData->ValueForResize(), display->mResize, conditions,
                SETDSC_ENUMERATED | SETDSC_UNSET_INITIAL,
-@@ -5708,16 +5723,28 @@ nsRuleNode::ComputeDisplayData(void* aSt
+@@ -5717,16 +5732,28 @@ nsRuleNode::ComputeDisplayData(void* aSt
  
        // Note that it's OK to cache this struct in the ruletree
        // because it's fine as-is for any style context that points to
@@ -97,7 +97,7 @@ diff --git a/layout/style/nsRuleNode.cpp b/layout/style/nsRuleNode.cpp
 diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 --- a/layout/style/nsStyleStruct.h
 +++ b/layout/style/nsStyleStruct.h
-@@ -2244,16 +2244,20 @@ struct nsStyleDisplay {
+@@ -2265,16 +2265,20 @@ struct nsStyleDisplay {
  
    bool IsScrollableOverflow() const {
      // mOverflowX and mOverflowY always match when one of them is
@@ -121,29 +121,26 @@ diff --git a/layout/style/nsStyleStruct.h b/layout/style/nsStyleStruct.h
 diff --git a/layout/style/nsStyleStructInlines.h b/layout/style/nsStyleStructInlines.h
 --- a/layout/style/nsStyleStructInlines.h
 +++ b/layout/style/nsStyleStructInlines.h
-@@ -133,19 +133,20 @@ nsStyleDisplay::HasTransform(const nsIFr
- {
-   NS_ASSERTION(aContextFrame->StyleDisplay() == this, "unexpected aContextFrame");
+@@ -135,17 +135,18 @@ nsStyleDisplay::HasTransform(const nsIFr
    return HasTransformStyle() && aContextFrame->IsFrameOfType(nsIFrame::eSupportsCSSTransforms);
  }
  
  bool
  nsStyleDisplay::IsFixedPosContainingBlock(const nsIFrame* aContextFrame) const
  {
+   NS_ASSERTION(aContextFrame->StyleDisplay() == this,
+                "unexpected aContextFrame");
 -  return (HasTransform(aContextFrame) || HasPerspectiveStyle() ||
 +  return (IsContainPaint() || HasTransform(aContextFrame) ||
 +          HasPerspectiveStyle() ||
-           !aContextFrame->StyleSVGReset()->mFilters.IsEmpty()) &&
--      !aContextFrame->IsSVGText();
-+         !aContextFrame->IsSVGText();
+           aContextFrame->StyleSVGReset()->HasFilters()) &&
+       !aContextFrame->IsSVGText();
  }
  
  bool
  nsStyleDisplay::IsAbsPosContainingBlock(const nsIFrame* aContextFrame) const
  {
    NS_ASSERTION(aContextFrame->StyleDisplay() == this,
-                "unexpected aContextFrame");
-   return ((IsAbsolutelyPositionedStyle() || IsRelativelyPositionedStyle()) &&
 diff --git a/layout/style/test/property_database.js b/layout/style/test/property_database.js
 --- a/layout/style/test/property_database.js
 +++ b/layout/style/test/property_database.js
