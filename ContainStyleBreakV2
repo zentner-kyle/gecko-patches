@@ -1,12 +1,12 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  de12d098df2b2d3f8294b4833efd016786eb61c1
+# Parent  8e6139c42d0c4fc828bef616c1f48501ab09fb09
 Bug 1172087 - Patch 2: Implement break-* for CSS 'contain: style'.
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
 --- a/layout/base/nsCSSFrameConstructor.cpp
 +++ b/layout/base/nsCSSFrameConstructor.cpp
-@@ -5648,17 +5648,18 @@ nsCSSFrameConstructor::AddFrameConstruct
+@@ -5645,17 +5645,18 @@ nsCSSFrameConstructor::AddFrameConstruct
      return;
    }
  
@@ -26,6 +26,27 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    if (MOZ_UNLIKELY(bits & FCDATA_IS_CONTENTS)) {
      if (!GetDisplayContentsStyleFor(aContent)) {
        MOZ_ASSERT(styleContext->GetPseudo() || !isGeneratedContent,
+diff --git a/layout/generic/nsBlockReflowState.cpp b/layout/generic/nsBlockReflowState.cpp
+--- a/layout/generic/nsBlockReflowState.cpp
++++ b/layout/generic/nsBlockReflowState.cpp
+@@ -929,16 +929,17 @@ nsBlockReflowState::FlowAndPlaceFloat(ns
+   }
+ 
+   // We can't use aFloat->ShouldAvoidBreakInside(mReflowState) here since
+   // its mIsTopOfPage may be true even though the float isn't at the
+   // top when floatPos.B(wm) > 0.
+   if (ContentBSize() != NS_UNCONSTRAINEDSIZE &&
+       !mustPlaceFloat &&
+       (!mReflowState.mFlags.mIsTopOfPage || floatPos.B(wm) > 0) &&
++      !aFloat->StyleContext()->HasContainStyle() &&
+       NS_STYLE_PAGE_BREAK_AVOID == aFloat->StyleDisplay()->mBreakInside &&
+       (!NS_FRAME_IS_FULLY_COMPLETE(reflowStatus) ||
+        aFloat->BSize(wm) + floatMargin.BStartEnd(wm) >
+        ContentBEnd() - floatPos.B(wm)) &&
+       !aFloat->GetPrevInFlow()) {
+     PushFloatPastBreak(aFloat);
+     return false;
+   }
 diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexContainerFrame.cpp
 --- a/layout/generic/nsFlexContainerFrame.cpp
 +++ b/layout/generic/nsFlexContainerFrame.cpp
@@ -69,6 +90,27 @@ diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexCont
  
  // Retrieves the content-box main-size of our flex container from the
  // reflow state (specifically, the main-size of *this continuation* of the
+diff --git a/layout/generic/nsFrame.h b/layout/generic/nsFrame.h
+--- a/layout/generic/nsFrame.h
++++ b/layout/generic/nsFrame.h
+@@ -429,16 +429,17 @@ public:
+   void ConsiderChildOverflow(nsOverflowAreas& aOverflowAreas,
+                              nsIFrame* aChildFrame);
+ 
+   /**
+    * @return true if we should avoid a page/column break in this frame.
+    */
+   bool ShouldAvoidBreakInside(const nsHTMLReflowState& aReflowState) const {
+     return !aReflowState.mFlags.mIsTopOfPage &&
++           !StyleContext()->HasContainStyle() &&
+            NS_STYLE_PAGE_BREAK_AVOID == StyleDisplay()->mBreakInside &&
+            !GetPrevInFlow();
+   }
+ 
+ #ifdef DEBUG
+   /**
+    * Tracing method that writes a method enter/exit routine to the
+    * nspr log using the nsIFrame log module. The tracing is only
 diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
 --- a/layout/tables/nsTableFrame.cpp
 +++ b/layout/tables/nsTableFrame.cpp

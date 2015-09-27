@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  74ffa05240b4f527f7db278bb85eb795e523f819
+# Parent  18899a8ef65ff6c24b74013641f837189ce6be17
 Bug 1178895 - Patch 5: Test 'contain: layout' for table cell elements.
 
 diff --git a/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-001-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-layout-inline-table-cell-001-ref.html
@@ -1035,15 +1035,15 @@ new file mode 100644
 diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/reftests/w3c-css/submitted/contain/reftest.list
 --- a/layout/reftests/w3c-css/submitted/contain/reftest.list
 +++ b/layout/reftests/w3c-css/submitted/contain/reftest.list
-@@ -25,11 +25,21 @@ default-preferences pref(layout.css.cont
- == contain-layout-block-003.html contain-layout-block-003-ref.html
- == contain-layout-block-004.html contain-layout-block-004-ref.html
- == contain-layout-block-005.html contain-layout-block-005-ref.html
- == contain-layout-inline-block-001.html contain-layout-inline-block-001-ref.html
- == contain-layout-inline-block-002.html contain-layout-inline-block-002-ref.html
- == contain-layout-inline-block-003.html contain-layout-inline-block-003-ref.html
- == contain-layout-inline-block-004.html contain-layout-inline-block-004-ref.html
- == contain-layout-inline-block-005.html contain-layout-inline-block-005-ref.html
+@@ -33,12 +33,22 @@ default-preferences pref(layout.css.cont
+ == contain-layout-flex-001.html contain-layout-flex-001-ref.html
+ == contain-layout-flex-002.html contain-layout-flex-002-ref.html
+ == contain-layout-inline-flex-001.html contain-layout-inline-flex-001-ref.html
+ == contain-layout-inline-flex-002.html contain-layout-inline-flex-002-ref.html
+ == contain-layout-inline-flex-003.html contain-layout-inline-flex-003-ref.html
+ == contain-layout-inline-flex-004.html contain-layout-inline-flex-004-ref.html
+ == contain-layout-inline-flex-005.html contain-layout-inline-flex-005-ref.html
+ == contain-layout-inline-flex-006.html contain-layout-inline-flex-006-ref.html
 +== contain-layout-table-cell-001.html contain-layout-table-cell-001-ref.html
 +== contain-layout-table-cell-002.html contain-layout-table-cell-002-ref.html
 +== contain-layout-table-cell-003.html contain-layout-table-cell-003-ref.html
@@ -1057,3 +1057,4 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/ref
  == contain-style-quote-001.html contain-style-quote-001-ref.html
  == contain-style-break-001.html contain-style-break-001-ref.html
  == contain-style-break-002.html contain-style-break-001-ref.html
+ == contain-style-quote-002.html contain-style-quote-002-ref.html
