@@ -146,49 +146,10 @@ new file mode 100644
 +  <div class="container"></div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-002-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-001c.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-001c.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002-ref.html
-@@ -0,0 +1,34 @@
-+<!DOCTYPE HTML>
-+<html class="reftest-print">
-+<head>
-+  <meta charset="utf-8">
-+  <title>CSS Reftest Reference</title>
-+  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
-+  <style>
-+  body {
-+    margin: 0;
-+  }
-+  .buffer {
-+    height: 100px;
-+    width: 100px;
-+    background: blue;
-+  }
-+  .container {
-+    width: 100px;
-+    height: 80px;
-+    background: orange;
-+  }
-+  .b-before {
-+    background: green;
-+    width: 100px;
-+    height: 20px;
-+  }
-+  </style>
-+</head>
-+<body>
-+  <div class="buffer"></div>
-+  <div class="container">
-+    <div class="b-before"></div>
-+  </div>
-+</body>
-+</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-002a.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002a.html
-new file mode 100644
---- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002a.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-001c.html
 @@ -0,0 +1,38 @@
 +<!DOCTYPE HTML>
 +<html class="reftest-print">
@@ -197,7 +158,7 @@ new file mode 100644
 +  <title>'page-break-before: always' in child of 'contain: style' element should be ignored </title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
-+  <link rel="match" href="contain-style-break-002-ref.html">
++  <link rel="match" href="contain-style-break-001-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -228,10 +189,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-002b.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002b.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-001d.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-001d.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002b.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-001d.html
 @@ -0,0 +1,50 @@
 +<!DOCTYPE HTML>
 +<html class="reftest-print reftest-wait">
@@ -240,7 +201,7 @@ new file mode 100644
 +  <title>'page-break-before: always' in child of 'contain: style' element should be ignored </title>
 +  <link rel="author" title="Kyle Zentner" href="mailto:zentner.kyle@gmail.com">
 +  <link rel="help" href="http://www.w3.org/TR/css-containment-1/#containment-style">
-+  <link rel="match" href="contain-style-break-002-ref.html">
++  <link rel="match" href="contain-style-break-001-ref.html">
 +  <style>
 +  body {
 +    margin: 0;
@@ -283,10 +244,10 @@ new file mode 100644
 +  <div class="container"></div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-003-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-003-ref.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-002-ref.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002-ref.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-003-ref.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002-ref.html
 @@ -0,0 +1,34 @@
 +<!DOCTYPE HTML>
 +<html class="reftest-print">
@@ -322,10 +283,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-003a.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-003a.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-002a.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002a.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-003a.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002a.html
 @@ -0,0 +1,38 @@
 +<!DOCTYPE HTML>
 +<html class="reftest-print">
@@ -365,10 +326,10 @@ new file mode 100644
 +  </div>
 +</body>
 +</html>
-diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-003b.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-003b.html
+diff --git a/layout/reftests/w3c-css/submitted/contain/contain-style-break-002b.html b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002b.html
 new file mode 100644
 --- /dev/null
-+++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-003b.html
++++ b/layout/reftests/w3c-css/submitted/contain/contain-style-break-002b.html
 @@ -0,0 +1,50 @@
 +<!DOCTYPE HTML>
 +<html class="reftest-print">
@@ -434,8 +395,8 @@ diff --git a/layout/reftests/w3c-css/submitted/contain/reftest.list b/layout/ref
  == contain-style-quote-001.html contain-style-quote-001-ref.html
 +== contain-style-break-001a.html contain-style-break-001-ref.html
 +== contain-style-break-001b.html contain-style-break-001-ref.html
++== contain-style-break-001c.html contain-style-break-001-ref.html
++== contain-style-break-001d.html contain-style-break-001-ref.html
 +== contain-style-break-002a.html contain-style-break-002-ref.html
 +== contain-style-break-002b.html contain-style-break-002-ref.html
-+== contain-style-break-003a.html contain-style-break-003-ref.html
-+== contain-style-break-003b.html contain-style-break-003-ref.html
  == contain-style-quote-002.html contain-style-quote-002-ref.html

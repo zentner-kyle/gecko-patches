@@ -1,6 +1,6 @@
 # HG changeset patch
 # User Kyle Zentner <kzentner@mozilla.com>
-# Parent  e3b5e6ced3b02e9da4548edbb07ec75685eb2614
+# Parent  d0c66ca7caa6da0bc447d317d5970c5caf786361
 Bug 1172087 - Patch 3: Implement counter-* for CSS 'contain: style'.
 
 diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConstructor.cpp
@@ -58,7 +58,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    : mPresContext(aPresShell->GetPresContext()),
      mPresShell(aPresShell),
      mFrameManager(aPresShell->FrameManager()),
-@@ -1442,16 +1477,17 @@ nsCSSFrameConstructor::nsCSSFrameConstru
+@@ -1439,16 +1474,17 @@ nsCSSFrameConstructor::nsCSSFrameConstru
                                               nsStyleSet* aStyleSet)
    : nsFrameManager(aPresShell, aStyleSet)
    , mDocument(aDocument)
@@ -76,7 +76,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    , mHasRootAbsPosContainingBlock(false)
    , mAlwaysCreateFramesForIgnorableWhitespace(false)
  {
-@@ -1512,17 +1548,18 @@ nsCSSFrameConstructor::NotifyDestroyingF
+@@ -1509,17 +1545,18 @@ nsCSSFrameConstructor::NotifyDestroyingF
    NS_PRECONDITION(mUpdateCount != 0,
                    "Should be in an update while destroying frames");
  
@@ -96,7 +96,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  
    RestyleManager()->NotifyDestroyingFrame(aFrame);
  
-@@ -1555,16 +1592,17 @@ nsCSSFrameConstructor::CreateGenConTextN
+@@ -1552,16 +1589,17 @@ nsCSSFrameConstructor::CreateGenConTextN
                           nsINode::DeleteProperty<nsGenConInitializer>);
      aState.mGeneratedTextNodesWithInitializer.AppendObject(content);
    }
@@ -114,7 +114,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    const nsStyleContentData &data =
      aStyleContext->StyleContent()->ContentAt(aContentIndex);
    nsStyleContentType type = data.mType;
-@@ -1632,18 +1670,19 @@ nsCSSFrameConstructor::CreateGeneratedCo
+@@ -1629,18 +1667,19 @@ nsCSSFrameConstructor::CreateGeneratedCo
                               attrNameSpace, attrName, getter_AddRefs(content));
        return content.forget();
      }
@@ -136,7 +136,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  
        nsGenConInitializer* initializer =
          new nsGenConInitializer(node, counterList,
-@@ -1797,17 +1836,17 @@ nsCSSFrameConstructor::CreateGeneratedCo
+@@ -1794,17 +1833,17 @@ nsCSSFrameConstructor::CreateGeneratedCo
          PruneCompletedTransitions(container, aPseudoElement,
                                    pseudoStyleContext);
      }
@@ -155,7 +155,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  
    AddFrameConstructionItemsInternal(aState, container, aParentFrame, elemName,
                                      kNameSpaceID_None, true,
-@@ -4763,18 +4802,21 @@ nsCSSFrameConstructor::InitAndRestoreFra
+@@ -4760,18 +4799,21 @@ nsCSSFrameConstructor::InitAndRestoreFra
    aNewFrame->Init(aContent, aParentFrame, nullptr);
    aNewFrame->AddStateBits(aState.mAdditionalStateBits);
  
@@ -178,7 +178,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  nsCSSFrameConstructor::ResolveStyleContext(nsIFrame*         aParentFrame,
                                             nsIContent*       aContainer,
                                             nsIContent*       aChild,
-@@ -6863,16 +6905,19 @@ void
+@@ -6860,16 +6902,19 @@ void
  nsCSSFrameConstructor::CreateNeededFrames(nsIContent* aContent)
  {
    NS_ASSERTION(!aContent->HasFlag(NODE_NEEDS_FRAME),
@@ -198,7 +198,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    // It might be better to use GetChildArray and scan it completely first and
    // then issue all notifications. (We have to scan it completely first because
    // constructing frames can set attributes, which can change the storage of
-@@ -6911,27 +6956,31 @@ nsCSSFrameConstructor::CreateNeededFrame
+@@ -6908,27 +6953,31 @@ nsCSSFrameConstructor::CreateNeededFrame
  
    // Now descend.
    FlattenedChildIterator iter(aContent);
@@ -230,7 +230,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  
  void
  nsCSSFrameConstructor::IssueSingleInsertNofications(nsIContent* aContainer,
-@@ -8338,16 +8387,19 @@ nsCSSFrameConstructor::EnsureFrameForTex
+@@ -8335,16 +8384,19 @@ nsCSSFrameConstructor::EnsureFrameForTex
    if (aContent->HasFlag(NS_CREATE_FRAME_IF_NON_WHITESPACE) &&
        !mAlwaysCreateFramesForIgnorableWhitespace) {
      // Text frame may have been suppressed. Disable suppression and signal
@@ -250,7 +250,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  }
  
  nsresult
-@@ -8457,17 +8509,17 @@ nsCSSFrameConstructor::RecalcQuotesAndCo
+@@ -8454,17 +8506,17 @@ nsCSSFrameConstructor::RecalcQuotesAndCo
  {
    if (mQuotesDirty) {
      mQuotesDirty = false;
@@ -269,7 +269,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
  
  void
  nsCSSFrameConstructor::NotifyCounterStylesAreDirty()
-@@ -10344,16 +10396,19 @@ nsCSSFrameConstructor::ProcessChildren(n
+@@ -10341,16 +10393,19 @@ nsCSSFrameConstructor::ProcessChildren(n
                    "content insertion frame");
    const uint32_t kMaxDepth = 2 * MAX_REFLOW_DEPTH;
    static_assert(kMaxDepth <= UINT16_MAX, "mCurrentDepth type is too narrow");
@@ -289,7 +289,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
    // containing blocks as needed, so callers don't have to do it...
  
    bool haveFirstLetterStyle = false, haveFirstLineStyle = false;
-@@ -11374,16 +11429,18 @@ nsCSSFrameConstructor::CreateListBoxCont
+@@ -11371,16 +11426,18 @@ nsCSSFrameConstructor::CreateListBoxCont
      // any frame at all
      const nsStyleDisplay* display = styleContext->StyleDisplay();
  
@@ -308,7 +308,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.cpp b/layout/base/nsCSSFrameConst
                                        aChild->GetNameSpaceID(),
                                        true, styleContext,
                                        ITEM_ALLOW_XBL_BASE, nullptr, items);
-@@ -12240,16 +12297,18 @@ nsCSSFrameConstructor::ReframeContaining
+@@ -12237,16 +12294,18 @@ nsCSSFrameConstructor::ReframeContaining
                                    true, aFlags, nullptr);
  }
  
@@ -348,7 +348,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
    void CreateGeneratedContentItem(nsFrameConstructorState&   aState,
                                    nsContainerFrame*          aFrame,
                                    nsIContent*                aContent,
-@@ -2015,16 +2016,35 @@ private:
+@@ -2015,16 +2016,38 @@ private:
    // see if aContent and aSibling are legitimate siblings due to restrictions
    // imposed by table columns
    // XXXbz this code is generally wrong, since the frame for aContent
@@ -358,6 +358,9 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
                          uint8_t&               aDisplay);
  
 +  nsIFrame* GetContainStyleRoot(nsIFrame* aRootDescendant) {
++    if (!mContainStyleRoot) {
++      mContainStyleRoot = GetRootFrame();
++    }
 +    NS_ASSERTION(mContainStyleRoot == FindContainStyleRoot(aRootDescendant),
 +                 "mContainStyleRoot should be set correctly.");
 +    return mContainStyleRoot;
@@ -367,7 +370,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
 +  nsIFrame* FindContainStyleRoot(nsIFrame* aDescendant) {
 +    nsIFrame* ancestor = aDescendant;
 +    if (!ancestor->StyleContext()->HasContainStyle()) {
-+      return mPresContext->PresShell()-GetRootFrame();
++      return GetRootFrame();
 +    }
 +    while (ancestor && !ancestor->StyleDisplay()->IsContainStyle()) {
 +      ancestor = ancestor->GetParent();
@@ -384,7 +387,7 @@ diff --git a/layout/base/nsCSSFrameConstructor.h b/layout/base/nsCSSFrameConstru
  
    void CountersDirty() {
      NS_PRECONDITION(mUpdateCount != 0, "Instant counter updates are bad news");
-@@ -2066,16 +2086,17 @@ private:
+@@ -2066,16 +2089,17 @@ private:
    nsIFrame*           mRootElementStyleFrame;
    // This is the containing block that contains the root element ---
    // the real "initial containing block" according to CSS 2.1.
